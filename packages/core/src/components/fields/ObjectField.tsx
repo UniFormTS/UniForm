@@ -11,17 +11,23 @@ type ObjectFieldProps = {
 export function ObjectField({ field, control, namePrefix }: ObjectFieldProps) {
   const children = field.children ?? []
 
+  const content = children.map((child) => (
+    <FieldRenderer
+      key={child.name}
+      field={child}
+      control={control}
+      namePrefix={namePrefix}
+    />
+  ))
+
+  if (field.meta.section) {
+    return <>{content}</>
+  }
+
   return (
     <fieldset>
       {field.label && <legend>{field.label}</legend>}
-      {children.map((child) => (
-        <FieldRenderer
-          key={child.name}
-          field={child}
-          control={control}
-          namePrefix={namePrefix}
-        />
-      ))}
+      {content}
     </fieldset>
   )
 }

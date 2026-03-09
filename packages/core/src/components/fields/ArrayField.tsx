@@ -24,13 +24,22 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
 
   if (!itemConfig) return null
 
-  return (
-    <fieldset>
-      {field.label && <legend>{field.label}</legend>}
+  // When the array belongs to a section, propagate section to the item config
+  // so nested ObjectField also skips its own <fieldset>.
+  const effectiveItemConfig =
+    field.meta.section && !itemConfig.meta.section
+      ? {
+          ...itemConfig,
+          meta: { ...itemConfig.meta, section: field.meta.section },
+        }
+      : itemConfig
+
+  const content = (
+    <>
       {rows.map((row, index) => (
         <div key={row.id}>
           <FieldRenderer
-            field={itemConfig}
+            field={effectiveItemConfig}
             control={control}
             namePrefix={`${effectiveName}.${index}`}
           />
@@ -47,6 +56,17 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
       >
         Add
       </button>
+    </>
+  )
+
+  if (field.meta.section) {
+    return content
+  }
+
+  return (
+    <fieldset>
+      {field.label && <legend>{field.label}</legend>}
+      {content}
     </fieldset>
   )
 }
