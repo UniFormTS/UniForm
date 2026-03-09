@@ -37,7 +37,7 @@ export type FieldCondition<TValues = Record<string, unknown>> = (
 // FieldMeta
 // ---------------------------------------------------------------------------
 
-export type FieldMeta = {
+export type FieldMetaBase = {
   label?: string
   placeholder?: string
   description?: string
@@ -48,8 +48,9 @@ export type FieldMeta = {
   disabled?: boolean
   condition?: FieldCondition
   component?: string
-  [key: string]: unknown
 }
+
+export type FieldMeta = FieldMetaBase & { [key: string]: unknown }
 
 // ---------------------------------------------------------------------------
 // FieldConfig
