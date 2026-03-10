@@ -3,6 +3,21 @@ import { useWatch } from 'react-hook-form'
 import type { Control } from 'react-hook-form'
 import type { FieldConfig } from '../types'
 
+/**
+ * Filters and sorts a list of field configs based on the current form values.
+ *
+ * - Fields with `meta.hidden === true` are always excluded.
+ * - Fields with a `meta.condition` function are included only when the
+ *   function returns `true` for the current values.
+ * - Remaining fields are sorted ascending by `meta.order` (fields without an
+ *   order appear last).
+ *
+ * Re-evaluates reactively whenever the watched form values change.
+ *
+ * @param fields - The full list of field configs to filter and sort.
+ * @param control - The RHF `control` object from the parent form.
+ * @returns The filtered and ordered subset of `fields`.
+ */
 export function useConditionalFields(
   fields: FieldConfig[],
   control: Control,

@@ -6,6 +6,18 @@ export type SectionGroup = {
   fields: FieldConfig[]
 }
 
+/**
+ * Groups a flat list of field configs into ordered section groups based on
+ * each field's `meta.section` value.
+ *
+ * - Fields without a `meta.section` (or with a non-string value) are placed
+ *   in an "ungrouped" section with `title: null`, rendered first.
+ * - Named sections appear in the order their first member is encountered.
+ * - The returned array is memoized and only recomputed when `fields` changes.
+ *
+ * @param fields - The ordered list of (already filtered/sorted) field configs.
+ * @returns An array of {@link SectionGroup} objects ready to be rendered.
+ */
 export function useSectionGrouping(fields: FieldConfig[]): SectionGroup[] {
   return useMemo(() => {
     const ungrouped: FieldConfig[] = []

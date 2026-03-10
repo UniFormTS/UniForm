@@ -64,6 +64,11 @@ function DefaultArrayRowLayout({
   )
 }
 
+/**
+ * Recursively merges `overrides` (keyed by field name) into the `fields` tree,
+ * applying each override to the matching field's `meta`. Descends into
+ * `children` (object fields) and `itemConfig.children` (array-of-object fields).
+ */
 function applyFieldOverrides(
   fields: FieldConfig[],
   overrides: Record<string, Partial<FieldConfig['meta']>>,
@@ -132,6 +137,23 @@ function buildDefaults(fields: FieldConfig[]): Record<string, unknown> {
   return result
 }
 
+/**
+ * The core auto-form component. Introspects the provided Zod `schema`,
+ * renders the appropriate field components, validates on submit using
+ * `zodResolver`, and calls `onSubmit` with the fully-typed, validated values.
+ *
+ * Supports: conditional fields, field dependencies, section grouping, form
+ * persistence, imperative handle via `ref`, and full layout/component
+ * customisation.
+ *
+ * @template TSchema - A `ZodObject` schema that defines the form shape.
+ *
+ * @example
+ * <AutoForm
+ *   schema={z.object({ name: z.string(), age: z.number() })}
+ *   onSubmit={(values) => console.log(values)}
+ * />
+ */
 export function AutoForm<TSchema extends z.ZodObject<z.ZodRawShape>>(
   props: AutoFormProps<TSchema> & {
     ref?: React.Ref<AutoFormHandle<z.infer<TSchema>>>

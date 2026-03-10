@@ -7,6 +7,18 @@ import { unwrap } from './unwrap'
 // Main introspection function
 // ---------------------------------------------------------------------------
 
+/**
+ * Recursively introspects a Zod schema and returns a {@link FieldConfig}
+ * describing the field's type, label, validation constraints, and UI metadata.
+ *
+ * Transparent wrappers (`optional`, `nullable`, `default`, `pipe`) are
+ * unwrapped before inspection. Unknown/unsupported types fall back to
+ * `type: 'unknown'` rather than throwing.
+ *
+ * @param schema - The Zod schema to introspect.
+ * @param name - The field key within its parent object (used for label derivation).
+ * @param parentPath - The dot-notated path of the parent (used to build `field.name`).
+ */
 export function introspectSchema(
   schema: z.ZodType,
   name: string = '',
@@ -155,6 +167,15 @@ export function introspectSchema(
 // Convenience wrapper for top-level ZodObject schemas
 // ---------------------------------------------------------------------------
 
+/**
+ * Introspects all fields of a top-level `ZodObject` schema and returns an
+ * ordered array of {@link FieldConfig} objects, one per key in `schema.shape`.
+ *
+ * This is the entry point used by `<AutoForm>` to derive the field list from
+ * the provided schema.
+ *
+ * @param schema - The top-level `ZodObject` schema to introspect.
+ */
 export function introspectObjectSchema(
   schema: z.ZodObject<z.ZodRawShape>,
 ): FieldConfig[] {

@@ -15,12 +15,20 @@ export type FieldRendererProps = {
   namePrefix?: string
 }
 
+/**
+ * Returns the fully-qualified field name for use with RHF, prepending
+ * `namePrefix` when rendering inside a nested object or array context.
+ */
 function getEffectiveName(field: FieldConfig, namePrefix?: string): string {
   if (!namePrefix) return field.name
   if (!field.name) return namePrefix
   return `${namePrefix}.${field.name}`
 }
 
+/**
+ * Traverses the RHF `errors` object along a dot-notated `name` path and
+ * returns the leaf error object, or `undefined` if no error exists at that path.
+ */
 function getFieldError(
   errors: Record<string, unknown>,
   name: string,
@@ -37,6 +45,12 @@ function getFieldError(
   return undefined
 }
 
+/**
+ * Renders a single form field by delegating to the appropriate field component
+ * based on `field.type`. Object and array fields manage their own layout and
+ * skip the field wrapper; all other fields are wrapped in the configured
+ * `FieldWrapper` with their resolved error message.
+ */
 export function FieldRenderer({
   field,
   control,
