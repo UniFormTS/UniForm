@@ -244,6 +244,16 @@ export type FieldWrapperProps = {
   error?: string
   /** Grid column span override (takes precedence over `field.meta.span`). */
   span?: number
+  /**
+   * Zero-based render index of this field within its parent container
+   * (form root or section). Exposed as the `--field-index` CSS custom property.
+   */
+  index?: number
+  /**
+   * Nesting depth of this field (0 = top-level, 1 = inside object, etc.).
+   * Exposed as the `--field-depth` CSS custom property.
+   */
+  depth?: number
 }
 
 // ---------------------------------------------------------------------------
