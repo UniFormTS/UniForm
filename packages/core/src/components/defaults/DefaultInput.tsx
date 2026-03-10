@@ -18,7 +18,7 @@ function formatValue(value: unknown): string {
 }
 
 export function DefaultInput(props: FieldProps) {
-  const { name, value, onChange, onBlur, required, disabled, meta } = props
+  const { name, value, onChange, onBlur, ref, required, disabled, meta } = props
   const inputType = resolveInputType(props)
 
   return (
@@ -29,6 +29,7 @@ export function DefaultInput(props: FieldProps) {
       value={formatValue(value)}
       onChange={(e) => onChange(e.target.value)}
       onBlur={onBlur}
+      ref={ref}
       required={required}
       disabled={disabled}
       aria-required={required}

@@ -38,6 +38,7 @@ export function BrandedInput(props: FieldProps) {
       value={String(props.value ?? '')}
       onChange={(e) => props.onChange(e.target.value)}
       onBlur={props.onBlur}
+      ref={props.ref}
       placeholder={props.placeholder}
       disabled={props.disabled}
       required={props.required}

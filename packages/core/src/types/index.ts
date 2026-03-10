@@ -1,4 +1,5 @@
 import type * as React from 'react'
+import { RefCallBack } from 'react-hook-form'
 import type * as z from 'zod/v4'
 
 // ---------------------------------------------------------------------------
@@ -254,6 +255,8 @@ export type FieldProps = {
   onChange: (value: unknown) => void
   /** Callback fired when the field loses focus. */
   onBlur: () => void
+  /** Ref callback for registering the DOM element with `react-hook-form`. */
+  ref: RefCallBack
   /** Resolved display label for the field. */
   label: string
   /** Placeholder text for the input. */

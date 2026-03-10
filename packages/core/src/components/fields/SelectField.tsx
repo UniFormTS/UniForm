@@ -31,6 +31,7 @@ export function SelectField({
           value={(rhfField.value as unknown) ?? ''}
           onChange={rhfField.onChange}
           onBlur={rhfField.onBlur}
+          ref={rhfField.ref}
           label={field.label}
           placeholder={field.meta.placeholder}
           description={field.meta.description}

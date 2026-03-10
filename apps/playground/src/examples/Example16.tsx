@@ -16,9 +16,10 @@ function StarRating(props: FieldProps) {
   const rating = Number(props.value ?? 0)
   return (
     <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-      {[1, 2, 3, 4, 5].map((star) => (
+      {[1, 2, 3, 4, 5].map((star, index) => (
         <button
           key={star}
+          ref={index === 0 ? props.ref : undefined}
           type='button'
           onClick={() => props.onChange(star)}
           disabled={props.disabled}
@@ -130,6 +131,7 @@ function MultiAutocomplete(props: FieldProps) {
         }}
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
+        ref={props.ref}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && inputText) {
             e.preventDefault()
@@ -265,11 +267,12 @@ function ColorPicker(props: FieldProps) {
         flexWrap: 'wrap',
       }}
     >
-      {presets.map((color) => (
+      {presets.map((color, index) => (
         <button
           key={color}
           type='button'
           onClick={() => props.onChange(color)}
+          ref={index === 0 ? props.ref : undefined}
           disabled={props.disabled}
           aria-label={color}
           style={{
