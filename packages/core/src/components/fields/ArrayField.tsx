@@ -12,6 +12,17 @@ type ArrayFieldProps = {
   effectiveName: string
 }
 
+/**
+ * Produces a short summary string for a collapsed array row.
+ *
+ * Scans the row's values for the first non-empty `string` or `number` child
+ * field and returns it as the label. Falls back to `"Item {index + 1}"` when
+ * no suitable value is found.
+ *
+ * @param row - The current form values for the row (shallow key-value map).
+ * @param itemConfig - The field config describing the item's shape.
+ * @param index - Zero-based row index, used in the fallback label.
+ */
 function getRowSummary(
   row: Record<string, unknown>,
   itemConfig: FieldConfig,

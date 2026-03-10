@@ -1,6 +1,22 @@
 import type { ComponentRegistry, FieldConfig, FieldProps } from '../types'
 import { defaultRegistry } from '../registry/defaultRegistry'
 
+/**
+ * Resolves the React component that should be used to render a given field,
+ * following this priority order:
+ *
+ * 1. `field.meta.component` is a direct React component → used as-is,
+ *    bypassing the registry entirely.
+ * 2. `field.meta.component` is a string key → looked up in the merged
+ *    `registry` (factory + instance components).
+ * 3. `field.type` key exists in the merged `registry`.
+ * 4. `field.type` key exists in the {@link defaultRegistry}.
+ * 5. No match → logs a warning and returns `null`.
+ *
+ * @param field - The resolved field configuration.
+ * @param registry - The merged component registry for the current form instance.
+ * @returns The component to render, or `null` if none could be found.
+ */
 export function resolveComponent(
   field: FieldConfig,
   registry: ComponentRegistry,

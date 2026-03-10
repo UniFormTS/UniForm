@@ -1,5 +1,20 @@
 import type { FieldConfig } from '../../types'
 
+/**
+ * Returns a sensible empty default value for a field based on its `type`.
+ *
+ * Used when appending new rows to an array field so that RHF starts each row
+ * with typed, non-`undefined` values.
+ *
+ * - `string` → `''`
+ * - `number` → `0`
+ * - `boolean` → `false`
+ * - `date` → `new Date()`
+ * - `select` → first option value, or `''` if no options exist
+ * - `object` → recursively built object using child defaults
+ * - `array` → `[]`
+ * - anything else → `undefined`
+ */
 export function getDefaultValue(field: FieldConfig): unknown {
   switch (field.type) {
     case 'string':

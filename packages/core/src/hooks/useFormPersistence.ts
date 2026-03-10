@@ -12,6 +12,19 @@ const defaultStorage: PersistStorage | undefined =
       }
     : undefined
 
+/**
+ * Persists form values to a storage adapter and restores them on mount.
+ *
+ * - On mount, reads `key` from `storage` and calls `reset` with the merged
+ *   stored + default values, so the form starts with any previously saved data.
+ * - On every value change, writes the current form values to `storage` after a
+ *   `debounceMs` delay to avoid thrashing the storage layer.
+ * - When `key` is `undefined`, persistence is entirely disabled.
+ * - Falls back to `sessionStorage` when no custom `storage` adapter is provided.
+ *
+ * @returns An object with `clearPersistedData` — call this after a successful
+ *   submission to remove the persisted draft.
+ */
 export function useFormPersistence(options: {
   control: Control
   key: string | undefined
