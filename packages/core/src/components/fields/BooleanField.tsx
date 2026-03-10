@@ -30,12 +30,13 @@ export function BooleanField({
           value={(rhfField.value as unknown) ?? false}
           onChange={rhfField.onChange}
           onBlur={rhfField.onBlur}
+          ref={rhfField.ref}
           label={field.label}
           placeholder={field.meta.placeholder}
           description={field.meta.description}
           error={fieldState.error?.message}
           required={field.required}
-          disabled={field.meta.disabled || contextDisabled}
+          disabled={field.meta.disabled || rhfField.disabled || contextDisabled}
           meta={field.meta}
         />
       )}

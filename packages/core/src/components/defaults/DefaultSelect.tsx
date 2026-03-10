@@ -6,6 +6,7 @@ export function DefaultSelect(props: FieldProps) {
     value,
     onChange,
     onBlur,
+    ref,
     required,
     disabled,
     options = [],
@@ -18,6 +19,7 @@ export function DefaultSelect(props: FieldProps) {
       value={String((value ?? '') as string | number)}
       onChange={(e) => onChange(e.target.value)}
       onBlur={onBlur}
+      ref={ref}
       required={required}
       disabled={disabled}
       aria-required={required}

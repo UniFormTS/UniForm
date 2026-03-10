@@ -37,6 +37,7 @@ export function ScalarField({
             rhfField.onChange(coerceValue(field.type, value, coercions))
           }
           onBlur={rhfField.onBlur}
+          ref={rhfField.ref}
           label={field.label}
           placeholder={field.meta.placeholder}
           description={field.meta.description}
