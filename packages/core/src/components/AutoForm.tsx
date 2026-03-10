@@ -321,8 +321,14 @@ export function AutoForm<TSchema extends z.ZodObject<z.ZodRawShape>>(
       >
         <FormWrapper>
           {sections.map((section) => {
-            const renderedFields = section.fields.map((field) => (
-              <FieldRenderer key={field.name} field={field} control={control} />
+            const renderedFields = section.fields.map((field, idx) => (
+              <FieldRenderer
+                key={field.name}
+                field={field}
+                control={control}
+                index={idx}
+                depth={0}
+              />
             ))
 
             if (section.title === null) {

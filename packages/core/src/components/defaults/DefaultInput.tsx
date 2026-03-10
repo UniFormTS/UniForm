@@ -34,6 +34,9 @@ export function DefaultInput(props: FieldProps) {
       aria-required={required}
       aria-disabled={disabled}
       placeholder={meta.placeholder}
+      data-input-type={inputType}
+      data-required={required || undefined}
+      data-disabled={disabled || undefined}
     />
   )
 }
