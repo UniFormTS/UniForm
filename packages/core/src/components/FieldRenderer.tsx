@@ -13,6 +13,10 @@ export type FieldRendererProps = {
   field: FieldConfig
   control: Control
   namePrefix?: string
+  /** Zero-based render index within the parent container (form root / section / object). */
+  index?: number
+  /** Nesting depth (0 = top-level, 1 = inside object, etc.). */
+  depth?: number
 }
 
 /**
@@ -55,6 +59,8 @@ export function FieldRenderer({
   field,
   control,
   namePrefix,
+  index = 0,
+  depth = 0,
 }: FieldRendererProps) {
   const { fieldWrapper: FieldWrapper, messages } = useAutoFormContext()
   const { errors } = useFormState({ control })
@@ -71,6 +77,7 @@ export function FieldRenderer({
         field={effectiveField}
         control={control}
         namePrefix={namePrefix}
+        depth={depth}
       />
     )
   }
@@ -136,7 +143,13 @@ export function FieldRenderer({
   if (rendered === null) return null
 
   return (
-    <FieldWrapper field={effectiveField} error={error} span={field.meta.span}>
+    <FieldWrapper
+      field={effectiveField}
+      error={error}
+      span={field.meta.span}
+      index={index}
+      depth={depth}
+    >
       {rendered}
     </FieldWrapper>
   )

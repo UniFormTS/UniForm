@@ -656,7 +656,10 @@ describe('AutoForm', () => {
     render(<AutoForm schema={schema} onSubmit={vi.fn()} />)
     const input = screen.getByLabelText(/name/i)
     const wrapper = input.closest('div')!
-    expect(wrapper.getAttribute('style')).toBeNull()
+    // --field-index and --field-depth are always present; --field-span defaults to 1
+    expect(wrapper.style.getPropertyValue('--field-span')).toBe('1')
+    expect(wrapper.style.getPropertyValue('--field-index')).toBe('0')
+    expect(wrapper.style.getPropertyValue('--field-depth')).toBe('0')
   })
 
   // ---------------------------------------------------------------------------
