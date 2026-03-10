@@ -17,7 +17,9 @@ export const defaultCoercionMap: CoercionMap = {
   },
   boolean: (value: unknown) => Boolean(value),
   string: (value: unknown) =>
-    value == null || value == undefined ? '' : String(value as string | number | boolean),
+    value == null || value == undefined
+      ? ''
+      : String(value as string | number | boolean),
 }
 
 export function coerceValue(
