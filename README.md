@@ -10,7 +10,7 @@ UniForm takes a Zod schema and automatically renders a fully customizable form. 
 - **Headless** — zero CSS, zero opinions; bring your own design system
 - **Full Zod V4 support** — scalars, enums, objects, arrays, optionals, nullables, defaults, pipes/transforms, unions, discriminated unions
 - **react-hook-form** under the hood — performant, uncontrolled forms with `zodResolver`
-- **Component registry** — swap any field type globally or per-field via `meta.component`
+- **Per-field custom components** — pass any `React.ComponentType<FieldProps>` directly as `meta.component` (inline, no registry) or register under a custom string key; direct components bypass the registry _and_ the default `ArrayField`/`ObjectField` routing, allowing fully custom multi-value widgets for `array`-typed fields
 - **Layout hooks** — `classNames`, `fieldWrapper`, `layout.formWrapper`, `layout.sectionWrapper`, `layout.submitButton`
 - **Section grouping** — group fields into named sections via `meta.section`
 - **Conditional fields** — show/hide fields based on form values with `meta.condition`
@@ -143,7 +143,9 @@ type FieldMeta = {
   disabled?: boolean // Disable the field
   condition?: (values: Record<string, unknown>) => boolean // Show/hide conditionally
   depend?: (values: Record<string, unknown>) => FieldDependencyResult // Reactive overrides
-  component?: string // Override the component registry key
+  component?: string | React.ComponentType<FieldProps>
+  //          ^^^^^^   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  //          registry key        direct component (bypasses registry)
   [key: string]: unknown // Extensible
 }
 ```
@@ -306,6 +308,101 @@ function MyTextInput(props: FieldProps) {
   components={{ string: MyTextInput }}
 />
 ```
+
+### Per-field Custom Components
+
+You can override the component for a **single field** in two ways:
+
+#### Option 1 — Direct React component (inline, no registry needed)
+
+Pass a `React.ComponentType<FieldProps>` directly as `meta.component` — either in the Zod schema or via the `fields` prop:
+
+```tsx
+// In the Zod schema
+function StarRating(props: FieldProps) { /* ... */ }
+
+const schema = z.object({
+  title: z.string(),
+  rating: z.number().min(1).max(5).meta({ component: StarRating }),
+})
+
+<AutoForm schema={schema} onSubmit={handleSubmit} />
+```
+
+```tsx
+// Or via the fields prop (no schema change needed)
+<AutoForm
+  schema={schema}
+  onSubmit={handleSubmit}
+  fields={{ rating: { component: StarRating } }}
+/>
+```
+
+The direct component **bypasses the registry entirely** and takes highest priority in the resolution chain.
+
+#### Array fields with a direct component
+
+A direct `meta.component` also bypasses the default `ArrayField` row-by-row UI. This lets you use a fully custom multi-value widget (e.g. a tag picker, multi-select) on a `z.array(z.string())` field — the component owns the whole array value:
+
+```tsx
+function TagPicker(props: FieldProps) {
+  const selected = Array.isArray(props.value) ? (props.value as string[]) : []
+  // ... render your chip UI, call props.onChange(newArray) on changes
+}
+
+const schema = z.object({
+  tags: z
+    .array(z.string())
+    .min(1, 'Pick at least one tag')
+    .meta({
+      component: TagPicker,
+      suggestions: ['React', 'TypeScript', 'Zod'],
+    }),
+})
+
+<AutoForm schema={schema} onSubmit={handleSubmit} />
+```
+
+Zod still validates the array (`.min(1)` etc.) — only the _render_ is taken over by your component.
+
+#### Option 2 — Named key in the registry
+
+Register a component under a custom string key — either in `createAutoForm` or the `components` prop — then reference it with `meta.component: 'yourKey'`:
+
+```tsx
+// Register at factory level, available to all forms
+const AppAutoForm = createAutoForm({
+  components: {
+    colorpicker: ColorPicker,
+    autocomplete: AutocompleteInput,
+  },
+})
+
+const schema = z.object({
+  theme: z.string().meta({ component: 'colorpicker' }),
+  city: z.string().meta({ component: 'autocomplete' }),
+})
+
+<AppAutoForm schema={schema} onSubmit={handleSubmit} />
+```
+
+```tsx
+// Or register per-instance via the components prop
+<AutoForm
+  schema={schema}
+  onSubmit={handleSubmit}
+  components={{ colorpicker: ColorPicker }}
+  fields={{ theme: { component: 'colorpicker' } }}
+/>
+```
+
+**Resolution priority** (highest → lowest):
+
+1. Direct React component in `meta.component`
+2. String key in `meta.component` → merged registry
+3. Field type key in merged registry (e.g. `string`, `number`)
+4. Field type key in default registry
+5. Warn + render nothing
 
 ### Grid Layout with `classNames` and `span`
 

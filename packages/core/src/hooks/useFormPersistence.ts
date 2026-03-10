@@ -6,9 +6,9 @@ import type { PersistStorage } from '../types'
 const defaultStorage: PersistStorage | undefined =
   typeof window !== 'undefined'
     ? {
-        getItem: (key) => localStorage.getItem(key),
-        setItem: (key, value) => localStorage.setItem(key, value),
-        removeItem: (key) => localStorage.removeItem(key),
+        getItem: (key) => sessionStorage.getItem(key),
+        setItem: (key, value) => sessionStorage.setItem(key, value),
+        removeItem: (key) => sessionStorage.removeItem(key),
       }
     : undefined
 

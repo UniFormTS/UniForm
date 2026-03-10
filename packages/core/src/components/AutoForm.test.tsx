@@ -2521,4 +2521,84 @@ describe('AutoForm', () => {
     )
     expect(screen.getByLabelText(/quantity \(kg\)/i)).toBeInTheDocument()
   })
+
+  // ---------------------------------------------------------------------------
+  // 105. meta.component as a direct React component (via Zod schema meta)
+  // ---------------------------------------------------------------------------
+
+  it('105. meta.component as a direct React component renders the component', () => {
+    const RichInput = (props: FieldProps) => (
+      <input
+        data-testid='rich-input'
+        name={props.name}
+        value={String(props.value ?? '')}
+        onChange={(e) => props.onChange(e.target.value)}
+        onBlur={props.onBlur}
+      />
+    )
+    const schema = z.object({
+      title: z.string().meta({ component: RichInput }),
+    })
+    render(<AutoForm schema={schema} onSubmit={vi.fn()} />)
+    expect(screen.getByTestId('rich-input')).toBeInTheDocument()
+  })
+
+  // ---------------------------------------------------------------------------
+  // 106. meta.component as direct component via fields prop override
+  // ---------------------------------------------------------------------------
+
+  it('106. meta.component as a direct React component via fields prop override', () => {
+    const StarWidget = (props: FieldProps) => (
+      <div data-testid='star-widget' data-name={props.name} />
+    )
+    const schema = z.object({ rating: z.number() })
+    render(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        fields={{ rating: { component: StarWidget } }}
+      />,
+    )
+    expect(screen.getByTestId('star-widget')).toBeInTheDocument()
+    expect(screen.getByTestId('star-widget')).toHaveAttribute(
+      'data-name',
+      'rating',
+    )
+  })
+
+  // ---------------------------------------------------------------------------
+  // 107. meta.component direct component takes precedence over registry key
+  // ---------------------------------------------------------------------------
+
+  it('107. direct component in meta.component takes priority over registry key', () => {
+    const DirectComp = (props: FieldProps) => (
+      <input
+        data-testid='direct-comp'
+        name={props.name}
+        onChange={() => {}}
+        value=''
+      />
+    )
+    const RegistryComp = (props: FieldProps) => (
+      <input
+        data-testid='registry-comp'
+        name={props.name}
+        onChange={() => {}}
+        value=''
+      />
+    )
+    const schema = z.object({ bio: z.string() })
+    render(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        // registry has 'string' mapped to RegistryComp
+        components={{ string: RegistryComp }}
+        // fields override uses a direct React component
+        fields={{ bio: { component: DirectComp } }}
+      />,
+    )
+    expect(screen.getByTestId('direct-comp')).toBeInTheDocument()
+    expect(screen.queryByTestId('registry-comp')).not.toBeInTheDocument()
+  })
 })

@@ -15,10 +15,9 @@ import { useSectionGrouping } from '../hooks/useSectionGrouping'
 import { useFormPersistence } from '../hooks/useFormPersistence'
 import { useFieldDependencies } from '../hooks/useFieldDependencies'
 
-type WithChildren = { children: React.ReactNode }
-type WithChildrenAndTitle = WithChildren & { title: string }
+type WithChildrenAndTitle = React.PropsWithChildren & { title: string }
 
-function DefaultFormWrapper({ children }: WithChildren) {
+function DefaultFormWrapper({ children }: React.PropsWithChildren) {
   return <>{children}</>
 }
 
@@ -106,7 +105,7 @@ function buildDefaults(fields: FieldConfig[]): Record<string, unknown> {
         result[key] = ''
         break
       case 'number':
-        result[key] = undefined
+        result[key] = ''
         break
       case 'boolean':
         result[key] = false

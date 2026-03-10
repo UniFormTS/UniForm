@@ -13,11 +13,7 @@ export function DefaultFieldWrapper({
   return (
     <div
       className={classNames.fieldWrapper}
-      style={
-        span
-          ? ({ '--field-span': span } as React.CSSProperties)
-          : undefined
-      }
+      style={{ '--field-span': span } as React.CSSProperties}
     >
       <label htmlFor={field.name} className={classNames.label}>
         {field.label}

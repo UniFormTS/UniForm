@@ -25,7 +25,7 @@ export function useFieldDependencies(
   control: Control,
   setValue: SetValue,
 ): FieldConfig[] {
-  const values = useWatch({ control }) as Record<string, unknown>
+  const values = useWatch({ control })
 
   // Keep a ref so the effect can read the latest values without being in deps
   const valuesRef = useRef<Record<string, unknown>>(values)

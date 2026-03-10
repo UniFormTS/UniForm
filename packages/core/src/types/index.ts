@@ -64,6 +64,7 @@ export type FieldMetaBase = {
   label?: string
   placeholder?: string
   description?: string
+  options?: SelectOption[]
   section?: string
   order?: number
   span?: number
@@ -72,7 +73,21 @@ export type FieldMetaBase = {
   condition?: FieldCondition
   /** Derive options, visibility, disabled state, or metadata from other field values */
   depend?: (values: Record<string, unknown>) => FieldDependencyResult
-  component?: string
+  /**
+   * Override the component used to render this field.
+   *
+   * - **string** — a key registered in the `ComponentRegistry` (e.g. `'autocomplete'`
+   *   registered via `createAutoForm({ components: { autocomplete: MyComp } })` or the
+   *   `components` prop).
+   * - **React component** — a `FieldProps`-compatible component passed inline,
+   *   bypassing the registry entirely (e.g. `component: MyCustomInput`).
+   *
+   * Note: typed as `React.ComponentType<any>` here to avoid a circular type
+   * reference through `FieldProps → FieldMeta → component → FieldProps`.
+   * The `ComponentRegistry` keeps the stricter `React.ComponentType<FieldProps>`.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  component?: string | React.ComponentType<any>
 }
 
 export type FieldMeta = FieldMetaBase & { [key: string]: unknown }

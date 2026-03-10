@@ -48,8 +48,10 @@ export function FieldRenderer({
   const effectiveField =
     effectiveName !== field.name ? { ...field, name: effectiveName } : field
 
-  // object and array manage their own layout
-  if (field.type === 'object') {
+  // object and array manage their own layout — unless a direct component overrides
+  const hasDirectComponent = typeof field.meta.component === 'function'
+
+  if (field.type === 'object' && !hasDirectComponent) {
     return (
       <ObjectField
         field={effectiveField}
@@ -59,7 +61,7 @@ export function FieldRenderer({
     )
   }
 
-  if (field.type === 'array') {
+  if (field.type === 'array' && !hasDirectComponent) {
     return (
       <ArrayField
         field={effectiveField}
@@ -97,7 +99,9 @@ export function FieldRenderer({
     if (
       field.type === 'string' ||
       field.type === 'number' ||
-      field.type === 'date'
+      field.type === 'date' ||
+      // array/object with a direct meta.component — let ScalarField render it
+      hasDirectComponent
     ) {
       return (
         <ScalarField

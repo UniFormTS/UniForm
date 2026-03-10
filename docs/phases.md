@@ -78,3 +78,27 @@
   - [ ] `useFieldDependencies` hook exported publicly
   - [ ] `onValuesChange` prop — fires on every value change for imperative value cascade
   - [ ] Country → state cascade pattern documented in README
+
+## Phase 7 — Per-field Custom Components
+
+- [ ] Extend `FieldMeta.component` to accept a direct `React.ComponentType` in addition to a string key
+  - [ ] Type: `component?: string | React.ComponentType<any>` (avoids circular `FieldProps → FieldMeta` reference)
+  - [ ] Documented in JSDoc on the type
+- [ ] Update `resolveComponent.ts` — 5-step resolution chain
+  - [ ] Step 1 (new): `meta.component` is a function → return it directly, bypassing registry
+  - [ ] Step 2: `meta.component` is a string key → look up in merged registry
+  - [ ] Step 3: field type key in merged registry
+  - [ ] Step 4: field type key in default registry
+  - [ ] Step 5: warn + return null
+- [ ] Update `FieldRenderer.tsx` — bypass `ArrayField`/`ObjectField` routing when `meta.component` is a direct function
+  - [ ] When `typeof field.meta.component === 'function'`, skip the `array`/`object` early-return guards
+  - [ ] Field falls through to `ScalarField`, which calls `resolveComponent` → direct component
+  - [ ] Enables custom components (e.g. multi-select, tag picker) to fully own an `array`-typed field's value
+- [ ] Tests 105–107
+  - [ ] 105: direct component via Zod schema `.meta({ component: MyComp })`
+  - [ ] 106: direct component via `fields` prop override
+  - [ ] 107: direct component takes priority over type-keyed registry component
+- [ ] Playground Example 16 — two sub-examples side by side
+  - [ ] Sub-example A: `MultiAutocomplete` chip tag picker on `z.array(z.string()).min(1)` + `StarRating` — both passed directly as `meta.component`; `ArrayField` row UI completely bypassed
+  - [ ] Sub-example B: `ColorPicker` registered in `createAutoForm` factory under `'colorpicker'` key, referenced by string
+- [ ] README — updated `FieldMeta.component` type docs, features bullet, and "Per-field Custom Components" recipe with both approaches, resolution priority, and array-field bypass pattern

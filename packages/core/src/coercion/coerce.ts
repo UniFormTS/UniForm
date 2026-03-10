@@ -16,7 +16,8 @@ export const defaultCoercionMap: CoercionMap = {
     return isNaN(d.getTime()) ? value : d
   },
   boolean: (value: unknown) => Boolean(value),
-  string: (value: unknown) => (value == null ? '' : String(value)),
+  string: (value: unknown) =>
+    value == null || value == undefined ? '' : String(value),
 }
 
 export function coerceValue(
