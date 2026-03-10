@@ -68,6 +68,9 @@ function DefaultArrayRowLayout({
  * Recursively merges `overrides` (keyed by field name) into the `fields` tree,
  * applying each override to the matching field's `meta`. Descends into
  * `children` (object fields) and `itemConfig.children` (array-of-object fields).
+ *
+ * For array fields, keys prefixed with `"<arrayFieldName>."` are stripped before
+ * matching against item children, so `"items.qty"` targets every row's `qty` field.
  */
 function applyFieldOverrides(
   fields: FieldConfig[],
@@ -80,18 +83,27 @@ function applyFieldOverrides(
       : field
 
     // Recurse into object children
-    if (updated.children) {
+    if (updated.type === 'object') {
       const newChildren = applyFieldOverrides(updated.children, overrides)
       if (newChildren !== updated.children) {
         return { ...updated, children: newChildren }
       }
     }
 
-    // Recurse into array itemConfig (if it has children)
-    if (updated.itemConfig?.children) {
+    // Recurse into array itemConfig (if it has children).
+    // Re-key overrides by stripping the "<arrayField>." prefix so that
+    // e.g. "items.qty" matches the child field named "qty".
+    if (updated.type === 'array' && updated.itemConfig.type === 'object') {
+      const prefix = `${updated.name}.`
+      const strippedOverrides: Record<string, Partial<FieldConfig['meta']>> = {}
+      for (const [key, value] of Object.entries(overrides)) {
+        if (key.startsWith(prefix)) {
+          strippedOverrides[key.slice(prefix.length)] = value
+        }
+      }
       const newItemChildren = applyFieldOverrides(
         updated.itemConfig.children,
-        overrides,
+        strippedOverrides,
       )
       if (newItemChildren !== updated.itemConfig.children) {
         return {

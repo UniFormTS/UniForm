@@ -3,7 +3,7 @@ import type { FieldConfig } from '../../types'
 import { FieldRenderer } from '../FieldRenderer'
 
 type ObjectFieldProps = {
-  field: FieldConfig
+  field: Extract<FieldConfig, { type: 'object' }>
   control: Control
   namePrefix?: string
   depth?: number
@@ -15,7 +15,7 @@ export function ObjectField({
   namePrefix,
   depth = 0,
 }: ObjectFieldProps) {
-  const children = field.children ?? []
+  const children = field.children
 
   const content = children.map((child, idx) => (
     <FieldRenderer

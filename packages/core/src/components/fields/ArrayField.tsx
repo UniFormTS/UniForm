@@ -7,7 +7,7 @@ import { FieldRenderer } from '../FieldRenderer'
 import { getDefaultValue } from './getDefaultValue'
 
 type ArrayFieldProps = {
-  field: FieldConfig
+  field: Extract<FieldConfig, { type: 'array' }>
   control: Control
   effectiveName: string
 }
@@ -29,7 +29,7 @@ function getRowSummary(
   index: number,
 ): string {
   // Try to find the first string or number value from children
-  if (itemConfig.children) {
+  if (itemConfig.type === 'object') {
     for (const child of itemConfig.children) {
       const key = child.name.split('.').pop() ?? child.name
       const val = row[key]
@@ -61,8 +61,6 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
   const [collapsed, setCollapsed] = useState<Set<number>>(() => new Set())
 
   const itemConfig = field.itemConfig
-  if (!itemConfig) return null
-
   const isObjectItems = itemConfig.type === 'object'
   const minItems = field.minItems
   const maxItems = field.maxItems

@@ -65,16 +65,17 @@ export function FieldRenderer({
   const { fieldWrapper: FieldWrapper, messages } = useAutoFormContext()
   const { errors } = useFormState({ control })
   const effectiveName = getEffectiveName(field, namePrefix)
-  const effectiveField =
-    effectiveName !== field.name ? { ...field, name: effectiveName } : field
 
   // object and array manage their own layout — unless a direct component overrides
   const hasDirectComponent = typeof field.meta.component === 'function'
 
   if (field.type === 'object' && !hasDirectComponent) {
+    const objectField = (
+      effectiveName !== field.name ? { ...field, name: effectiveName } : field
+    ) as Extract<FieldConfig, { type: 'object' }>
     return (
       <ObjectField
-        field={effectiveField}
+        field={objectField}
         control={control}
         namePrefix={namePrefix}
         depth={depth}
@@ -83,14 +84,20 @@ export function FieldRenderer({
   }
 
   if (field.type === 'array' && !hasDirectComponent) {
+    const arrayField = (
+      effectiveName !== field.name ? { ...field, name: effectiveName } : field
+    ) as Extract<FieldConfig, { type: 'array' }>
     return (
       <ArrayField
-        field={effectiveField}
+        field={arrayField}
         control={control}
         effectiveName={effectiveName}
       />
     )
   }
+
+  const effectiveField =
+    effectiveName !== field.name ? { ...field, name: effectiveName } : field
 
   const rawError = getFieldError(
     errors as Record<string, unknown>,
@@ -111,7 +118,7 @@ export function FieldRenderer({
     if (field.type === 'select') {
       return (
         <SelectField
-          field={effectiveField}
+          field={effectiveField as Extract<FieldConfig, { type: 'select' }>}
           control={control}
           effectiveName={effectiveName}
         />

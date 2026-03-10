@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, assert } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as z from 'zod/v4'
@@ -2164,6 +2164,7 @@ describe('AutoForm', () => {
   it('86. array minItems/maxItems are extracted by introspection', () => {
     const arraySchema = z.array(z.string()).min(1).max(5)
     const result = introspectSchema(arraySchema, 'items')
+    assert(result.type === 'array')
     expect(result.minItems).toBe(1)
     expect(result.maxItems).toBe(5)
   })
@@ -2810,5 +2811,88 @@ describe('AutoForm', () => {
     expect(
       screen.queryByRole('button', { name: 'Save' }),
     ).not.toBeInTheDocument()
+  })
+
+  // ---------------------------------------------------------------------------
+  // 116. fields keys — top-level scalar override
+  // ---------------------------------------------------------------------------
+
+  it('116. fields keys — top-level scalar override applies placeholder', () => {
+    const schema = z.object({ name: z.string() })
+    render(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        fields={{ name: { placeholder: 'Enter your full name' } }}
+      />,
+    )
+    expect(
+      screen.getByPlaceholderText('Enter your full name'),
+    ).toBeInTheDocument()
+  })
+
+  // ---------------------------------------------------------------------------
+  // 117. fields keys — nested object path override
+  // ---------------------------------------------------------------------------
+
+  it('117. fields keys — dot-notated object path override applies placeholder', () => {
+    const schema = z.object({
+      address: z.object({ street: z.string(), city: z.string() }),
+    })
+    render(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        fields={{ 'address.city': { placeholder: 'Town or City' } }}
+      />,
+    )
+    expect(screen.getByPlaceholderText('Town or City')).toBeInTheDocument()
+  })
+
+  // ---------------------------------------------------------------------------
+  // 118. fields keys — array field itself override
+  // ---------------------------------------------------------------------------
+
+  it('118. fields keys — array field name override applies meta (e.g. movable)', async () => {
+    const schema = z.object({
+      tags: z.array(z.object({ value: z.string() })),
+    })
+    const { user } = setup(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        defaultValues={{ tags: [{ value: 'a' }, { value: 'b' }] }}
+        fields={{ tags: { movable: true } }}
+      />,
+    )
+    // movable: true enables move buttons
+    const moveButtons = screen.getAllByRole('button', { name: /move/i })
+    expect(moveButtons.length).toBeGreaterThan(0)
+  })
+
+  // ---------------------------------------------------------------------------
+  // 119. fields keys — bare child key targets every array row sub-field
+  // ---------------------------------------------------------------------------
+
+  it('119. fields keys — prefixed array item key override applies to every row', async () => {
+    const schema = z.object({
+      items: z.array(z.object({ name: z.string(), qty: z.number() })),
+    })
+    const { user } = setup(
+      <AutoForm
+        schema={schema}
+        onSubmit={vi.fn()}
+        defaultValues={{ items: [{ name: '', qty: 0 }] }}
+        fields={{ 'items.qty': { placeholder: 'e.g. 5' } }}
+      />,
+    )
+
+    // First row — placeholder is applied to the qty input
+    expect(screen.getByPlaceholderText('e.g. 5')).toBeInTheDocument()
+
+    // Add a second row and confirm the override applies there too
+    await user.click(screen.getByRole('button', { name: /add/i }))
+    const qtyInputs = screen.getAllByPlaceholderText('e.g. 5')
+    expect(qtyInputs).toHaveLength(2)
   })
 })

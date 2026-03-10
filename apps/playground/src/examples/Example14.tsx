@@ -25,6 +25,11 @@ export default function Example14() {
         ref={planRef}
         schema={planSchema}
         defaultValues={{ plan: 'free', seats: 1, discount: 0 }}
+        fields={{
+          plan: {
+            
+          }
+        }}
         onValuesChange={(values) => {
           const defaults: Record<string, { seats: number; discount: number }> =
             {

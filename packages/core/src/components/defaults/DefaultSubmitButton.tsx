@@ -9,7 +9,11 @@ export function DefaultSubmitButton({
 }: DefaultSubmitButtonProps) {
   const { labels } = useAutoFormContext()
   return (
-    <button type='submit' disabled={isSubmitting} data-submitting={isSubmitting || undefined}>
+    <button
+      type='submit'
+      disabled={isSubmitting}
+      data-submitting={isSubmitting || undefined}
+    >
       {labels.submit ?? 'Submit'}
     </button>
   )

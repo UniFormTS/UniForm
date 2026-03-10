@@ -2,6 +2,45 @@ import type * as React from 'react'
 import type * as z from 'zod/v4'
 
 // ---------------------------------------------------------------------------
+// DeepKeys
+// ---------------------------------------------------------------------------
+
+/**
+ * Extracts the element type of an array type.
+ * e.g. `ArrayItem<{ name: string }[]>` → `{ name: string }`
+ */
+type ArrayItem<T> = T extends (infer U)[] ? U : never
+
+/**
+ * Recursively produces all valid `fields` prop keys for a given schema shape:
+ *
+ * - Scalar fields  → just their key (e.g. `"name"`)
+ * - Object fields  → their key + all dot-notated child paths
+ *                    (e.g. `"address"` | `"address.street"`)
+ * - Array fields   → their key + the unprefixed keys of the item object, so
+ *                    you can target every row's sub-field uniformly
+ *                    (e.g. `"items"` | `"items.name"` | `"items.qty"`)
+ *                    Index-based paths like `"items.0.name"` are intentionally
+ *                    excluded — row count is dynamic at runtime.
+ *
+ * @example
+ * // Given { name: string; address: { street: string }; items: { qty: number }[] }
+ * // DeepKeys produces:
+ * //   "name" | "address" | "address.street" | "items" | "items.qty"
+ */
+type DeepKeys<T> = T extends object
+  ? {
+      [K in keyof T & string]: T[K] extends unknown[]
+        ? ArrayItem<T[K]> extends object
+          ? K | `${K}.${DeepKeys<ArrayItem<T[K]>>}`
+          : K
+        : T[K] extends object
+          ? K | `${K}.${DeepKeys<T[K]>}`
+          : K
+    }[keyof T & string]
+  : never
+
+// ---------------------------------------------------------------------------
 // FieldType
 // ---------------------------------------------------------------------------
 
@@ -140,36 +179,62 @@ export type FieldMeta = FieldMetaBase & { [key: string]: unknown }
 // ---------------------------------------------------------------------------
 
 /**
- * The fully resolved configuration for a single form field, produced by
- * introspecting the Zod schema and merging any `fields` prop overrides.
- * Consumed internally by field renderer components.
+ * Common properties shared by every field variant.
  */
-export type FieldConfig = {
+type FieldConfigBase = {
   /** Dot-notated field path (e.g. `"address.street"`). */
   name: string
-  /** The resolved field type used to select a renderer. */
-  type: FieldType
   /** Display label for the field. */
   label: string
   /** Whether the field is required by the schema. */
   required: boolean
   /** Merged UI metadata for the field. */
   meta: FieldMeta
-  /** Resolved options for `select` / enum fields. */
-  options?: SelectOption[]
-  /** Child field configs for `object` fields. */
-  children?: FieldConfig[]
-  /** Item field config for `array` fields. */
-  itemConfig?: FieldConfig
-  /** Variant configs for `union` fields. */
-  unionVariants?: FieldConfig[]
-  /** Discriminator key for discriminated union fields. */
-  discriminatorKey?: string
-  /** Minimum number of items for `array` fields. */
-  minItems?: number
-  /** Maximum number of items for `array` fields. */
-  maxItems?: number
 }
+
+/**
+ * The fully resolved configuration for a single form field, produced by
+ * introspecting the Zod schema and merging any `fields` prop overrides.
+ * Consumed internally by field renderer components.
+ *
+ * This is a discriminated union on the `type` field — narrow on `type` to
+ * access the fields that are only present for specific field kinds (e.g.
+ * `children` for `"object"`, `itemConfig` for `"array"`, etc.).
+ */
+export type FieldConfig = FieldConfigBase &
+  (
+    | { type: 'string' }
+    | { type: 'number' }
+    | { type: 'boolean' }
+    | { type: 'date' }
+    | {
+        type: 'select'
+        /** Resolved options for `select` / enum fields. */
+        options: SelectOption[]
+      }
+    | {
+        type: 'object'
+        /** Child field configs for nested object fields. */
+        children: FieldConfig[]
+      }
+    | {
+        type: 'array'
+        /** Item field config describing a single row's shape. */
+        itemConfig: FieldConfig
+        /** Minimum number of items (from `z.array().min(...)`). */
+        minItems?: number
+        /** Maximum number of items (from `z.array().max(...)`). */
+        maxItems?: number
+      }
+    | {
+        type: 'union'
+        /** Variant configs for each union member. */
+        unionVariants: FieldConfig[]
+        /** Discriminator key for discriminated unions. */
+        discriminatorKey?: string
+      }
+    | { type: 'unknown' }
+  )
 
 // ---------------------------------------------------------------------------
 // FieldProps
@@ -507,7 +572,9 @@ export type AutoFormProps<TSchema extends z.ZodObject<z.ZodRawShape>> = {
   /** Component registry overrides for this form instance. */
   components?: ComponentRegistry
   /** Per-field UI metadata overrides (label, placeholder, options, etc.). */
-  fields?: Record<string, FieldOverride<z.infer<TSchema>>>
+  fields?: Partial<
+    Record<DeepKeys<z.infer<TSchema>>, FieldOverride<z.infer<TSchema>>>
+  >
   /** Field wrapper component override for this form instance. */
   fieldWrapper?: React.ComponentType<FieldWrapperProps>
   /** Layout slot overrides for this form instance. */

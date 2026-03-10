@@ -160,7 +160,7 @@ export function introspectSchema(
     ...(discriminatorKey !== undefined && { discriminatorKey }),
     ...(minItems !== undefined && { minItems }),
     ...(maxItems !== undefined && { maxItems }),
-  }
+  } as FieldConfig
 }
 
 // ---------------------------------------------------------------------------

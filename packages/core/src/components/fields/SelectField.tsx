@@ -6,7 +6,7 @@ import { useAutoFormContext } from '../../context/AutoFormContext'
 import { resolveComponent } from '../resolveComponent'
 
 type SelectFieldProps = {
-  field: FieldConfig
+  field: Extract<FieldConfig, { type: 'select' }>
   control: Control
   effectiveName: string
 }

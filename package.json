@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "pnpm --filter @uniform/playground dev",
     "build": "pnpm --filter @uniform/core build",
+    "build:watch": "pnpm --filter @uniform/core dev",
     "test": "pnpm --filter @uniform/core test",
     "lint": "pnpm -r lint"
   },
