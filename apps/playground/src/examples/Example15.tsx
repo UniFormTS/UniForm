@@ -20,6 +20,8 @@ const shippingSchema = z.object({
   shippingMethod: z.enum(['standard', 'express']),
 })
 
+type ShippingSchema = z.infer<typeof shippingSchema>
+
 const optionsByCountry: Record<string, { label: string; value: string }[]> = {
   us: [
     { label: 'California', value: 'ca' },
@@ -48,7 +50,7 @@ const shippingForm = new UniForm(shippingSchema)
     ctx.setFieldMeta('region', { options: opts, label })
 
     if (!isCurrentValid && opts[0]) {
-      ctx.setValue('region', opts[0].value)
+      ctx.setValue('region', opts[0].value as ShippingSchema['region'])
     }
   })
   .onChange('expressAvailable', (value, ctx) => {
