@@ -18,7 +18,10 @@ const enhancedArraySchema = z.object({
   tags: z.array(z.string()).max(3),
 })
 
-const enhancedArrayForm = new UniForm(enhancedArraySchema)
+const enhancedArrayForm = new UniForm(enhancedArraySchema).onChange(
+  'members',
+  (value, form) => form.setValue('teamName', 5)
+)
 
 export default function Example12() {
   const [data, setData] = useState<unknown>(null)

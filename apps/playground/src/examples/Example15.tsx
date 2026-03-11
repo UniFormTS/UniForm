@@ -40,11 +40,13 @@ const optionsByCountry: Record<string, { label: string; value: string }[]> = {
 
 const shippingForm = new UniForm(shippingSchema)
   .onChange('country', (value, ctx) => {
-    const opts = optionsByCountry[value as string] ?? []
+    const opts = optionsByCountry[value] ?? []
     const currentRegion = ctx.getValues().region
     const isCurrentValid = opts.some((o) => o.value === currentRegion)
-    const label = value === 'us' ? 'State' : value === 'ca' ? 'Province' : 'Region'
+    const label =
+      value === 'us' ? 'State' : value === 'ca' ? 'Province' : 'Region'
     ctx.setFieldMeta('region', { options: opts, label })
+
     if (!isCurrentValid && opts[0]) {
       ctx.setValue('region', opts[0].value)
     }

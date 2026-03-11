@@ -1,5 +1,10 @@
 import type * as React from 'react'
-import { RefCallBack } from 'react-hook-form'
+import {
+  FieldPath,
+  FieldPathValue,
+  FieldValues,
+  RefCallBack,
+} from 'react-hook-form'
 import type * as z from 'zod/v4/core'
 
 // ---------------------------------------------------------------------------
@@ -116,27 +121,30 @@ export type FieldCondition<TValues = Record<string, unknown>> = (
  *
  * @template TSchema - The Zod object schema that defines the form shape.
  */
-export type FormMethods<TSchema extends z.$ZodObject = z.$ZodObject> = {
+export type FormMethods<TValues extends FieldValues = FieldValues> = {
   /** Set a single field value programmatically */
-  setValue: (name: string, value: unknown) => void
+  setValue: <K extends FieldPath<TValues>>(
+    name: K,
+    value: FieldPathValue<TValues, K>,
+  ) => void
   /** Set multiple field values at once */
-  setValues: (values: Partial<z.infer<TSchema>>) => void
+  setValues: (values: Partial<TValues>) => void
   /** Get the current form values */
-  getValues: () => z.infer<TSchema>
+  getValues: () => TValues
   /** Reset a single field to its default value */
-  resetField: (name: string) => void
+  resetField: (name: FieldPath<TValues>) => void
   /** Reset the entire form, optionally to new values */
-  reset: (values?: Partial<z.infer<TSchema>>) => void
+  reset: (values?: Partial<TValues>) => void
   /** Set a validation error on a specific field */
-  setError: (name: string, message: string) => void
+  setError: (name: FieldPath<TValues>, message: string) => void
   /** Set validation errors on multiple fields at once */
-  setErrors: (errors: Record<string, string>) => void
+  setErrors: (errors: Partial<Record<FieldPath<TValues>, string>>) => void
   /** Clear validation errors (all fields, or specific ones) */
-  clearErrors: (names?: string | string[]) => void
+  clearErrors: (names?: FieldPath<TValues> | FieldPath<TValues>[]) => void
   /** Programmatically trigger form submission */
   submit: () => void
   /** Focus a specific field by name (dot-notated for nested fields) */
-  focus: (fieldName: string) => void
+  focus: (fieldName: FieldPath<TValues>) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -481,7 +489,7 @@ export type FieldOverride<
   TValue = unknown,
 > = Partial<FieldMetaBase> & {
   /** Called when this field's value changes. Receives the new value and form control methods. */
-  onChange?: (value: TValue, form: FormMethods<TSchema>) => void
+  onChange?: (value: TValue, form: FormMethods<z.infer<TSchema>>) => void
   [key: string]: unknown
 }
 
@@ -560,7 +568,7 @@ export type PersistStorage = {
  * @template TSchema - The Zod object schema that defines the form shape.
  */
 export type AutoFormHandle<TSchema extends z.$ZodObject = z.$ZodObject> =
-  FormMethods<TSchema>
+  FormMethods<z.infer<TSchema>>
 
 // ---------------------------------------------------------------------------
 // AutoFormConfig (factory)

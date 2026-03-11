@@ -312,10 +312,13 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   const onSubmitRef = useLatestRef(onSubmit)
   const onValuesChangeRef = useLatestRef(onValuesChange)
 
-  const formMethods = React.useMemo<FormMethods<TSchema>>(
+  const formMethods = React.useMemo<FormMethods<z.infer<TSchema>>>(
     () => ({
       setValue: (name, value) =>
-        setValue(name, value, { shouldValidate: true, shouldDirty: true }),
+        setValue(name as string, value, {
+          shouldValidate: true,
+          shouldDirty: true,
+        }),
       setValues: (values) => {
         for (const [key, val] of Object.entries(values)) {
           setValue(key, val, { shouldValidate: true, shouldDirty: true })
@@ -335,7 +338,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       setError: (name, message) => setError(name, { type: 'manual', message }),
       setErrors: (errors) => {
         for (const [key, message] of Object.entries(errors)) {
-          setError(key, { type: 'manual', message })
+          setError(key, { type: 'manual', message: message as string })
         }
       },
       clearErrors: (names?) => clearErrors(names),
@@ -432,7 +435,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
         coercions,
         messages,
         labels,
-        formMethods,
+        formMethods: formMethods as unknown as FormMethods,
       }}
     >
       <form

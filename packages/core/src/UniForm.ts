@@ -9,7 +9,7 @@ import type { FormMethods, FieldDependencyResult } from './types'
  * @template TSchema - The Zod object schema that defines the form shape.
  */
 export type UniFormContext<TSchema extends z.$ZodObject = z.$ZodObject> =
-  FormMethods<TSchema> & {
+  FormMethods<z.infer<TSchema>> & {
     /**
      * Dynamically override per-field UI metadata from inside an onChange handler.
      * Changes are applied synchronously and trigger a re-render.
