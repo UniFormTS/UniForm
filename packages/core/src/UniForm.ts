@@ -27,6 +27,10 @@ type Handler<TSchema extends z.$ZodObject, TValue> = (
   ctx: UniFormContext<TSchema>,
 ) => void
 
+type Condition<TSchema extends z.$ZodObject> = (
+  values: z.infer<TSchema>,
+) => boolean
+
 /**
  * A type-safe form definition that lives outside React components.
  * Wraps a Zod schema and lets you attach typed `onChange` callbacks that fire
@@ -50,10 +54,12 @@ type Handler<TSchema extends z.$ZodObject, TValue> = (
 export class UniForm<TSchema extends z.$ZodObject> {
   readonly schema: TSchema
   private readonly _handlers: Map<string, Array<Handler<TSchema, unknown>>>
+  private readonly _conditions: Map<string, Condition<TSchema>>
 
   constructor(schema: TSchema) {
     this.schema = schema
     this._handlers = new Map()
+    this._conditions = new Map()
   }
 
   /**
@@ -67,6 +73,20 @@ export class UniForm<TSchema extends z.$ZodObject> {
   ): this {
     const list = this._handlers.get(field) ?? []
     this._handlers.set(field, [...list, handler as Handler<TSchema, unknown>])
+    return this
+  }
+
+  /**
+   * Attach a typed condition for a specific field.
+   * The field is shown when the predicate returns `true`, hidden when `false`.
+   * Composes with any `condition` set via the `fields` prop (UniForm takes precedence).
+   * Returns `this` for fluent chaining.
+   */
+  condition<K extends keyof z.infer<TSchema> & string>(
+    field: K,
+    predicate: Condition<TSchema>,
+  ): this {
+    this._conditions.set(field, predicate)
     return this
   }
 
@@ -84,5 +104,10 @@ export class UniForm<TSchema extends z.$ZodObject> {
   /** @internal Returns all field names that have registered onChange handlers. */
   _getWatchedFields(): string[] {
     return Array.from(this._handlers.keys())
+  }
+
+  /** @internal Returns a copy of the conditions map for AutoForm to inject into field meta. */
+  _getConditions(): Map<string, Condition<TSchema>> {
+    return new Map(this._conditions)
   }
 }

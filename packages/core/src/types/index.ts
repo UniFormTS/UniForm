@@ -488,6 +488,8 @@ export type FieldOverride<
   TSchema extends z.$ZodObject = z.$ZodObject,
   TValue = unknown,
 > = Partial<FieldMetaBase> & {
+  /** Conditionally show or hide the field based on the current form values. */
+  condition?: FieldCondition<z.infer<TSchema>>
   /** Called when this field's value changes. Receives the new value and form control methods. */
   onChange?: (value: TValue, form: FormMethods<z.infer<TSchema>>) => void
   [key: string]: unknown

@@ -6,6 +6,7 @@ import type {
   AutoFormProps,
   AutoFormHandle,
   FieldConfig,
+  FieldCondition,
   FieldMeta,
   FormMethods,
   FieldDependencyResult,
@@ -143,6 +144,30 @@ function injectOnChangeHandlers<TSchema extends z.$ZodObject>(
           existingOnChange?.(value, formMethods)
           uniForm._fireHandlers(field.name, value, ctx)
         },
+      },
+    }
+  })
+}
+
+/**
+ * Injects UniForm conditions into each field's `meta.condition`.
+ * UniForm conditions take precedence over any static `condition` from the `fields` prop.
+ */
+function injectConditions<TSchema extends z.$ZodObject>(
+  fields: FieldConfig[],
+  uniForm: UniForm<TSchema>,
+): FieldConfig[] {
+  const conditions = uniForm._getConditions()
+  if (!conditions.size) return fields
+
+  return fields.map((field) => {
+    const condition = conditions.get(field.name)
+    if (!condition) return field
+    return {
+      ...field,
+      meta: {
+        ...field.meta,
+        condition: condition as FieldCondition,
       },
     }
   })
@@ -395,10 +420,16 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     [mergedFields, uniForm, uniFormCtx],
   )
 
+  // Inject UniForm conditions into field.meta.condition
+  const fieldsWithConditions = React.useMemo(
+    () => injectConditions(fieldsWithHandlers, uniForm as UniForm<TSchema>),
+    [fieldsWithHandlers, uniForm],
+  )
+
   // Apply event-driven dynamic meta overrides (from setFieldMeta calls)
   const fieldsWithDynamic = React.useMemo(
-    () => applyDynamicMeta(fieldsWithHandlers, dynamicMeta),
-    [fieldsWithHandlers, dynamicMeta],
+    () => applyDynamicMeta(fieldsWithConditions, dynamicMeta),
+    [fieldsWithConditions, dynamicMeta],
   )
 
   const allValues = useWatch({ control })
