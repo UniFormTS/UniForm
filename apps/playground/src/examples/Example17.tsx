@@ -13,13 +13,16 @@ const accessSchema = z.object({
   notes: z.string().optional(),
 })
 
-const accessForm = createForm(accessSchema).onChange('role', (value, ctx) => {
-  ctx.setFieldMeta('permissions', { hidden: value !== 'admin' })
-  ctx.setFieldMeta('notes', {
-    disabled: value === 'viewer',
-    label: value === 'viewer' ? 'Notes (locked for viewers)' : 'Notes',
-  })
-})
+const accessForm = createForm(accessSchema).setOnChange(
+  'role',
+  (value, ctx) => {
+    ctx.setFieldMeta('permissions', { hidden: value !== 'admin' })
+    ctx.setFieldMeta('notes', {
+      disabled: value === 'viewer',
+      label: value === 'viewer' ? 'Notes (locked for viewers)' : 'Notes',
+    })
+  },
+)
 
 function SubExampleA() {
   const [data, setData] = useState<unknown>(null)

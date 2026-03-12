@@ -10,7 +10,7 @@ UniForm takes a Zod schema and automatically renders a fully customizable form. 
 - **Headless** — zero CSS, zero opinions; bring your own design system
 - **Full Zod V4 support** — scalars, enums, objects, arrays, optionals, nullables, defaults, pipes/transforms, unions, discriminated unions
 - **react-hook-form** under the hood — performant, uncontrolled forms with `zodResolver`
-- **`createForm()` / `UniForm`** — type-safe form definition object that lives outside React; attach typed `onChange` handlers per field with access to all form methods
+- **`createForm()` / `UniForm`** — type-safe form definition object that lives outside React; attach typed `setOnChange` handlers per field with access to all form methods
 - **Per-field `onChange` in `fields` prop** — react to individual field changes inline, with typed values and full form control methods
 - **Per-field custom components** — pass any `React.ComponentType<FieldProps>` directly as `meta.component` (inline, no registry) or register under a custom string key; direct components bypass the registry _and_ the default `ArrayField`/`ObjectField` routing, allowing fully custom multi-value widgets for `array`-typed fields
 - **Layout hooks** — `classNames`, `fieldWrapper`, `layout.formWrapper`, `layout.sectionWrapper`, `layout.submitButton`
@@ -78,7 +78,7 @@ That's it — UniForm introspects the schema, renders appropriate inputs, valida
 
 | Prop              | Type                                                  | Default               | Description                                                                   |
 | ----------------- | ----------------------------------------------------- | --------------------- | ----------------------------------------------------------------------------- |
-| `form`            | `UniForm<TSchema>`                                    | _required_            | A `UniForm` / `createForm` instance carrying the schema and onChange handlers |
+| `form`            | `UniForm<TSchema>`                                    | _required_            | A `UniForm` / `createForm` instance carrying the schema and setOnChange handlers |
 | `onSubmit`        | `(values: z.infer<TSchema>) => void \| Promise<void>` | _required_            | Called with fully typed, validated values on successful submit                |
 | `defaultValues`   | `Partial<z.infer<TSchema>>`                           | `{}`                  | Pre-fill form fields                                                          |
 | `components`      | `ComponentRegistry`                                   | `defaultRegistry`     | Override field type → component mapping                                       |
@@ -100,18 +100,15 @@ That's it — UniForm introspects the schema, renders appropriate inputs, valida
 
 `createForm` wraps a Zod schema in a `UniForm` instance. Pass the result to `<AutoForm form={...}>`.
 
-The main reason to use `UniForm` over passing a bare schema is typed `onChange` handlers: you can react to individual field changes, read the new value (typed to the schema), and call any form method — all outside React.
+The main reason to use `UniForm` over passing a bare schema is typed `setOnChange` handlers: you can react to individual field changes, read the new value (typed to the schema), and call any form method — all outside React.
 
 ```tsx
 import { createForm, AutoForm } from '@uniform/core'
 
 const addressForm = createForm(addressSchema)
-  .onChange('country', (value, ctx) => {
+  .setOnChange('country', (value, ctx) => {
     // value is typed as the 'country' field type
     ctx.setFieldMeta('state', { hidden: value !== 'US' })
-  })
-  .onChange('country', (value, ctx) => {
-    // multiple handlers on the same field are all called, in registration order
     ctx.setValue('state', undefined)
   })
 
@@ -119,20 +116,18 @@ const addressForm = createForm(addressSchema)
 <AutoForm form={addressForm} onSubmit={handleSubmit} />
 ```
 
-#### `UniForm.onChange(field, handler)`
+#### `UniForm.setOnChange(field, handler)`
 
-Attach a typed onChange handler for a specific field. Returns `this` for chaining. Multiple calls for the same field accumulate handlers — all are fired in registration order.
+Set the typed onChange handler for a specific field. Returns `this` for chaining. Calling `setOnChange` again for the same field **replaces** the previous handler — only one handler per field is active at a time. This prevents accidental handler accumulation when called inside a React render cycle.
 
 **Handler receives:**
 
 - `value` — the new field value, typed to the schema
 - `ctx: UniFormContext` — all `FormMethods` plus `setFieldMeta`
 
-> **Important:** Call `.onChange` at module level or inside `useMemo` — never during render. Each call appends a new handler, so calling it on every render silently stacks duplicates. See [docs/uniform-subscribe.md](docs/uniform-subscribe.md) for the planned `subscribe` API that handles dynamic/React use safely.
-
 #### `UniFormContext`
 
-The context passed to every `onChange` handler. Extends `FormMethods` with:
+The context passed to every `setOnChange` handler. Extends `FormMethods` with:
 
 | Method                      | Description                                                                                                                                                                      |
 | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -331,7 +326,7 @@ type ArrayRowLayoutProps = {
 
 #### `FieldDependencyResult`
 
-Return type of `ctx.setFieldMeta()` inside UniForm onChange handlers. All fields are optional — return only what you want to override:
+Return type of `ctx.setFieldMeta()` inside UniForm `setOnChange` handlers. All fields are optional — return only what you want to override:
 
 ```ts
 type FieldDependencyResult = {
@@ -504,7 +499,7 @@ const schema = z.object({
 
 ### Field onChange Handlers
 
-React to individual field changes — inline via the `fields` prop (typed to the schema), or statically via `UniForm.onChange`.
+React to individual field changes — inline via the `fields` prop (typed to the schema), or statically via `UniForm.setOnChange`.
 
 #### Inline via `fields` prop
 
@@ -528,7 +523,7 @@ React to individual field changes — inline via the `fields` prop (typed to the
 
 ```tsx
 // Define once at module level — handlers are stable, no React rules apply
-const addressForm = createForm(addressSchema).onChange(
+const addressForm = createForm(addressSchema).setOnChange(
   'country',
   (value, ctx) => {
     ctx.setFieldMeta('state', { hidden: value !== 'US' })
@@ -541,7 +536,7 @@ function MyForm() {
 }
 ```
 
-`UniForm.onChange` also supports `ctx.setFieldMeta` for dynamic field overrides — not available in the inline `fields` version.
+`UniForm.setOnChange` also supports `ctx.setFieldMeta` for dynamic field overrides — not available in the inline `fields` version.
 
 ### Grid Layout with `classNames` and `span`
 
@@ -971,7 +966,7 @@ const formRef = useRef<AutoFormHandle<typeof schema>>(null)
 
 **Always guard with an equality check** to prevent an infinite update loop.
 
-> **Tip:** For simple field-to-field reactions (resetting, toggling visibility), prefer `UniForm.onChange` or the `fields` prop `onChange` — they're more ergonomic and fully typed. Use `onValuesChange` when you need to observe the entire form state holistically.
+> **Tip:** For simple field-to-field reactions (resetting, toggling visibility), prefer `UniForm.setOnChange` or the `fields` prop `onChange` — they're more ergonomic and fully typed. Use `onValuesChange` when you need to observe the entire form state holistically.
 
 ## Development
 

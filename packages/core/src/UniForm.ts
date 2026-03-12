@@ -7,7 +7,7 @@ import type {
 } from './types'
 
 /**
- * Context passed to UniForm `onChange` handlers. Extends `FormMethods` with
+ * Context passed to UniForm `setOnChange` handlers. Extends `FormMethods` with
  * `setFieldMeta`, which lets handlers dynamically override per-field UI
  * properties (hidden, disabled, options, label, etc.).
  *
@@ -16,7 +16,7 @@ import type {
 export type UniFormContext<TSchema extends z.$ZodObject = z.$ZodObject> =
   FormMethods<z.infer<TSchema>> & {
     /**
-     * Dynamically override per-field UI metadata from inside an onChange handler.
+     * Dynamically override per-field UI metadata from inside a setOnChange handler.
      * Changes are applied synchronously and trigger a re-render.
      *
      * Meta keys are stored and merged into the rendered field config.
@@ -38,7 +38,7 @@ type Condition<TSchema extends z.$ZodObject> = (
 
 /**
  * A type-safe form definition that lives outside React components.
- * Wraps a Zod schema and lets you attach typed `onChange` callbacks that fire
+ * Wraps a Zod schema and lets you attach typed `setOnChange` callbacks that fire
  * whenever a specific field's value changes.
  *
  * Callbacks receive the new field value (typed to the schema) and a
@@ -49,7 +49,7 @@ type Condition<TSchema extends z.$ZodObject> = (
  *
  * @example
  * const addressForm = new UniForm(addressSchema)
- *   .onChange('country', (value, ctx) => {
+ *   .setOnChange('country', (value, ctx) => {
  *     ctx.setFieldMeta('state', { hidden: value !== 'US' })
  *   })
  *
@@ -58,7 +58,7 @@ type Condition<TSchema extends z.$ZodObject> = (
  */
 export class UniForm<TSchema extends z.$ZodObject> {
   readonly schema: TSchema
-  private readonly _handlers: Map<string, Array<Handler<TSchema, unknown>>>
+  private readonly _handlers: Map<string, Handler<TSchema, unknown>>
   private readonly _conditions: Map<string, Condition<TSchema>>
 
   constructor(schema: TSchema) {
@@ -68,16 +68,17 @@ export class UniForm<TSchema extends z.$ZodObject> {
   }
 
   /**
-   * Attach a typed onChange handler for a specific field.
-   * Multiple handlers on the same field are all called in registration order.
+   * Set the typed onChange handler for a specific field.
+   * Replaces any previously registered handler for that field — only one
+   * handler per field is kept. This prevents accidental handler accumulation
+   * when called inside a React render cycle.
    * Returns `this` for fluent chaining.
    */
-  onChange<K extends DeepKeys<z.infer<TSchema>>>(
+  setOnChange<K extends DeepKeys<z.infer<TSchema>>>(
     field: K,
     handler: Handler<TSchema, DeepFieldValue<z.infer<TSchema>, K>>,
   ): this {
-    const list = this._handlers.get(field) ?? []
-    this._handlers.set(field, [...list, handler as Handler<TSchema, unknown>])
+    this._handlers.set(field, handler as Handler<TSchema, unknown>)
     return this
   }
 
@@ -95,15 +96,13 @@ export class UniForm<TSchema extends z.$ZodObject> {
     return this
   }
 
-  /** @internal Called by AutoForm to fire all handlers registered for a field. */
-  _fireHandlers(
+  /** @internal Called by AutoForm to fire the handler registered for a field. */
+  _fireHandler(
     field: string,
     value: unknown,
     ctx: UniFormContext<TSchema>,
   ): void {
-    for (const h of this._handlers.get(field) ?? []) {
-      h(value, ctx)
-    }
+    this._handlers.get(field)?.(value, ctx)
   }
 
   /** @internal Returns all field names that have registered onChange handlers. */

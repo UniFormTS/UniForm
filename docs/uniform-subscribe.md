@@ -2,29 +2,37 @@
 
 ## The Problem
 
-`UniForm.onChange` is additive — every call appends a new handler to the internal array for that field. This is intentional and documented, supporting multiple handlers per field in registration order.
+`UniForm.setOnChange` is a **set** operation — calling it replaces any existing handler for that field. This prevents the handler-accumulation bug that would occur if it were called during render.
 
-However, if a user calls `onChange` inside a React component during render, a new handler is pushed on **every render**:
+However, if the form instance itself is created inside a component, you can still end up with stale closures or recreated instances. The recommended pattern is to define the form at module level:
 
 ```ts
-// BAD — called during render
+// GOOD — module level, stable reference
+const form = createForm(schema)
+  .setOnChange('fieldA', handler)
+
 function MyForm() {
-  form.onChange('fieldA', (val, ctx) => setState(...)) // adds a handler on every render
   return <AutoForm form={form} />
 }
 ```
 
-After `n` renders, `fieldA` has `n` stacked handlers. Each one calls `setState`, which triggers another render, which adds another handler — a feedback loop / memory leak.
+```ts
+// BAD — form recreated on every render
+function MyForm() {
+  const form = createForm(schema).setOnChange('fieldA', handler) // new instance every render
+  return <AutoForm form={form} />
+}
+```
 
 ## Proposed Solution: `subscribe` method
 
-Keep `onChange` as the static, build-time, fluent API (returns `this`). Add a separate `subscribe` method that returns an unsubscribe function, designed for dynamic/React use inside `useEffect`.
+Keep `setOnChange` as the static, build-time, fluent API (returns `this`). Add a separate `subscribe` method that returns an unsubscribe function, designed for dynamic/React use inside `useEffect`.
 
 ```ts
 // Static — module level, fluent chaining, no cleanup needed
 const form = createForm(schema)
-  .onChange('fieldA', handler1)
-  .onChange('fieldB', handler2)
+  .setOnChange('fieldA', handler1)
+  .setOnChange('fieldB', handler2)
 
 // Dynamic — inside a component, safe via useEffect cleanup
 function MyForm() {
@@ -45,17 +53,17 @@ subscribe<K extends DeepKeys<z.infer<TSchema>>>(
   field: K,
   handler: Handler<TSchema, DeepFieldValue<z.infer<TSchema>, K>>,
 ): () => void {
-  const list = this._handlers.get(field) ?? []
   const h = handler as Handler<TSchema, unknown>
-  this._handlers.set(field, [...list, h])
+  this._handlers.set(field, h)
   return () => {
-    const current = this._handlers.get(field) ?? []
-    this._handlers.set(field, current.filter(fn => fn !== h))
+    if (this._handlers.get(field) === h) {
+      this._handlers.delete(field)
+    }
   }
 }
 ```
 
-`onChange` remains unchanged (returns `this`). `subscribe` shares the same `_handlers` map but returns a cleanup function that filters out the specific handler reference.
+`setOnChange` remains unchanged (returns `this`). `subscribe` shares the same `_handlers` map but returns a cleanup function that removes the handler if it's still the active one.
 
 ---
 
@@ -65,10 +73,10 @@ subscribe<K extends DeepKeys<z.infer<TSchema>>>(
 >
 > **Behavior:**
 >
-> - Same signature as `onChange` but returns `() => void` (an unsubscribe function) instead of `this`.
-> - Appends the handler to `_handlers` (same map `onChange` uses).
-> - The returned unsubscribe function removes that specific handler instance from the array.
-> - `onChange` is unchanged — still returns `this` for chaining.
+> - Same signature as `setOnChange` but returns `() => void` (an unsubscribe function) instead of `this`.
+> - Sets the handler in `_handlers` (same map `setOnChange` uses).
+> - The returned unsubscribe function removes the handler only if it is still the currently active one (guard against removing a subsequently set handler).
+> - `setOnChange` is unchanged — still returns `this` for chaining.
 >
 > **Type signature:**
 >
@@ -82,5 +90,5 @@ subscribe<K extends DeepKeys<z.infer<TSchema>>>(
 > **Also:**
 >
 > - Export `subscribe` as part of the public API (update any barrel exports if needed).
-> - Add a JSDoc comment explaining that this is the React-safe alternative to `onChange` — use it inside `useEffect` so the handler is cleaned up on unmount.
+> - Add a JSDoc comment explaining that this is the React-safe alternative to `setOnChange` — use it inside `useEffect` so the handler is cleaned up on unmount.
 > - Add a test covering: subscribe → handler fires → unsubscribe → handler no longer fires.

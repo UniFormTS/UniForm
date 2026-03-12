@@ -41,7 +41,7 @@ const optionsByCountry: Record<string, { label: string; value: string }[]> = {
 }
 
 const shippingForm = createForm(shippingSchema)
-  .onChange('country', (value, ctx) => {
+  .setOnChange('country', (value, ctx) => {
     const opts = optionsByCountry[value] ?? []
     const currentRegion = ctx.getValues().region
     const isCurrentValid = opts.some((o) => o.value === currentRegion)
@@ -53,7 +53,7 @@ const shippingForm = createForm(shippingSchema)
       ctx.setValue('region', opts[0].value as ShippingSchema['region'])
     }
   })
-  .onChange('expressAvailable', (value, ctx) => {
+  .setOnChange('expressAvailable', (value, ctx) => {
     const available = value === true
     ctx.setFieldMeta('shippingMethod', {
       disabled: !available,

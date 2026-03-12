@@ -2377,15 +2377,15 @@ describe('AutoForm', () => {
   })
 
   // =========================================================================
-  // Field Dependencies — UniForm.onChange (100–104)
+  // Field Dependencies — UniForm.setOnChange (100–104)
   // =========================================================================
 
-  it('100. UniForm.onChange updates select options when dependency field changes', async () => {
+  it('100. UniForm.setOnChange updates select options when dependency field changes', async () => {
     const schema = z.object({
       category: z.enum(['fruit', 'veggie']),
       item: z.enum(['apple', 'banana', 'carrot', 'broccoli']),
     })
-    const form = new UniForm(schema).onChange('category', (value, ctx) => {
+    const form = new UniForm(schema).setOnChange('category', (value, ctx) => {
       ctx.setFieldMeta('item', {
         options:
           value === 'veggie'
@@ -2420,12 +2420,12 @@ describe('AutoForm', () => {
     })
   })
 
-  it('101. UniForm.onChange options revert when dependency field changes back', async () => {
+  it('101. UniForm.setOnChange options revert when dependency field changes back', async () => {
     const schema = z.object({
       category: z.enum(['fruit', 'veggie']),
       item: z.enum(['apple', 'banana', 'carrot', 'broccoli']),
     })
-    const form = new UniForm(schema).onChange('category', (value, ctx) => {
+    const form = new UniForm(schema).setOnChange('category', (value, ctx) => {
       ctx.setFieldMeta('item', {
         options:
           value === 'veggie'
@@ -2461,12 +2461,12 @@ describe('AutoForm', () => {
     })
   })
 
-  it('102. UniForm.onChange hidden hides a field when the condition is met', async () => {
+  it('102. UniForm.setOnChange hidden hides a field when the condition is met', async () => {
     const schema = z.object({
       type: z.enum(['individual', 'company']),
       companyName: z.string().optional(),
     })
-    const form = new UniForm(schema).onChange('type', (value, ctx) => {
+    const form = new UniForm(schema).setOnChange('type', (value, ctx) => {
       ctx.setFieldMeta('companyName', { hidden: value !== 'company' })
     })
     const { user } = setup(<AutoForm form={form} onSubmit={vi.fn()} />)
@@ -2482,12 +2482,12 @@ describe('AutoForm', () => {
     })
   })
 
-  it('103. UniForm.onChange disabled disables a field when the condition is met', async () => {
+  it('103. UniForm.setOnChange disabled disables a field when the condition is met', async () => {
     const schema = z.object({
       isLocked: z.boolean(),
       notes: z.string().optional(),
     })
-    const form = new UniForm(schema).onChange('isLocked', (value, ctx) => {
+    const form = new UniForm(schema).setOnChange('isLocked', (value, ctx) => {
       ctx.setFieldMeta('notes', { disabled: value === true })
     })
     const { user } = setup(<AutoForm form={form} onSubmit={vi.fn()} />)
@@ -2499,12 +2499,12 @@ describe('AutoForm', () => {
     })
   })
 
-  it('104. UniForm.onChange label changes a field label based on another field', async () => {
+  it('104. UniForm.setOnChange label changes a field label based on another field', async () => {
     const schema = z.object({
       unit: z.enum(['kg', 'lbs']),
       quantity: z.number().optional(),
     })
-    const form = new UniForm(schema).onChange('unit', (value, ctx) => {
+    const form = new UniForm(schema).setOnChange('unit', (value, ctx) => {
       ctx.setFieldMeta('quantity', { label: `Quantity (${String(value)})` })
     })
     const { user } = setup(
@@ -2601,15 +2601,15 @@ describe('AutoForm', () => {
   })
 
   // ---------------------------------------------------------------------------
-  // 108. UniForm.onChange fires and produces the correct setFieldMeta override
+  // 108. UniForm.setOnChange fires and produces the correct setFieldMeta override
   // ---------------------------------------------------------------------------
 
-  it('108. UniForm.onChange fires and produces the correct setFieldMeta override', async () => {
+  it('108. UniForm.setOnChange fires and produces the correct setFieldMeta override', async () => {
     const schema = z.object({
       role: z.enum(['admin', 'user']),
       permissions: z.string().optional(),
     })
-    const form = new UniForm(schema).onChange('role', (value, ctx) => {
+    const form = new UniForm(schema).setOnChange('role', (value, ctx) => {
       ctx.setFieldMeta('permissions', { hidden: value !== 'admin' })
     })
     const { user } = setup(<AutoForm form={form} onSubmit={vi.fn()} />)

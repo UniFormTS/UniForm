@@ -78,7 +78,7 @@ export function injectOnChangeHandlers<TSchema extends z.$ZodObject>(
           ...field.meta,
           onChange: (value: unknown, formMethods: FormMethods) => {
             existingOnChange?.(value, formMethods)
-            uniForm._fireHandlers(field.name, value, ctx)
+            uniForm._fireHandler(field.name, value, ctx)
           },
         },
       }
@@ -106,7 +106,7 @@ export function injectOnChangeHandlers<TSchema extends z.$ZodObject>(
             name: string,
             value: unknown,
             c: UniFormContext<TSchema>,
-          ) => uniForm._fireHandlers(`${field.name}.${name}`, value, c),
+          ) => uniForm._fireHandler(`${field.name}.${name}`, value, c),
         } as unknown as UniForm<TSchema>
         const newItemConfig = injectOnChangeHandlers(
           [updated.itemConfig],
