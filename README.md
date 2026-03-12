@@ -640,7 +640,9 @@ const notificationUnion = z.discriminatedUnion('channel', [
   }),
   z.object({
     channel: z.literal('sms'),
-    phoneNumber: z.string().regex(/^\+?[1-9]\d{7,14}$/, 'Must be a valid phone number'),
+    phoneNumber: z
+      .string()
+      .regex(/^\+?[1-9]\d{7,14}$/, 'Must be a valid phone number'),
     messageBody: z.string().max(160, 'SMS body must be ≤ 160 chars'),
   }),
   z.object({

@@ -71,9 +71,20 @@ Build: `tsup` (ESM + CJS + `.d.ts`, sourcemaps, treeshaking, react/react-hook-fo
 ```ts
 // Types
 export type {
-  FieldType, SelectOption, FieldCondition, FieldMeta, FieldConfig, FieldProps,
-  ComponentRegistry, FieldWrapperProps, LayoutSlots, FormClassNames,
-  AutoFormProps, AutoFormConfig, CoercionMap, ValidationMessages,
+  FieldType,
+  SelectOption,
+  FieldCondition,
+  FieldMeta,
+  FieldConfig,
+  FieldProps,
+  ComponentRegistry,
+  FieldWrapperProps,
+  LayoutSlots,
+  FormClassNames,
+  AutoFormProps,
+  AutoFormConfig,
+  CoercionMap,
+  ValidationMessages,
 }
 
 // Introspection
@@ -83,7 +94,13 @@ export { introspectSchema, introspectObjectSchema }
 export { AutoForm, FieldRenderer }
 
 // Default components
-export { DefaultInput, DefaultCheckbox, DefaultSelect, DefaultFieldWrapper, DefaultSubmitButton }
+export {
+  DefaultInput,
+  DefaultCheckbox,
+  DefaultSelect,
+  DefaultFieldWrapper,
+  DefaultSubmitButton,
+}
 
 // Registry
 export { defaultRegistry, mergeRegistries }
@@ -177,6 +194,7 @@ Define a schema with a nested object. Pass deep field overrides (e.g. `'address.
 ##### 60. Full kitchen-sink form — all features combined
 
 Define a complex schema that exercises every feature simultaneously:
+
 - Mix of scalar types (string, number, date, boolean, enum)
 - A nested object
 - An array field
@@ -301,12 +319,7 @@ const schema = z.object({
 })
 
 function App() {
-  return (
-    <AutoForm
-      schema={schema}
-      onSubmit={(values) => console.log(values)}
-    />
-  )
+  return <AutoForm schema={schema} onSubmit={(values) => console.log(values)} />
 }
 ```
 
@@ -493,15 +506,15 @@ Ensure that test files, playground sources, and documentation are not included i
 
 ## File Changes Summary
 
-| File | Change |
-| --- | --- |
-| `packages/core/src/components/AutoForm.test.tsx` | Add integration tests 49–60 |
-| `apps/playground/src/App.tsx` | Add navigation, examples 8–9, replace `alert()` with data display, update heading |
-| `README.md` | Full rewrite with quick start, API reference, recipes |
-| `.github/workflows/ci.yml` | **NEW** — CI workflow (build, test, typecheck on push/PR) |
-| `.github/workflows/publish.yml` | **NEW** — manual npm publish workflow |
-| `LICENSE` | **NEW** — MIT license |
-| `packages/core/package.json` | Add `keywords`, `license`, `repository`, `homepage`, `sideEffects` |
+| File                                             | Change                                                                            |
+| ------------------------------------------------ | --------------------------------------------------------------------------------- |
+| `packages/core/src/components/AutoForm.test.tsx` | Add integration tests 49–60                                                       |
+| `apps/playground/src/App.tsx`                    | Add navigation, examples 8–9, replace `alert()` with data display, update heading |
+| `README.md`                                      | Full rewrite with quick start, API reference, recipes                             |
+| `.github/workflows/ci.yml`                       | **NEW** — CI workflow (build, test, typecheck on push/PR)                         |
+| `.github/workflows/publish.yml`                  | **NEW** — manual npm publish workflow                                             |
+| `LICENSE`                                        | **NEW** — MIT license                                                             |
+| `packages/core/package.json`                     | Add `keywords`, `license`, `repository`, `homepage`, `sideEffects`                |
 
 ---
 

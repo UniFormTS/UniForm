@@ -19,12 +19,12 @@ export type UniFormContext<TSchema extends z.$ZodObject = z.$ZodObject> =
      * Dynamically override per-field UI metadata from inside an onChange handler.
      * Changes are applied synchronously and trigger a re-render.
      *
-     * - Meta keys (`hidden`, `disabled`, `options`, `label`, `placeholder`,
-     *   `description`) are stored and merged into the rendered field config.
-     * - The `value` key immediately calls `setValue` on the form field —
-     *   use it to programmatically reset or derive a field's value.
+     * Meta keys are stored and merged into the rendered field config.
      */
-    setFieldMeta: (field: string, meta: Partial<FieldDependencyResult>) => void
+    setFieldMeta: <K extends DeepKeys<z.infer<TSchema>>>(
+      field: K,
+      meta: Partial<FieldDependencyResult>,
+    ) => void
   }
 
 type Handler<TSchema extends z.$ZodObject, TValue> = (
@@ -140,7 +140,9 @@ export function createForm<TSchema extends z.$ZodObject>(
  *   ])
  * )
  */
-export function createForm(schema: z.$ZodDiscriminatedUnion): UniForm<z.$ZodObject>
+export function createForm(
+  schema: z.$ZodDiscriminatedUnion,
+): UniForm<z.$ZodObject>
 
 export function createForm(
   schema: z.$ZodObject | z.$ZodDiscriminatedUnion,

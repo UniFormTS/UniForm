@@ -28,9 +28,7 @@ export default function Example14() {
         form={planForm}
         defaultValues={{ plan: 'free', seats: 1, discount: 0 }}
         fields={{
-          plan: {
-            
-          }
+          plan: {},
         }}
         onValuesChange={(values) => {
           const defaults: Record<string, { seats: number; discount: number }> =

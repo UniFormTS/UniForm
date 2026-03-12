@@ -476,7 +476,11 @@ describe('parseDiscriminatedUnionMeta', () => {
     expect(field.name).toBe('channel')
     expect(field.required).toBe(true)
     expect(field.options).toHaveLength(3)
-    expect(field.options.map((o) => o.value)).toEqual(['email', 'sms', 'webhook'])
+    expect(field.options.map((o) => o.value)).toEqual([
+      'email',
+      'sms',
+      'webhook',
+    ])
   })
 
   it('capitalises option labels from the literal values', () => {

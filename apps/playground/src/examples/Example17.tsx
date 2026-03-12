@@ -29,8 +29,8 @@ function SubExampleA() {
       <p style={{ color: '#666', fontSize: '0.875rem', marginBottom: '1rem' }}>
         The <code>onChange</code> callback on <code>UniForm</code> is fully
         typed — try <code>value.</code> in your editor to see autocomplete for{' '}
-        <code>'admin' | 'user' | 'viewer'</code>. The <em>Permissions</em>{' '}
-        field is hidden unless <code>role === 'admin'</code>; <em>Notes</em> is
+        <code>'admin' | 'user' | 'viewer'</code>. The <em>Permissions</em> field
+        is hidden unless <code>role === 'admin'</code>; <em>Notes</em> is
         disabled for viewers.
       </p>
       <AutoForm

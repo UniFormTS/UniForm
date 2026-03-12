@@ -25,7 +25,10 @@ type FieldWrapperProps = {
 
 type LayoutSlots = {
   formWrapper?: React.ComponentType<{ children: React.ReactNode }>
-  sectionWrapper?: React.ComponentType<{ children: React.ReactNode; title: string }>
+  sectionWrapper?: React.ComponentType<{
+    children: React.ReactNode
+    title: string
+  }>
   submitButton?: React.ComponentType<{ isSubmitting: boolean }>
 }
 
@@ -39,11 +42,11 @@ type FormClassNames = {
 
 type FieldMeta = {
   // ...other fields...
-  section?: string   // Groups fields into named sections
-  order?: number     // Controls field render order
-  span?: number      // Grid column span (for future grid layouts)
-  hidden?: boolean   // Statically hides the field
-  condition?: FieldCondition  // Dynamically hides the field
+  section?: string // Groups fields into named sections
+  order?: number // Controls field render order
+  span?: number // Grid column span (for future grid layouts)
+  hidden?: boolean // Statically hides the field
+  condition?: FieldCondition // Dynamically hides the field
 }
 ```
 
@@ -66,7 +69,11 @@ The `classNames` prop already reaches `AutoFormContext`. Now make the default co
 **`DefaultFieldWrapper`** — read `classNames` from context and apply them:
 
 ```tsx
-export function DefaultFieldWrapper({ children, field, error }: FieldWrapperProps) {
+export function DefaultFieldWrapper({
+  children,
+  field,
+  error,
+}: FieldWrapperProps) {
   const { classNames } = useAutoFormContext()
 
   return (
@@ -77,10 +84,14 @@ export function DefaultFieldWrapper({ children, field, error }: FieldWrapperProp
       </label>
       {children}
       {field.meta.description && (
-        <p className={classNames.description}>{String(field.meta.description)}</p>
+        <p className={classNames.description}>
+          {String(field.meta.description)}
+        </p>
       )}
       {error && (
-        <span role="alert" className={classNames.error}>{error}</span>
+        <span role='alert' className={classNames.error}>
+          {error}
+        </span>
       )}
     </div>
   )
@@ -111,7 +122,7 @@ Create `packages/core/src/hooks/useSectionGrouping.ts`:
 
 ```ts
 type SectionGroup = {
-  title: string | null   // null for the ungrouped/default section
+  title: string | null // null for the ungrouped/default section
   fields: FieldConfig[]
 }
 
@@ -133,9 +144,11 @@ Replace the current flat field rendering in `AutoForm`:
 
 ```tsx
 // Before (flat):
-{visibleFields.map((field) => (
-  <FieldRenderer key={field.name} field={field} control={control} />
-))}
+{
+  visibleFields.map((field) => (
+    <FieldRenderer key={field.name} field={field} control={control} />
+  ))
+}
 ```
 
 With section-aware rendering:
@@ -146,22 +159,24 @@ const SectionWrapper = resolvedLayout.sectionWrapper
 
 // ...
 
-{sections.map((section) => {
-  const renderedFields = section.fields.map((field) => (
-    <FieldRenderer key={field.name} field={field} control={control} />
-  ))
+{
+  sections.map((section) => {
+    const renderedFields = section.fields.map((field) => (
+      <FieldRenderer key={field.name} field={field} control={control} />
+    ))
 
-  if (section.title === null) {
-    // Ungrouped fields — render without a section wrapper
-    return <React.Fragment key="__ungrouped">{renderedFields}</React.Fragment>
-  }
+    if (section.title === null) {
+      // Ungrouped fields — render without a section wrapper
+      return <React.Fragment key='__ungrouped'>{renderedFields}</React.Fragment>
+    }
 
-  return (
-    <SectionWrapper key={section.title} title={section.title}>
-      {renderedFields}
-    </SectionWrapper>
-  )
-})}
+    return (
+      <SectionWrapper key={section.title} title={section.title}>
+        {renderedFields}
+      </SectionWrapper>
+    )
+  })
+}
 ```
 
 #### Update `DefaultSectionWrapper`
@@ -191,7 +206,7 @@ function DefaultSectionWrapper({
 
 The `fieldWrapper` prop is already wired end-to-end. But verify and ensure these edge cases are handled:
 
-- When a consumer provides a custom `fieldWrapper`, it should receive `FieldWrapperProps` (`children`, `field`, `error`) and have full control over rendering. The default `className` logic from `DefaultFieldWrapper` should *not* apply — the custom wrapper is fully in charge.
+- When a consumer provides a custom `fieldWrapper`, it should receive `FieldWrapperProps` (`children`, `field`, `error`) and have full control over rendering. The default `className` logic from `DefaultFieldWrapper` should _not_ apply — the custom wrapper is fully in charge.
 - `object` and `array` fields must **not** be wrapped in the `fieldWrapper`. This is already the case in `FieldRenderer` — verify it remains correct after all changes.
 - If a consumer's `fieldWrapper` needs access to `classNames`, they can call `useAutoFormContext()` themselves — we don't need to pass it as a prop.
 
@@ -222,7 +237,7 @@ type FieldWrapperProps = {
   children: React.ReactNode
   field: FieldConfig
   error?: string
-  span?: number  // NEW — from field.meta.span
+  span?: number // NEW — from field.meta.span
 }
 ```
 
@@ -265,15 +280,15 @@ Add `useSectionGrouping` to the public exports in `packages/core/src/index.ts`.
 
 ## File Changes Summary
 
-| File | Change |
-|------|--------|
-| `src/hooks/useSectionGrouping.ts` | **NEW** — section grouping hook |
-| `src/components/AutoForm.tsx` | Add `classNames.form` to `<form>`, use `useSectionGrouping`, render sections with `SectionWrapper` |
-| `src/components/defaults/DefaultFieldWrapper.tsx` | Consume `classNames` from context, support `span` CSS custom property |
-| `src/components/FieldRenderer.tsx` | Pass `span` prop to `fieldWrapper` |
-| `src/types/index.ts` | Add `span` to `FieldWrapperProps` |
-| `src/index.ts` | Export `useSectionGrouping` |
-| `src/components/AutoForm.test.tsx` | Add new tests (see below) |
+| File                                              | Change                                                                                             |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `src/hooks/useSectionGrouping.ts`                 | **NEW** — section grouping hook                                                                    |
+| `src/components/AutoForm.tsx`                     | Add `classNames.form` to `<form>`, use `useSectionGrouping`, render sections with `SectionWrapper` |
+| `src/components/defaults/DefaultFieldWrapper.tsx` | Consume `classNames` from context, support `span` CSS custom property                              |
+| `src/components/FieldRenderer.tsx`                | Pass `span` prop to `fieldWrapper`                                                                 |
+| `src/types/index.ts`                              | Add `span` to `FieldWrapperProps`                                                                  |
+| `src/index.ts`                                    | Export `useSectionGrouping`                                                                        |
+| `src/components/AutoForm.test.tsx`                | Add new tests (see below)                                                                          |
 
 ---
 
@@ -304,6 +319,7 @@ Define a field with `meta.description`. Assert the `<p>` element has the class f
 ### 22. Section grouping renders fields in section wrappers
 
 Define a schema where some fields have `meta.section: 'Personal'` and others have `meta.section: 'Address'`. Assert that:
+
 - Two `<fieldset>` wrappers are rendered (one per section)
 - Each `<fieldset>` has a `<legend>` with the section title
 - Fields are inside the correct section
