@@ -220,6 +220,16 @@ export type FieldMetaBase = {
   component?: string | React.ComponentType<any>
   /** Called when this field's value changes. Receives the new value and form control methods. */
   onChange?: (value: unknown, form: FormMethods) => void
+
+  // ---------------------------------------------------------------------------
+  // Array-specific options
+  // ---------------------------------------------------------------------------
+  /** When `true`, rows in an array field can be reordered via move-up/move-down buttons. */
+  movable?: boolean
+  /** When `true`, rows in an array field can be duplicated. */
+  duplicable?: boolean
+  /** When `true`, rows in an array field can be individually collapsed. */
+  collapsible?: boolean
 }
 
 /**
