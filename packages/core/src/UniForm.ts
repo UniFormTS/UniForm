@@ -46,6 +46,9 @@ type Condition<TSchema extends z.$ZodObject> = (
  * for dynamic field overrides.
  *
  * @template TSchema - The Zod object schema that defines the form shape.
+ * @template TRegistered - Union of field keys that already have a `setOnChange`
+ *   handler registered. Attempting to call `setOnChange` for a key in this set
+ *   produces a compile-time error, preventing silent handler replacement.
  *
  * @example
  * const addressForm = new UniForm(addressSchema)
@@ -56,7 +59,10 @@ type Condition<TSchema extends z.$ZodObject> = (
  * // In component:
  * <AutoForm form={addressForm} onSubmit={handleSubmit} />
  */
-export class UniForm<TSchema extends z.$ZodObject> {
+export class UniForm<
+  TSchema extends z.$ZodObject,
+  TRegistered extends string = never,
+> {
   readonly schema: TSchema
   private readonly _handlers: Map<string, Handler<TSchema, unknown>>
   private readonly _conditions: Map<string, Condition<TSchema>>
@@ -74,12 +80,12 @@ export class UniForm<TSchema extends z.$ZodObject> {
    * when called inside a React render cycle.
    * Returns `this` for fluent chaining.
    */
-  setOnChange<K extends DeepKeys<z.infer<TSchema>>>(
+  setOnChange<K extends Exclude<DeepKeys<z.infer<TSchema>>, TRegistered>>(
     field: K,
     handler: Handler<TSchema, DeepFieldValue<z.infer<TSchema>, K>>,
-  ): this {
+  ): UniForm<TSchema, TRegistered | K> {
     this._handlers.set(field, handler as Handler<TSchema, unknown>)
-    return this
+    return this as unknown as UniForm<TSchema, TRegistered | K>
   }
 
   /**
