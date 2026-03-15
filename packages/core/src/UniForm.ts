@@ -94,7 +94,7 @@ export class UniForm<
    * Composes with any `condition` set via the `fields` prop (UniForm takes precedence).
    * Returns `this` for fluent chaining.
    */
-  condition<K extends DeepKeys<z.infer<TSchema>>>(
+  setCondition<K extends DeepKeys<z.infer<TSchema>>>(
     field: K,
     predicate: Condition<TSchema>,
   ): this {

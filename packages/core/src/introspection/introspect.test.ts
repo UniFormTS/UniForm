@@ -3,8 +3,8 @@ import * as z from 'zod/v4'
 import {
   introspectSchema,
   introspectObjectSchema,
-  parseDiscriminatedUnionMeta,
 } from './introspect'
+import { parseDiscriminatedUnionMeta } from './discriminatedUnion'
 
 // ---------------------------------------------------------------------------
 // 1. Scalar types

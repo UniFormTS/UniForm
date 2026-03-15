@@ -283,6 +283,7 @@ type FormMethods<TValues> = {
   setValue: (name, value) => void
   setValues: (values: Partial<TValues>) => void
   getValues: () => TValues
+  watch: (() => TValues) & (<K extends keyof TValues>(name: K) => TValues[K])
   resetField: (name) => void
   reset: (values?: Partial<TValues>) => void
   setError: (name, message: string) => void
@@ -395,7 +396,7 @@ function MyTextInput(props: FieldProps) {
   )
 }
 
-;<AutoForm
+<AutoForm
   form={myForm}
   onSubmit={handleSubmit}
   components={{ string: MyTextInput }}
@@ -690,8 +691,8 @@ Imperative handle exposed via `ref` (same as `FormMethods`):
 
 ```ts
 type AutoFormHandle<TSchema> = FormMethods<z.infer<TSchema>>
-// i.e.: reset, submit, setValue, setValues, getValues, resetField,
-//       setError, setErrors, clearErrors, focus
+// i.e.: reset, submit, setValue, setValues, getValues, watch,
+//       resetField, setError, setErrors, clearErrors, focus
 ```
 
 #### `PersistStorage`
@@ -778,7 +779,56 @@ function WizardForm() {
 }
 ```
 
-All `AutoFormHandle` methods: `reset()`, `submit()`, `setValue()`, `setValues()`, `getValues()`, `resetField()`, `setError()`, `setErrors()`, `clearErrors()`, `focus()`.
+All `AutoFormHandle` methods: `reset()`, `submit()`, `setValue()`, `setValues()`, `getValues()`, `watch()`, `resetField()`, `setError()`, `setErrors()`, `clearErrors()`, `focus()`.
+
+### Reading Live Values with `watch`
+
+`watch` reads the current live value of a field (or all fields) from outside the form. Unlike `getValues`, it subscribes to react-hook-form's render cycle, so it always reflects the latest value at call time.
+
+```tsx
+import { useRef } from 'react'
+import { AutoForm } from '@uniform/core'
+import type { AutoFormHandle } from '@uniform/core'
+
+const schema = z.object({
+  plan: z.enum(['free', 'pro', 'enterprise']),
+  seats: z.number().min(1),
+})
+
+const myForm = createForm(schema)
+
+function PricingForm() {
+  const formRef = useRef<AutoFormHandle<typeof schema>>(null)
+
+  return (
+    <div>
+      <AutoForm ref={formRef} form={myForm} onSubmit={handleSubmit} />
+
+      {/* Read a single field */}
+      <button
+        onClick={() => {
+          const plan = formRef.current?.watch('plan')
+          console.log('Current plan:', plan)
+        }}
+      >
+        Log current plan
+      </button>
+
+      {/* Read all fields */}
+      <button
+        onClick={() => {
+          const values = formRef.current?.watch()
+          console.log('All values:', values)
+        }}
+      >
+        Log all values
+      </button>
+    </div>
+  )
+}
+```
+
+> **Tip:** `watch` is most useful for reading values imperatively in event handlers. To react to changes as they happen, prefer `onValuesChange` or `UniForm.setOnChange`.
 
 ### Form State Persistence
 

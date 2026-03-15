@@ -11,10 +11,8 @@ import type {
   FieldDependencyResult,
 } from '../types'
 import type { UniForm, UniFormContext } from '../UniForm'
-import {
-  introspectObjectSchema,
-  parseDiscriminatedUnionMeta,
-} from '../introspection/introspect'
+import { introspectObjectSchema } from '../introspection/introspect'
+import { parseDiscriminatedUnionMeta } from '../introspection/discriminatedUnion'
 import { mergeRegistries } from '../registry/mergeRegistries'
 import { defaultRegistry } from '../registry/defaultRegistry'
 import { DefaultFieldWrapper } from './defaults/DefaultFieldWrapper'
@@ -131,6 +129,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     setValue,
     setError,
     setFocus,
+    watch,
   } = rhf
 
   // For discriminated unions: watch the discriminator and swap to the matching variant's fields
@@ -214,6 +213,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
         )()
       },
       focus: (fieldName) => setFocus(fieldName),
+      watch: watch as FormMethods<z.infer<TSchema>>['watch'],
     }),
     [
       clearErrors,
@@ -224,6 +224,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       setValue,
       setError,
       setFocus,
+      watch,
       onSubmitRef,
     ],
   )

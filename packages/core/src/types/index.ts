@@ -145,6 +145,11 @@ export type FormMethods<TValues extends FieldValues = FieldValues> = {
   submit: () => void
   /** Focus a specific field by name (dot-notated for nested fields) */
   focus: (fieldName: FieldPath<TValues>) => void
+  /** Get the current value of a field (or all values if no name provided) */
+  watch: {
+    (): TValues
+    <K extends FieldPath<TValues>>(name: K): FieldPathValue<TValues, K>
+  }
 }
 
 // ---------------------------------------------------------------------------
