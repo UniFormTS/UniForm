@@ -16,6 +16,9 @@ import Example15 from './examples/Example15'
 import Example16 from './examples/Example16'
 import Example17 from './examples/Example17'
 import Example18 from './examples/Example18'
+import Example19 from './examples/Example19'
+import Example20 from './examples/Example20'
+import Example21 from './examples/Example21'
 
 const examples = [
   { id: 'ex1', label: '1. classNames + span' },
@@ -36,6 +39,9 @@ const examples = [
   { id: 'ex16', label: '16. Per-field Custom Components' },
   { id: 'ex17', label: '17. Typed Dependencies & Custom Labels' },
   { id: 'ex18', label: '18. Discriminated Union' },
+  { id: 'ex19', label: '19. isSubmitting via Ref' },
+  { id: 'ex20', label: '20. Async setOnChange' },
+  { id: 'ex21', label: '21. Async Default Values' },
 ]
 
 export default function App() {
@@ -116,6 +122,12 @@ export default function App() {
       <Example17 />
       <hr style={{ margin: '2rem 0' }} />
       <Example18 />
+      <hr style={{ margin: '2rem 0' }} />
+      <Example19 />
+      <hr style={{ margin: '2rem 0' }} />
+      <Example20 />
+      <hr style={{ margin: '2rem 0' }} />
+      <Example21 />
     </main>
   )
 }

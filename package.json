@@ -8,7 +8,10 @@
     "build:watch": "pnpm --filter @uniform/core dev",
     "test": "pnpm --filter @uniform/core test",
     "lint": "pnpm -r lint",
-    "format": "pnpx prettier --write '{apps,packages}/**/*.{ts,tsx,js,jsx,css,scss,html}'"
+    "format": "pnpx prettier --write '{apps,packages}/**/*.{ts,tsx,js,jsx,css,scss,html}'",
+    "docs:dev": "pnpm --filter docs run start",
+    "docs:build": "pnpm --filter docs run build",
+    "docs:serve": "pnpm --filter docs run serve"
   },
   "workspaces": [
     "packages/*",

@@ -77,8 +77,8 @@ export function injectOnChangeHandlers<TSchema extends z.$ZodObject>(
         meta: {
           ...field.meta,
           onChange: (value: unknown, formMethods: FormMethods) => {
-            existingOnChange?.(value, formMethods)
-            uniForm._fireHandler(field.name, value, ctx)
+            void existingOnChange?.(value, formMethods)
+            void uniForm._fireHandler(field.name, value, ctx)
           },
         },
       }

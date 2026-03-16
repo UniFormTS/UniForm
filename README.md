@@ -21,7 +21,7 @@ UniForm takes a Zod schema and automatically renders a fully customizable form. 
 - **Deep field overrides** — dot-notated `fields` prop for nested object/array overrides
 - **Pluggable coercion** — automatic string→number, string→Date with customizable coercion map
 - **Custom validation messages** — global, per-field, and per-field-per-error-code message overrides
-- **Programmatic control via ref** — `reset()`, `submit()`, `setValues()`, `getValues()`, `setErrors()`, `clearErrors()`, `focus()` via `AutoFormHandle`
+- **Programmatic control via ref** — `reset()`, `submit()`, `setValues()`, `getValues()`, `setErrors()`, `clearErrors()`, `focus()`, `isSubmitting` via `AutoFormHandle`
 - **Form state persistence** — auto-save form values to `localStorage` (or custom storage) with configurable debounce; restored on mount, cleared on submit
 - **Enhanced array fields** — opt-in row reordering (move up/down), duplicate, collapsible object rows with summary, `minItems`/`maxItems` constraints from Zod `.min()`/`.max()`, via `movable`/`duplicable`/`collapsible` meta flags
 - **Array button styling** — `classNames.arrayAdd`, `arrayRemove`, `arrayMove`, `arrayDuplicate`, `arrayCollapse`
@@ -29,6 +29,8 @@ UniForm takes a Zod schema and automatically renders a fully customizable form. 
 - **Field index & depth CSS vars** — `--field-index` and `--field-depth` on every field wrapper for advanced CSS targeting
 - **Value cascade** — `onValuesChange` fires on every change with the full form values; use with `ref.setValues()` to imperatively sync field values
 - **i18n / custom labels** — `labels` prop (and factory-level `labels` config) replaces every hard-coded UI string (`"Submit"`, `"Add"`, `"Remove"`, move/duplicate/collapse buttons) without touching layout slots
+- **Async `setOnChange`** — `UniForm.setOnChange` handlers can be `async`; use them to fetch dependent data (e.g. cascading dropdowns, availability checks) and apply the results via `ctx.setFieldMeta` / `ctx.setValue`
+- **Async `defaultValues`** — pass `() => Promise<Partial<TValues>>` as `defaultValues`; the form renders a `loadingFallback` while the promise is in flight, then resets with the loaded values
 - **Tree-shakeable** — ESM + CJS builds via tsup with `sideEffects: false`
 
 ## Quick Start
@@ -76,25 +78,25 @@ That's it — UniForm introspects the schema, renders appropriate inputs, valida
 
 ### `<AutoForm>` Props
 
-| Prop              | Type                                                  | Default               | Description                                                                      |
-| ----------------- | ----------------------------------------------------- | --------------------- | -------------------------------------------------------------------------------- |
-| `form`            | `UniForm<TSchema>`                                    | _required_            | A `UniForm` / `createForm` instance carrying the schema and setOnChange handlers |
-| `onSubmit`        | `(values: z.infer<TSchema>) => void \| Promise<void>` | _required_            | Called with fully typed, validated values on successful submit                   |
-| `defaultValues`   | `Partial<z.infer<TSchema>>`                           | `{}`                  | Pre-fill form fields                                                             |
-| `components`      | `ComponentRegistry`                                   | `defaultRegistry`     | Override field type → component mapping                                          |
-| `fields`          | `Record<string, Partial<FieldOverride>>`              | `{}`                  | Per-field metadata overrides (supports dot-notated paths for nested fields)      |
-| `fieldWrapper`    | `React.ComponentType<FieldWrapperProps>`              | `DefaultFieldWrapper` | Wrap each scalar field in a custom container                                     |
-| `layout`          | `LayoutSlots`                                         | `{}`                  | Replace form wrapper, section wrapper, submit button, or array row layout        |
-| `classNames`      | `FormClassNames`                                      | `{}`                  | CSS class names for form, field wrappers, labels, errors, descriptions           |
-| `disabled`        | `boolean`                                             | `false`               | Disable all form fields and the submit button                                    |
-| `coercions`       | `CoercionMap`                                         | `defaultCoercionMap`  | Custom per-type value coercion functions                                         |
-| `messages`        | `ValidationMessages`                                  | `undefined`           | Custom validation error messages                                                 |
-| `ref`             | `React.Ref<AutoFormHandle>`                           | `undefined`           | Imperative handle for programmatic control                                       |
-| `persistKey`      | `string`                                              | `undefined`           | When set, form values auto-save to storage under this key                        |
-| `persistDebounce` | `number`                                              | `300`                 | Debounce interval in ms for persistence writes                                   |
-| `persistStorage`  | `PersistStorage`                                      | `localStorage`        | Custom storage adapter (must implement `getItem`/`setItem`/`removeItem`)         |
-| `onValuesChange`  | `(values: z.infer<TSchema>) => void`                  | `undefined`           | Called on every field change with the full current form values                   |
-| `labels`          | `FormLabels`                                          | `{}`                  | Override hard-coded UI text (submit button, array buttons) for i18n              |
+| Prop              | Type                                                                      | Default               | Description                                                                                                          |
+| ----------------- | ------------------------------------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `form`            | `UniForm<TSchema>`                                                        | _required_            | A `UniForm` / `createForm` instance carrying the schema and setOnChange handlers                                     |
+| `onSubmit`        | `(values: z.infer<TSchema>) => void \| Promise<void>`                     | _required_            | Called with fully typed, validated values on successful submit                                                       |
+| `defaultValues`   | `Partial<z.infer<TSchema>>` or `() => Promise<Partial<z.infer<TSchema>>>` | `{}`                  | Pre-fill form fields. Pass an async function to load from an API (see [Async Default Values](#async-default-values)) |
+| `components`      | `ComponentRegistry`                                                       | `defaultRegistry`     | Override field type → component mapping                                                                              |
+| `fields`          | `Record<string, Partial<FieldOverride>>`                                  | `{}`                  | Per-field metadata overrides (supports dot-notated paths for nested fields)                                          |
+| `fieldWrapper`    | `React.ComponentType<FieldWrapperProps>`                                  | `DefaultFieldWrapper` | Wrap each scalar field in a custom container                                                                         |
+| `layout`          | `LayoutSlots`                                                             | `{}`                  | Replace form wrapper, section wrapper, submit button, array row layout, or `loadingFallback`                         |
+| `classNames`      | `FormClassNames`                                                          | `{}`                  | CSS class names for form, field wrappers, labels, errors, descriptions                                               |
+| `disabled`        | `boolean`                                                                 | `false`               | Disable all form fields and the submit button                                                                        |
+| `coercions`       | `CoercionMap`                                                             | `defaultCoercionMap`  | Custom per-type value coercion functions                                                                             |
+| `messages`        | `ValidationMessages`                                                      | `undefined`           | Custom validation error messages                                                                                     |
+| `ref`             | `React.Ref<AutoFormHandle>`                                               | `undefined`           | Imperative handle for programmatic control                                                                           |
+| `persistKey`      | `string`                                                                  | `undefined`           | When set, form values auto-save to storage under this key                                                            |
+| `persistDebounce` | `number`                                                                  | `300`                 | Debounce interval in ms for persistence writes                                                                       |
+| `persistStorage`  | `PersistStorage`                                                          | `localStorage`        | Custom storage adapter (must implement `getItem`/`setItem`/`removeItem`)                                             |
+| `onValuesChange`  | `(values: z.infer<TSchema>) => void`                                      | `undefined`           | Called on every field change with the full current form values                                                       |
+| `labels`          | `FormLabels`                                                              | `{}`                  | Override hard-coded UI text (submit button, array buttons) for i18n                                                  |
 
 ### `createForm(schema)` / `UniForm`
 
@@ -204,7 +206,7 @@ type FieldMeta = {
   component?: string | React.ComponentType<FieldProps>
   //          ^^^^^^   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   //          registry key        direct component (bypasses registry)
-  onChange?: (value: unknown, form: FormMethods) => void // Per-field change handler
+  onChange?: (value: unknown, form: FormMethods) => void | Promise<void> // Per-field change handler (may be async)
   [key: string]: unknown // Extensible
 }
 ```
@@ -216,7 +218,10 @@ The type for entries in the `fields` prop. Like `FieldMeta`, but with typed `con
 ```ts
 type FieldOverride<TSchema, TValue> = Partial<FieldMetaBase> & {
   condition?: (values: z.infer<TSchema>) => boolean
-  onChange?: (value: TValue, form: FormMethods<z.infer<TSchema>>) => void
+  onChange?: (
+    value: TValue,
+    form: FormMethods<z.infer<TSchema>>,
+  ) => void | Promise<void>
   [key: string]: unknown
 }
 ```
@@ -305,8 +310,12 @@ type LayoutSlots = {
   }>
   submitButton?: React.ComponentType<{ isSubmitting: boolean }>
   arrayRowLayout?: React.ComponentType<ArrayRowLayoutProps>
+  /** Shown while async `defaultValues` are resolving. Default: `<p>Loading…</p>` */
+  loadingFallback?: React.ReactNode
 }
 ```
+
+> **Tip:** Since `loadingFallback` is part of `LayoutSlots`, you can set a global loading UI once in `createAutoForm({ layout: { loadingFallback: <AppSpinner /> } })` and every form using that factory will automatically use it.
 
 #### `ArrayRowLayoutProps`
 
@@ -539,6 +548,27 @@ function MyForm() {
 
 `UniForm.setOnChange` also supports `ctx.setFieldMeta` for dynamic field overrides — not available in the inline `fields` version.
 
+#### Async handlers
+
+`setOnChange` handlers (both inline and on `UniForm`) can be `async`. This is useful for server-side lookups that update other fields:
+
+```tsx
+const productForm = createForm(productSchema).setOnChange(
+  'sku',
+  async (sku, ctx) => {
+    // Disable the derived field while loading
+    ctx.setFieldMeta('productName', { disabled: true, placeholder: 'Loading…' })
+
+    const { name } = await fetchProduct(sku)
+
+    ctx.setValue('productName', name)
+    ctx.setFieldMeta('productName', { disabled: false, placeholder: '' })
+  },
+)
+```
+
+Async handlers are **fire-and-forget** — the field value is already committed to RHF before the async work runs. Cancel in-flight requests yourself with `AbortController` if needed.
+
 ### Grid Layout with `classNames` and `span`
 
 ```tsx
@@ -690,12 +720,15 @@ Resolution order: per-field per-code → per-field string → global `required` 
 
 #### `AutoFormHandle`
 
-Imperative handle exposed via `ref` (same as `FormMethods`):
+Imperative handle exposed via `ref`:
 
 ```ts
-type AutoFormHandle<TSchema> = FormMethods<z.infer<TSchema>>
-// i.e.: reset, submit, setValue, setValues, getValues, watch,
-//       resetField, setError, setErrors, clearErrors, focus
+type AutoFormHandle<TSchema> = FormMethods<z.infer<TSchema>> & {
+  /** `true` while an async `onSubmit` handler is in flight. */
+  isSubmitting: boolean
+}
+// FormMethods: reset, submit, setValue, setValues, getValues, watch,
+//              resetField, setError, setErrors, clearErrors, focus
 ```
 
 #### `PersistStorage`
@@ -782,7 +815,33 @@ function WizardForm() {
 }
 ```
 
-All `AutoFormHandle` methods: `reset()`, `submit()`, `setValue()`, `setValues()`, `getValues()`, `watch()`, `resetField()`, `setError()`, `setErrors()`, `clearErrors()`, `focus()`.
+All `AutoFormHandle` methods: `reset()`, `submit()`, `setValue()`, `setValues()`, `getValues()`, `watch()`, `resetField()`, `setError()`, `setErrors()`, `clearErrors()`, `focus()`, plus `isSubmitting` (boolean, `true` while async `onSubmit` is in flight).
+
+### Async Default Values
+
+Pass an async function as `defaultValues` to pre-fill the form from an API:
+
+```tsx
+async function loadProfile() {
+  const res = await fetch('/api/profile')
+  return res.json() // Returns Partial<ProfileValues>
+}
+
+function EditProfileForm() {
+  return (
+    <AutoForm
+      form={profileForm}
+      defaultValues={loadProfile} // async function — called once on mount
+      layout={{ loadingFallback: <ProfileSkeleton /> }} // shown while the promise is in flight
+      onSubmit={handleSubmit}
+    />
+  )
+}
+```
+
+- The form renders `loadingFallback` (or `<p>Loading…</p>` by default) until the promise resolves.
+- On resolve, the form resets with the loaded values and renders normally.
+- If you need to replay the loading state (e.g. when navigating between records), change the `key` prop on `<AutoForm>` to remount it.
 
 ### Reading Live Values with `watch`
 

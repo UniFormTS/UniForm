@@ -108,7 +108,9 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   const computedDefaults = React.useMemo(() => {
     const base: Record<string, unknown> = {
       ...generatedDefaults,
-      ...defaultValues,
+      ...(typeof defaultValues === 'function'
+        ? {}
+        : (defaultValues as Record<string, unknown>)),
     }
 
     // Collect all conditions: UniForm-registered takes precedence, fields-prop fills gaps
@@ -137,6 +139,11 @@ export function AutoForm<TSchema extends z.$ZodObject>(
 
     return base
   }, [generatedDefaults, defaultValues, uniForm, fieldOverridesProp])
+
+  // Async defaultValues: track whether we are still waiting for the loader
+  const isAsyncDefaults = typeof defaultValues === 'function'
+  const [isLoadingDefaults, setIsLoadingDefaults] =
+    React.useState(isAsyncDefaults)
 
   const rhf = useForm({
     resolver: zodResolver(schema) as unknown as Resolver,
@@ -201,6 +208,24 @@ export function AutoForm<TSchema extends z.$ZodObject>(
 
   const onSubmitRef = useLatestRef(onSubmit)
   const onValuesChangeRef = useLatestRef(onValuesChange)
+  const generatedDefaultsRef = useLatestRef(generatedDefaults)
+
+  // Load async defaultValues once on mount
+  React.useEffect(() => {
+    if (!isAsyncDefaults) return
+    let cancelled = false
+    void (defaultValues as () => Promise<Partial<z.infer<TSchema>>>)().then(
+      (vals) => {
+        if (cancelled) return
+        rhf.reset({ ...generatedDefaultsRef.current, ...vals })
+        setIsLoadingDefaults(false)
+      },
+    )
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const formMethods = React.useMemo<FormMethods<z.infer<TSchema>>>(
     () => ({
@@ -254,7 +279,11 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     ],
   )
 
-  React.useImperativeHandle(ref, () => formMethods, [formMethods])
+  React.useImperativeHandle(
+    ref,
+    () => ({ ...formMethods, isSubmitting: formState.isSubmitting }),
+    [formMethods, formState.isSubmitting],
+  )
 
   // setFieldMeta: called synchronously inside UniForm onChange handlers.
   // Updates dynamicMeta state; use ctx.setValue() directly to set a field value.
@@ -321,12 +350,14 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       sectionWrapper: layout?.sectionWrapper ?? DefaultSectionWrapper,
       submitButton: layout?.submitButton ?? DefaultSubmitButton,
       arrayRowLayout: layout?.arrayRowLayout ?? DefaultArrayRowLayout,
+      loadingFallback: layout?.loadingFallback ?? <p>Loading…</p>,
     }),
     [
       layout?.formWrapper,
       layout?.sectionWrapper,
       layout?.submitButton,
       layout?.arrayRowLayout,
+      layout?.loadingFallback,
     ],
   )
 
@@ -362,6 +393,11 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       formMethods,
     ],
   )
+
+  // While async defaultValues are still loading, render the fallback
+  if (isLoadingDefaults) {
+    return <>{resolvedLayout.loadingFallback}</>
+  }
 
   return (
     <AutoFormContextProvider value={contextValue}>
@@ -401,7 +437,10 @@ export function AutoForm<TSchema extends z.$ZodObject>(
               </SectionWrapper>
             )
           })}
-          <SubmitButton isSubmitting={formState.isSubmitting} />
+          <SubmitButton
+            isSubmitting={formState.isSubmitting}
+            label={labels.submit ?? 'Submit'}
+          />
         </FormWrapper>
       </form>
     </AutoFormContextProvider>
