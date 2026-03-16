@@ -24,7 +24,7 @@ const kitchenSinkSchema = z.object({
   notes: z.string().optional(),
 })
 
-const kitchenSinkForm = createForm(kitchenSinkSchema).condition(
+const kitchenSinkForm = createForm(kitchenSinkSchema).setCondition(
   'notes',
   (values) => values.hasNotes,
 )
