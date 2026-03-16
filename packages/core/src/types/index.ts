@@ -439,7 +439,7 @@ export type LayoutSlots = {
     title: string
   }>
   /** Custom submit button component. */
-  submitButton?: React.ComponentType<{ isSubmitting: boolean, label: string }>
+  submitButton?: React.ComponentType<{ isSubmitting: boolean; label: string }>
   /** Custom layout component for individual rows in array fields. */
   arrayRowLayout?: React.ComponentType<ArrayRowLayoutProps>
   /**
@@ -459,7 +459,7 @@ export type ResolvedLayoutSlots = {
     children: React.ReactNode
     title: string
   }>
-  submitButton: React.ComponentType<{ isSubmitting: boolean, label: string }>
+  submitButton: React.ComponentType<{ isSubmitting: boolean; label: string }>
   arrayRowLayout: React.ComponentType<ArrayRowLayoutProps>
   loadingFallback: React.ReactNode
 }

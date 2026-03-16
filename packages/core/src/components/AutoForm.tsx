@@ -105,15 +105,40 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     [rawFields],
   )
 
-  const computedDefaults = React.useMemo(
-    () => ({
+  const computedDefaults = React.useMemo(() => {
+    const base: Record<string, unknown> = {
       ...generatedDefaults,
       ...(typeof defaultValues === 'function'
         ? {}
         : (defaultValues as Record<string, unknown>)),
-    }),
-    [generatedDefaults, defaultValues],
-  )
+    }
+
+    // Collect all conditions: UniForm-registered takes precedence, fields-prop fills gaps
+    const conditions = new Map<string, FieldCondition>(
+      (uniForm as UniForm<TSchema>)._getConditions() as Map<
+        string,
+        FieldCondition
+      >,
+    )
+    for (const [name, override] of Object.entries(
+      fieldOverridesProp as Record<string, Partial<FieldMeta>>,
+    )) {
+      if (typeof override.condition === 'function' && !conditions.has(name)) {
+        conditions.set(name, override.condition as FieldCondition)
+      }
+    }
+
+    // Exclude fields whose condition starts false so they're never pre-registered
+    // in the RHF store. Evaluated against `base` so fields that start visible
+    // (condition true) still receive their default value.
+    for (const [name, condition] of conditions) {
+      if (!condition(base)) {
+        delete base[name]
+      }
+    }
+
+    return base
+  }, [generatedDefaults, defaultValues, uniForm, fieldOverridesProp])
 
   // Async defaultValues: track whether we are still waiting for the loader
   const isAsyncDefaults = typeof defaultValues === 'function'
@@ -319,13 +344,22 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   const visibleFields = useConditionalFields(fieldsWithDynamic, control)
   const sections = useSectionGrouping(visibleFields)
 
-  const resolvedLayout = {
-    formWrapper: layout?.formWrapper ?? DefaultFormWrapper,
-    sectionWrapper: layout?.sectionWrapper ?? DefaultSectionWrapper,
-    submitButton: layout?.submitButton ?? DefaultSubmitButton,
-    arrayRowLayout: layout?.arrayRowLayout ?? DefaultArrayRowLayout,
-    loadingFallback: layout?.loadingFallback ?? <p>Loading…</p>,
-  }
+  const resolvedLayout = React.useMemo(
+    () => ({
+      formWrapper: layout?.formWrapper ?? DefaultFormWrapper,
+      sectionWrapper: layout?.sectionWrapper ?? DefaultSectionWrapper,
+      submitButton: layout?.submitButton ?? DefaultSubmitButton,
+      arrayRowLayout: layout?.arrayRowLayout ?? DefaultArrayRowLayout,
+      loadingFallback: layout?.loadingFallback ?? <p>Loading…</p>,
+    }),
+    [
+      layout?.formWrapper,
+      layout?.sectionWrapper,
+      layout?.submitButton,
+      layout?.arrayRowLayout,
+      layout?.loadingFallback,
+    ],
+  )
 
   const resolvedFieldWrapper = fieldWrapper ?? DefaultFieldWrapper
 
@@ -333,26 +367,40 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   const SectionWrapper = resolvedLayout.sectionWrapper
   const SubmitButton = resolvedLayout.submitButton
 
+  const contextValue = React.useMemo(
+    () => ({
+      registry,
+      fieldOverrides: fieldOverridesProp,
+      fieldWrapper: resolvedFieldWrapper,
+      layout: resolvedLayout,
+      classNames,
+      disabled,
+      coercions,
+      messages,
+      labels,
+      formMethods: formMethods as unknown as FormMethods,
+    }),
+    [
+      registry,
+      fieldOverridesProp,
+      resolvedFieldWrapper,
+      resolvedLayout,
+      classNames,
+      disabled,
+      coercions,
+      messages,
+      labels,
+      formMethods,
+    ],
+  )
+
   // While async defaultValues are still loading, render the fallback
   if (isLoadingDefaults) {
     return <>{resolvedLayout.loadingFallback}</>
   }
 
   return (
-    <AutoFormContextProvider
-      value={{
-        registry,
-        fieldOverrides: fieldOverridesProp,
-        fieldWrapper: resolvedFieldWrapper,
-        layout: resolvedLayout,
-        classNames,
-        disabled,
-        coercions,
-        messages,
-        labels,
-        formMethods: formMethods as unknown as FormMethods,
-      }}
-    >
+    <AutoFormContextProvider value={contextValue}>
       <form
         noValidate
         className={classNames.form}

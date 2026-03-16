@@ -9,12 +9,14 @@ type ScalarFieldProps = {
   field: FieldConfig
   control: Control
   effectiveName: string
+  shouldUnregister?: boolean
 }
 
 export function ScalarField({
   field,
   control,
   effectiveName,
+  shouldUnregister,
 }: ScalarFieldProps) {
   const {
     registry,
@@ -30,6 +32,7 @@ export function ScalarField({
     <Controller
       name={effectiveName}
       control={control}
+      shouldUnregister={shouldUnregister}
       render={({ field: rhfField, fieldState }) => (
         <Component
           name={effectiveName}
