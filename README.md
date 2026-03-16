@@ -15,7 +15,7 @@ UniForm takes a Zod schema and automatically renders a fully customizable form. 
 - **Per-field custom components** — pass any `React.ComponentType<FieldProps>` directly as `meta.component` (inline, no registry) or register under a custom string key; direct components bypass the registry _and_ the default `ArrayField`/`ObjectField` routing, allowing fully custom multi-value widgets for `array`-typed fields
 - **Layout hooks** — `classNames`, `fieldWrapper`, `layout.formWrapper`, `layout.sectionWrapper`, `layout.submitButton`
 - **Section grouping** — group fields into named sections via `meta.section`
-- **Conditional fields** — show/hide fields based on form values with `meta.condition`
+- **Conditional fields** — show/hide fields based on form values with `meta.condition`; hidden fields automatically reset to their default value
 - **Field ordering** — control render order with `meta.order`
 - **`createAutoForm()` factory** — bake in your design system defaults once, use everywhere
 - **Deep field overrides** — dot-notated `fields` prop for nested object/array overrides
@@ -76,25 +76,25 @@ That's it — UniForm introspects the schema, renders appropriate inputs, valida
 
 ### `<AutoForm>` Props
 
-| Prop              | Type                                                  | Default               | Description                                                                   |
-| ----------------- | ----------------------------------------------------- | --------------------- | ----------------------------------------------------------------------------- |
+| Prop              | Type                                                  | Default               | Description                                                                      |
+| ----------------- | ----------------------------------------------------- | --------------------- | -------------------------------------------------------------------------------- |
 | `form`            | `UniForm<TSchema>`                                    | _required_            | A `UniForm` / `createForm` instance carrying the schema and setOnChange handlers |
-| `onSubmit`        | `(values: z.infer<TSchema>) => void \| Promise<void>` | _required_            | Called with fully typed, validated values on successful submit                |
-| `defaultValues`   | `Partial<z.infer<TSchema>>`                           | `{}`                  | Pre-fill form fields                                                          |
-| `components`      | `ComponentRegistry`                                   | `defaultRegistry`     | Override field type → component mapping                                       |
-| `fields`          | `Record<string, Partial<FieldOverride>>`              | `{}`                  | Per-field metadata overrides (supports dot-notated paths for nested fields)   |
-| `fieldWrapper`    | `React.ComponentType<FieldWrapperProps>`              | `DefaultFieldWrapper` | Wrap each scalar field in a custom container                                  |
-| `layout`          | `LayoutSlots`                                         | `{}`                  | Replace form wrapper, section wrapper, submit button, or array row layout     |
-| `classNames`      | `FormClassNames`                                      | `{}`                  | CSS class names for form, field wrappers, labels, errors, descriptions        |
-| `disabled`        | `boolean`                                             | `false`               | Disable all form fields and the submit button                                 |
-| `coercions`       | `CoercionMap`                                         | `defaultCoercionMap`  | Custom per-type value coercion functions                                      |
-| `messages`        | `ValidationMessages`                                  | `undefined`           | Custom validation error messages                                              |
-| `ref`             | `React.Ref<AutoFormHandle>`                           | `undefined`           | Imperative handle for programmatic control                                    |
-| `persistKey`      | `string`                                              | `undefined`           | When set, form values auto-save to storage under this key                     |
-| `persistDebounce` | `number`                                              | `300`                 | Debounce interval in ms for persistence writes                                |
-| `persistStorage`  | `PersistStorage`                                      | `localStorage`        | Custom storage adapter (must implement `getItem`/`setItem`/`removeItem`)      |
-| `onValuesChange`  | `(values: z.infer<TSchema>) => void`                  | `undefined`           | Called on every field change with the full current form values                |
-| `labels`          | `FormLabels`                                          | `{}`                  | Override hard-coded UI text (submit button, array buttons) for i18n           |
+| `onSubmit`        | `(values: z.infer<TSchema>) => void \| Promise<void>` | _required_            | Called with fully typed, validated values on successful submit                   |
+| `defaultValues`   | `Partial<z.infer<TSchema>>`                           | `{}`                  | Pre-fill form fields                                                             |
+| `components`      | `ComponentRegistry`                                   | `defaultRegistry`     | Override field type → component mapping                                          |
+| `fields`          | `Record<string, Partial<FieldOverride>>`              | `{}`                  | Per-field metadata overrides (supports dot-notated paths for nested fields)      |
+| `fieldWrapper`    | `React.ComponentType<FieldWrapperProps>`              | `DefaultFieldWrapper` | Wrap each scalar field in a custom container                                     |
+| `layout`          | `LayoutSlots`                                         | `{}`                  | Replace form wrapper, section wrapper, submit button, or array row layout        |
+| `classNames`      | `FormClassNames`                                      | `{}`                  | CSS class names for form, field wrappers, labels, errors, descriptions           |
+| `disabled`        | `boolean`                                             | `false`               | Disable all form fields and the submit button                                    |
+| `coercions`       | `CoercionMap`                                         | `defaultCoercionMap`  | Custom per-type value coercion functions                                         |
+| `messages`        | `ValidationMessages`                                  | `undefined`           | Custom validation error messages                                                 |
+| `ref`             | `React.Ref<AutoFormHandle>`                           | `undefined`           | Imperative handle for programmatic control                                       |
+| `persistKey`      | `string`                                              | `undefined`           | When set, form values auto-save to storage under this key                        |
+| `persistDebounce` | `number`                                              | `300`                 | Debounce interval in ms for persistence writes                                   |
+| `persistStorage`  | `PersistStorage`                                      | `localStorage`        | Custom storage adapter (must implement `getItem`/`setItem`/`removeItem`)         |
+| `onValuesChange`  | `(values: z.infer<TSchema>) => void`                  | `undefined`           | Called on every field change with the full current form values                   |
+| `labels`          | `FormLabels`                                          | `{}`                  | Override hard-coded UI text (submit button, array buttons) for i18n              |
 
 ### `createForm(schema)` / `UniForm`
 
@@ -396,7 +396,7 @@ function MyTextInput(props: FieldProps) {
   )
 }
 
-<AutoForm
+;<AutoForm
   form={myForm}
   onSubmit={handleSubmit}
   components={{ string: MyTextInput }}
@@ -596,7 +596,7 @@ The `span` value is set as `--field-span` CSS custom property on each field wrap
 
 ### Conditional Fields
 
-Show a field only when another field has a specific value:
+Show a field only when another field has a specific value. When the condition becomes `false` and the field is hidden, its value is automatically reset to the field's default — so it starts fresh the next time it appears.
 
 ```tsx
 const schema = z.object({

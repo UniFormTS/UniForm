@@ -9,12 +9,14 @@ type SelectFieldProps = {
   field: Extract<FieldConfig, { type: 'select' }>
   control: Control
   effectiveName: string
+  shouldUnregister?: boolean
 }
 
 export function SelectField({
   field,
   control,
   effectiveName,
+  shouldUnregister,
 }: SelectFieldProps) {
   const {
     registry,
@@ -29,6 +31,7 @@ export function SelectField({
     <Controller
       name={effectiveName}
       control={control}
+      shouldUnregister={shouldUnregister}
       render={({ field: rhfField, fieldState }) => (
         <Component
           name={effectiveName}

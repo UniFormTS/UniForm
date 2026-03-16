@@ -39,7 +39,7 @@ export default function Example18() {
         Pass a <code>z.discriminatedUnion</code> directly to{' '}
         <code>createForm</code>. Fields are flattened automatically and{' '}
         <code>condition</code> predicates are derived from the discriminator —
-        no manual schema mirroring or <code>.condition()</code> calls needed.
+        no manual schema mirroring or <code>.setCondition()</code> calls needed.
       </p>
       <AutoForm
         form={notificationForm}
