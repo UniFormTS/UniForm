@@ -596,7 +596,10 @@ The `span` value is set as `--field-span` CSS custom property on each field wrap
 
 ### Conditional Fields
 
-Show a field only when another field has a specific value. When the condition becomes `false` and the field is hidden, its value is automatically reset to the field's default — so it starts fresh the next time it appears.
+Show a field only when another field has a specific value. Conditional fields are fully lifecycle-managed:
+
+- **Hidden → not submitted:** fields whose condition starts `false` are never pre-registered in the form store, so they don't appear in `onSubmit` data.
+- **Shown → hidden:** when a condition becomes `false` and the field unmounts, its value is discarded — it starts fresh the next time it appears.
 
 ```tsx
 const schema = z.object({

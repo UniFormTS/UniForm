@@ -1339,7 +1339,42 @@ describe('AutoForm', () => {
   })
 
   // ---------------------------------------------------------------------------
-  // 56. Conditional field resets value when condition becomes false
+  // 56. Conditional field absent from submit when condition starts false
+  // ---------------------------------------------------------------------------
+
+  it('56. excludes a conditional field from submitted data when its condition starts false', async () => {
+    const schema = z.object({
+      hasNotes: z.boolean(),
+      notes: z.string().optional(),
+    })
+    const onSubmit = vi.fn()
+    const { user } = setup(
+      <AutoForm
+        form={new UniForm(schema)}
+        onSubmit={onSubmit}
+        defaultValues={{ hasNotes: false }}
+        fields={{
+          notes: {
+            condition: (values: Record<string, unknown>) =>
+              values['hasNotes'] === true,
+          },
+        }}
+      />,
+    )
+
+    // Submit without ever touching hasNotes
+    await user.click(screen.getByRole('button', { name: /submit/i }))
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith({ hasNotes: false })
+      expect(
+        'notes' in (onSubmit.mock.calls[0] as [Record<string, unknown>])[0],
+      ).toBe(false)
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // 57. Conditional field resets value when condition becomes false
   // ---------------------------------------------------------------------------
 
   it('56. resets a conditional field value when its condition becomes false', async () => {

@@ -105,13 +105,38 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     [rawFields],
   )
 
-  const computedDefaults = React.useMemo(
-    () => ({
+  const computedDefaults = React.useMemo(() => {
+    const base: Record<string, unknown> = {
       ...generatedDefaults,
-      ...(defaultValues as Record<string, unknown>),
-    }),
-    [generatedDefaults, defaultValues],
-  )
+      ...defaultValues,
+    }
+
+    // Collect all conditions: UniForm-registered takes precedence, fields-prop fills gaps
+    const conditions = new Map<string, FieldCondition>(
+      (uniForm as UniForm<TSchema>)._getConditions() as Map<
+        string,
+        FieldCondition
+      >,
+    )
+    for (const [name, override] of Object.entries(
+      fieldOverridesProp as Record<string, Partial<FieldMeta>>,
+    )) {
+      if (typeof override.condition === 'function' && !conditions.has(name)) {
+        conditions.set(name, override.condition as FieldCondition)
+      }
+    }
+
+    // Exclude fields whose condition starts false so they're never pre-registered
+    // in the RHF store. Evaluated against `base` so fields that start visible
+    // (condition true) still receive their default value.
+    for (const [name, condition] of conditions) {
+      if (!condition(base)) {
+        delete base[name]
+      }
+    }
+
+    return base
+  }, [generatedDefaults, defaultValues, uniForm, fieldOverridesProp])
 
   const rhf = useForm({
     resolver: zodResolver(schema) as unknown as Resolver,
