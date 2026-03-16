@@ -30,7 +30,7 @@ export type UniFormContext<TSchema extends z.$ZodObject = z.$ZodObject> =
 type Handler<TSchema extends z.$ZodObject, TValue> = (
   value: TValue,
   ctx: UniFormContext<TSchema>,
-) => void
+) => void | Promise<void>
 
 type Condition<TSchema extends z.$ZodObject> = (
   values: z.infer<TSchema>,
@@ -107,8 +107,8 @@ export class UniForm<
     field: string,
     value: unknown,
     ctx: UniFormContext<TSchema>,
-  ): void {
-    this._handlers.get(field)?.(value, ctx)
+  ): void | Promise<void> {
+    return this._handlers.get(field)?.(value, ctx)
   }
 
   /** @internal Returns all field names that have registered onChange handlers. */

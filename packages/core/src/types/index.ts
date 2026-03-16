@@ -223,8 +223,8 @@ export type FieldMetaBase = {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   component?: string | React.ComponentType<any>
-  /** Called when this field's value changes. Receives the new value and form control methods. */
-  onChange?: (value: unknown, form: FormMethods) => void
+  /** Called when this field's value changes. Receives the new value and form control methods. May be async. */
+  onChange?: (value: unknown, form: FormMethods) => void | Promise<void>
 
   // ---------------------------------------------------------------------------
   // Array-specific options
@@ -442,6 +442,11 @@ export type LayoutSlots = {
   submitButton?: React.ComponentType<{ isSubmitting: boolean }>
   /** Custom layout component for individual rows in array fields. */
   arrayRowLayout?: React.ComponentType<ArrayRowLayoutProps>
+  /**
+   * Content rendered while async `defaultValues` are loading.
+   * Defaults to a simple `<p>Loading…</p>` when not provided.
+   */
+  loadingFallback?: React.ReactNode
 }
 
 /**
@@ -456,6 +461,7 @@ export type ResolvedLayoutSlots = {
   }>
   submitButton: React.ComponentType<{ isSubmitting: boolean }>
   arrayRowLayout: React.ComponentType<ArrayRowLayoutProps>
+  loadingFallback: React.ReactNode
 }
 
 // ---------------------------------------------------------------------------
@@ -505,8 +511,11 @@ export type FieldOverride<
 > = Partial<FieldMetaBase> & {
   /** Conditionally show or hide the field based on the current form values. */
   condition?: FieldCondition<z.infer<TSchema>>
-  /** Called when this field's value changes. Receives the new value and form control methods. */
-  onChange?: (value: TValue, form: FormMethods<z.infer<TSchema>>) => void
+  /** Called when this field's value changes. Receives the new value and form control methods. May be async. */
+  onChange?: (
+    value: TValue,
+    form: FormMethods<z.infer<TSchema>>,
+  ) => void | Promise<void>
   [key: string]: unknown
 }
 
@@ -585,7 +594,10 @@ export type PersistStorage = {
  * @template TSchema - The Zod object schema that defines the form shape.
  */
 export type AutoFormHandle<TSchema extends z.$ZodObject = z.$ZodObject> =
-  FormMethods<z.infer<TSchema>>
+  FormMethods<z.infer<TSchema>> & {
+    /** `true` while an async `onSubmit` handler is in flight. */
+    isSubmitting: boolean
+  }
 
 // ---------------------------------------------------------------------------
 // AutoFormConfig (factory)
@@ -630,8 +642,14 @@ export type AutoFormProps<TSchema extends z.$ZodObject> = {
   form: { readonly schema: TSchema }
   /** Called with the validated form values when the form is submitted successfully. */
   onSubmit: (values: z.infer<TSchema>) => void | Promise<void>
-  /** Initial values to pre-populate the form with. */
-  defaultValues?: Partial<z.infer<TSchema>>
+  /**
+   * Initial values to pre-populate the form with.
+   * When an async function is provided, the form shows `loadingFallback` until the
+   * promise resolves, then resets the form with the loaded values.
+   */
+  defaultValues?:
+    | Partial<z.infer<TSchema>>
+    | (() => Promise<Partial<z.infer<TSchema>>>)
   /** Component registry overrides for this form instance. */
   components?: ComponentRegistry
   /** Per-field UI metadata overrides (label, placeholder, options, etc.). */
