@@ -89,12 +89,11 @@ A card-style form wrapper with a custom submit button:
 
 ```jsx live noInline
 // Custom card form wrapper
-const CardForm = ({ children, onSubmit }) => (
-  <form
-    onSubmit={onSubmit}
+const CardForm = ({ children }) => (
+  <div
     style={{
-      background: '#fff',
-      border: '1px solid #e5e7eb',
+      background: 'var(--ifm-background-color)',
+      border: '1px solid var(--ifm-color-emphasis-300)',
       borderRadius: 12,
       boxShadow: '0 4px 16px rgba(0,0,0,0.07)',
       padding: '1.5rem',
@@ -102,7 +101,7 @@ const CardForm = ({ children, onSubmit }) => (
     }}
   >
     {children}
-  </form>
+  </div>
 )
 
 // Custom section with accent bar
@@ -184,7 +183,7 @@ function App() {
         <pre
           style={{
             marginTop: '1rem',
-            background: '#f5f5f5',
+            background: 'var(--ifm-color-emphasis-200)',
             padding: '1rem',
             borderRadius: 6,
           }}

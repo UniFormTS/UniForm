@@ -57,7 +57,9 @@ function App() {
   return (
     <div style={{ fontFamily: 'system-ui', maxWidth: 380 }}>
       {saved ? (
-        <p style={{ color: 'green' }}>✅ Saved successfully!</p>
+        <p style={{ color: 'var(--ifm-color-success)' }}>
+          ✅ Saved successfully!
+        </p>
       ) : (
         <AutoForm
           form={contactForm}
@@ -120,7 +122,13 @@ function App() {
   const [result, setResult] = React.useState(null)
   return (
     <div style={{ fontFamily: 'system-ui', maxWidth: 420 }}>
-      <p style={{ fontSize: 13, color: '#6b7280', marginBottom: '0.75rem' }}>
+      <p
+        style={{
+          fontSize: 13,
+          color: 'var(--ifm-color-emphasis-600)',
+          marginBottom: '0.75rem',
+        }}
+      >
         Change the SKU — product name and price update automatically after a 500
         ms simulated fetch.
       </p>
@@ -145,7 +153,7 @@ function App() {
         <pre
           style={{
             marginTop: '1rem',
-            background: '#f5f5f5',
+            background: 'var(--ifm-color-emphasis-200)',
             padding: '1rem',
             borderRadius: 6,
           }}
@@ -200,7 +208,7 @@ const Skeleton = () => (
         style={{
           height: 36,
           background:
-            'linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%)',
+            'linear-gradient(90deg, var(--ifm-color-emphasis-200) 25%, var(--ifm-color-emphasis-100) 50%, var(--ifm-color-emphasis-200) 75%)',
           backgroundSize: '200% 100%',
           borderRadius: 6,
           marginBottom: 12,
@@ -236,7 +244,7 @@ function App() {
           }}
           style={{
             padding: '6px 14px',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--ifm-color-emphasis-300)',
             borderRadius: 6,
             cursor: 'pointer',
           }}
@@ -244,7 +252,9 @@ function App() {
           ↺ Reload (re-fetch)
         </button>
       </div>
-      {saved && <p style={{ color: 'green' }}>Profile saved!</p>}
+      {saved && (
+        <p style={{ color: 'var(--ifm-color-success)' }}>Profile saved!</p>
+      )}
       <AutoForm
         key={key}
         form={profileForm}

@@ -97,23 +97,17 @@ const teamSchema = z.object({
 
 const teamForm = createForm(teamSchema)
 
-const CompactRowLayout = ({
-  children,
-  onRemove,
-  onDuplicate,
-  canMoveUp,
-  canMoveDown,
-  onMoveUp,
-  onMoveDown,
-  index,
-}) => (
+const CompactRowLayout = ({ children, buttons, index }) => (
   <div
     style={{
-      border: '1px solid #e5e7eb',
+      border: '1px solid var(--ifm-color-emphasis-300)',
       borderRadius: 8,
       padding: '0.75rem',
       marginBottom: '0.5rem',
-      background: index % 2 === 0 ? '#fafafa' : '#fff',
+      background:
+        index % 2 === 0
+          ? 'var(--ifm-color-emphasis-100)'
+          : 'var(--ifm-background-color)',
     }}
   >
     {children}
@@ -125,44 +119,10 @@ const CompactRowLayout = ({
         justifyContent: 'flex-end',
       }}
     >
-      <button
-        type='button'
-        onClick={onMoveUp}
-        disabled={!canMoveUp}
-        style={{
-          padding: '2px 8px',
-          cursor: canMoveUp ? 'pointer' : 'default',
-          opacity: canMoveUp ? 1 : 0.4,
-        }}
-      >
-        ↑
-      </button>
-      <button
-        type='button'
-        onClick={onMoveDown}
-        disabled={!canMoveDown}
-        style={{
-          padding: '2px 8px',
-          cursor: canMoveDown ? 'pointer' : 'default',
-          opacity: canMoveDown ? 1 : 0.4,
-        }}
-      >
-        ↓
-      </button>
-      <button
-        type='button'
-        onClick={onDuplicate}
-        style={{ padding: '2px 8px', color: '#4F46E5' }}
-      >
-        ⊕ Clone
-      </button>
-      <button
-        type='button'
-        onClick={onRemove}
-        style={{ padding: '2px 8px', color: '#dc2626' }}
-      >
-        ✕ Remove
-      </button>
+      {buttons.moveUp}
+      {buttons.moveDown}
+      {buttons.duplicate}
+      {buttons.remove}
     </div>
   </div>
 )
@@ -171,13 +131,15 @@ function App() {
   const [result, setResult] = React.useState(null)
   return (
     <div style={{ fontFamily: 'system-ui', maxWidth: 480 }}>
+      <style>{`.ar-dup { color: var(--ifm-color-primary) } .ar-rm { color: var(--ifm-color-danger) }`}</style>
       <AutoForm
         form={teamForm}
         defaultValues={{ members: [{ name: '', email: '', role: 'member' }] }}
         fields={{
           teamName: { label: 'Team Name' },
-          members: { label: 'Team Members' },
+          members: { label: 'Team Members', movable: true, duplicable: true },
         }}
+        classNames={{ arrayDuplicate: 'ar-dup', arrayRemove: 'ar-rm' }}
         layout={{ arrayRowLayout: CompactRowLayout }}
         labels={{ addItem: '+ Add member', submit: 'Create Team' }}
         onSubmit={(v) => setResult(v)}
@@ -186,7 +148,7 @@ function App() {
         <pre
           style={{
             marginTop: '1rem',
-            background: '#f5f5f5',
+            background: 'var(--ifm-color-emphasis-200)',
             padding: '1rem',
             borderRadius: 6,
             fontSize: 12,

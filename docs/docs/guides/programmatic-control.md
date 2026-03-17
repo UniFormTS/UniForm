@@ -103,7 +103,7 @@ function App() {
           onClick={handleShowValues}
           style={{
             padding: '6px 14px',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--ifm-color-emphasis-300)',
             borderRadius: 6,
             cursor: 'pointer',
           }}
@@ -115,10 +115,10 @@ function App() {
           onClick={handleClear}
           style={{
             padding: '6px 14px',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--ifm-color-emphasis-300)',
             borderRadius: 6,
             cursor: 'pointer',
-            color: '#dc2626',
+            color: 'var(--ifm-color-danger)',
           }}
         >
           Clear
@@ -133,16 +133,18 @@ function App() {
           email: { label: 'Email' },
           role: { label: 'Role' },
         }}
-        onSubmit={(v) => setInfo('Submitted: ' + JSON.stringify(v))}
+        onSubmit={(v) => setInfo(JSON.stringify(v, null, 2))}
       />
       {info && (
         <pre
           style={{
             marginTop: '1rem',
-            background: '#f5f5f5',
+            background: 'var(--ifm-color-emphasis-200)',
             padding: '1rem',
             borderRadius: 6,
             fontSize: 12,
+            overflow: 'visible',
+            whiteSpace: 'pre-wrap',
           }}
         >
           {info}
