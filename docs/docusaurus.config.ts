@@ -11,15 +11,15 @@ const config: Config = {
   favicon: 'img/favicon.ico',
 
   // Set the production url of your site here
-  url: 'https://uniform-docs.example.com',
+  url: 'https://uniform.com',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: '/',
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
-  organizationName: 'your-org', // Usually your GitHub org/user name.
-  projectName: 'generic-zod-form', // Usually your repo name.
+  organizationName: 'UniForm-dev', // Usually your GitHub org/user name.
+  projectName: 'UniForm', // Usually your repo name.
 
   onBrokenLinks: 'throw',
 
@@ -91,7 +91,7 @@ const config: Config = {
           items: [
             {
               label: 'GitHub',
-              href: 'https://github.com/your-org/generic-zod-form',
+              href: 'https://github.com/UniForm-dev/UniForm',
             },
           ],
         },
