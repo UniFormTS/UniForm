@@ -73,13 +73,15 @@ Common Zod error codes: `too_small`, `too_big`, `invalid_type`, `invalid_string`
 
 ## Resolution order
 
+`messages[fieldName]` accepts **either** a `string` (replaces all errors on that field) **or** an object (maps individual Zod error codes to strings). These are two alternative shapes — you choose one per field.
+
 For each field error, UniForm resolves the message in this priority:
 
-1. Per-field string in `messages[fieldName]` — used for all errors on that field
-2. Per-field per-code in `messages[fieldName][error.code]`
-3. Global `messages.required` — when the error is a required-field error (`too_small` or `invalid_type`)
-4. The message from the Zod schema itself (e.g. `z.string().min(3, 'Too short!')`)
-5. Zod's default English message
+1. **Per-field string** — if `messages[fieldName]` is a `string`, it replaces every error on that field regardless of error code
+2. **Per-field per-code** — if `messages[fieldName]` is an object, the matching `messages[fieldName][error.code]` string is used
+3. **Global `messages.required`** — when the error is a required-field error (`too_small` or `invalid_type`) and no per-field override matched
+4. **Schema message** — the message passed directly in the schema (e.g. `z.string().min(3, 'Too short!')`)
+5. **Zod's default English message**
 
 ## Using with `createAutoForm`
 

@@ -3,7 +3,9 @@ import type { SidebarsConfig } from '@docusaurus/plugin-content-docs'
 const sidebars: SidebarsConfig = {
   docsSidebar: [
     'intro',
+    'tutorial',
     'installation',
+    'concepts',
     {
       type: 'category',
       label: 'API Reference',

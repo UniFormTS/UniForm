@@ -6,7 +6,11 @@ description: Render and manage repeating groups of fields from z.array() schemas
 
 # Array Fields
 
-Any `z.array(z.object(...))` field is automatically rendered as a repeating group. Each row is an independent nested form segment rendered below an **Add** button.
+`z.array(z.object(...))` fields are automatically rendered as a repeating group. Each row is an independent nested form segment rendered below an **Add** button.
+
+:::note Object arrays only
+UniForm renders array fields whose item schema is a `z.object(...)`. Arrays of primitives (e.g. `z.array(z.string())`) are not rendered as repeating fields — use a custom component for those cases.
+:::
 
 ```ts
 const schema = z.object({
@@ -45,6 +49,7 @@ You can also replace the entire row layout via `layout.arrayRowLayout`. The comp
 ```tsx
 const MyRowLayout = ({ children, buttons, index }) => (
   <div className='array-row'>
+    {buttons.collapse}
     {children}
     <div className='row-controls'>
       {buttons.moveUp}

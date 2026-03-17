@@ -21,8 +21,28 @@ myForm.setCondition(
 ## How it works
 
 - When a field is hidden, it is **unregistered** from React Hook Form — its value is removed from the submitted object and its validation rules do not run.
-- When a field becomes visible again, it is re-registered and its previous value is restored.
+- When a field becomes visible again, it is re-registered and its previous value is restored. This means switching a field off and back on does not lose the user's input.
 - Conditions are evaluated reactively on every form value change.
+
+## Inline condition (without `createForm`)
+
+For simple cases you can skip `createForm` and pass a `condition` predicate directly in the `fields` prop:
+
+```tsx
+<AutoForm
+  fields={{
+    vatNumber: {
+      condition: (values) => values.isBusinessAccount === true,
+    },
+    companyName: {
+      condition: (values) => values.isBusinessAccount === true,
+    },
+  }}
+  ...
+/>
+```
+
+Use `setCondition` (via `createForm`) when the logic is shared across multiple `<AutoForm>` instances, or when you want to colocate all form behaviour in one place outside the component tree.
 
 ## Multiple conditions
 

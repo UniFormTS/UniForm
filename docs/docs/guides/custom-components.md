@@ -10,27 +10,9 @@ UniForm ships with `defaultRegistry` — a minimal set of field components that 
 
 ## The component registry
 
-The registry is an object that maps a **type key** → a **React component**. The built-in keys are:
+The registry maps a **type key** to a React component. The built-in keys are `string`, `number`, `boolean`, `date`, `select` (for `z.enum()` / `z.nativeEnum()`), and `textarea` (opt-in). You can add your own keys (e.g. `"slider"`, `"rating"`) and reference them via `fields={{ myField: { component: 'rating' } }}`.
 
-| Key        | Used for                             |
-| ---------- | ------------------------------------ |
-| `string`   | `z.string()` fields                  |
-| `number`   | `z.number()` fields                  |
-| `boolean`  | `z.boolean()` fields                 |
-| `date`     | `z.date()` fields                    |
-| `select`   | `z.enum()` / `z.nativeEnum()` fields |
-| `textarea` | opt-in via `component: 'textarea'`   |
-
-You can add your own keys (e.g. `"slider"`, `"rating"`) and reference them via `fields={{ myField: { component: 'rating' } }}`.
-
-## The resolution chain
-
-When UniForm renders a field it picks the component in this order:
-
-1. `fields[fieldName].component` key in the provided registry
-2. The Zod-inferred type key registered in `components`
-3. The same key in `defaultRegistry`
-4. Falls back to `DefaultInput`
+You can override any key without replacing the others — your registry is merged with `defaultRegistry`. For the full type definition and resolution order see [`ComponentRegistry`](/docs/api/types#componentregistry) in the API reference.
 
 ## Writing a custom component
 
@@ -64,12 +46,25 @@ export function StarRating({ value, onChange, error }: FieldProps) {
 }
 ```
 
-Then register it:
+Then register it and point the field at it:
 
 ```ts
 const myRegistry = { rating: StarRating }
 
 <AutoForm components={myRegistry} fields={{ score: { component: 'rating' } }} ... />
+```
+
+To replace a built-in type for **all** fields of that type in a form, register it under the type key:
+
+```ts
+// Every z.string() field now uses MyTextInput
+<AutoForm components={{ string: MyTextInput }} ... />
+```
+
+To replace it for a **single field** only, pass the component directly in `fields`:
+
+```ts
+fields={{ bio: { component: MyTextarea } }}
 ```
 
 ## Live Example
