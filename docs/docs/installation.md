@@ -1,6 +1,6 @@
 ---
 title: Installation
-sidebar_position: 2
+sidebar_position: 4
 ---
 
 # Installation
@@ -11,6 +11,28 @@ Install `@uniform/core` along with its peer dependencies:
 
 ```bash npm2yarn
 npm install @uniform/core react react-hook-form zod
+```
+
+:::note Zod V4 import path
+UniForm requires the Zod V4 API. How you import it depends on which version of the `zod` package you have installed:
+
+- **`zod@3.25` or later** — Zod V4 ships inside the existing `zod` package. Import from the sub-path:
+  ```ts
+  import { z } from 'zod/v4'
+  ```
+- **`zod@4.x`** — Import directly from the package root:
+  ```ts
+  import { z } from 'zod'
+  ```
+:::
+
+## Imports
+
+Everything you need is exported from `@uniform/core`:
+
+```ts
+import { createForm, AutoForm, createAutoForm } from '@uniform/core'
+import type { FieldProps, AutoFormHandle } from '@uniform/core'
 ```
 
 ## TypeScript Configuration
@@ -27,18 +49,6 @@ UniForm requires TypeScript with `strict` mode and `moduleResolution: bundler` (
 }
 ```
 
-## Build Output
-
-The package ships:
-
-| Format | Entry                                  |
-| ------ | -------------------------------------- |
-| ESM    | `dist/index.mjs`                       |
-| CJS    | `dist/index.js`                        |
-| Types  | `dist/index.d.ts` / `dist/index.d.mts` |
-
-Both outputs are tree-shakeable (`"sideEffects": false`).
-
 ## Peer Dependencies
 
 | Package           | Version            |
@@ -46,7 +56,3 @@ Both outputs are tree-shakeable (`"sideEffects": false`).
 | `react`           | `^19.0.0`          |
 | `react-hook-form` | `^7.0.0`           |
 | `zod`             | `^3.25.0` (Zod V4) |
-
-:::note
-Zod V4 ships under the `zod@^3.25` version range. Import from `'zod/v4'` for the V4 API surface.
-:::

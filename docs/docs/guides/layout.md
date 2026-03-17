@@ -23,8 +23,8 @@ Pass a `layout` object to `<AutoForm>` (or `createAutoForm`) to override any slo
 ### Slot prop types
 
 ```ts
-// formWrapper
-type FormWrapperProps = { children: React.ReactNode; onSubmit: () => void }
+// formWrapper — receives only children; the <form> element is managed by AutoForm
+type FormWrapperProps = { children: React.ReactNode }
 
 // sectionWrapper
 type SectionWrapperProps = { title: string; children: React.ReactNode }
@@ -33,19 +33,20 @@ type SectionWrapperProps = { title: string; children: React.ReactNode }
 type SubmitButtonProps = {
   isSubmitting: boolean
   label: string
-  disabled?: boolean
 }
 
-// arrayRowLayout
+// arrayRowLayout — buttons are pre-rendered nodes, not callbacks
 type ArrayRowLayoutProps = {
   children: React.ReactNode
-  onRemove: () => void
-  onMoveUp?: () => void
-  onMoveDown?: () => void
-  onDuplicate?: () => void
-  canMoveUp: boolean
-  canMoveDown: boolean
-  index: number
+  buttons: {
+    moveUp: React.ReactNode | null // null when already first row
+    moveDown: React.ReactNode | null // null when already last row
+    duplicate: React.ReactNode | null // null when at maxItems
+    remove: React.ReactNode
+    collapse: React.ReactNode | null // null when collapsible is disabled
+  }
+  index: number // zero-based row index
+  rowCount: number // total number of rows
 }
 ```
 
@@ -68,18 +69,56 @@ Add CSS classes to structural elements without replacing the whole component:
 />
 ```
 
-## CSS custom properties
+## Field wrapper CSS variables
 
-The default components expose these CSS custom properties so you can theme without creating custom components:
+The default field wrapper sets three CSS custom properties on each field's container element. Use these in your `fieldWrapper` class to build grid or stacked layouts without a custom wrapper component.
+
+| Variable | Value | Description |
+|---|---|---|
+| `--field-span` | `1`–`12` | Column span from `meta.span` (or `fields[name].span`), falling back to `1` |
+| `--field-index` | `0`, `1`, `2`, … | Zero-based render index of the field within its section |
+| `--field-depth` | `0`, `1`, `2`, … | Nesting depth (`0` = top-level, `1` = inside an array row, etc.) |
+
+Example — 12-column grid driven entirely by CSS:
 
 ```css
-:root {
-  --uniform-input-border: #d1d5db;
-  --uniform-input-radius: 6px;
-  --uniform-input-focus: #4f46e5;
-  --uniform-button-bg: #4f46e5;
-  --uniform-button-color: #fff;
-  --uniform-error-color: #dc2626;
+.field-wrapper {
+  grid-column: span var(--field-span);
+}
+```
+
+```tsx
+<AutoForm classNames={{ form: 'grid grid-cols-12 gap-4', fieldWrapper: 'field-wrapper' }} ... />
+```
+
+## Field wrapper data attributes
+
+The default field wrapper also sets `data-*` attributes on the container element. These are useful for CSS selectors and for testing.
+
+| Attribute | Present when |
+|---|---|
+| `data-field-name` | Always — value is the field's dot-notated name |
+| `data-field-type` | Always — value is the resolved type key (`"string"`, `"number"`, `"boolean"`, `"date"`, `"select"`) |
+| `data-required` | Field is required (not optional/nullable in the schema) |
+| `data-disabled` | Field is disabled (via `meta.disabled`, `fields[name].disabled`, or the global `disabled` prop) |
+| `data-has-error` | A validation error is currently shown on this field |
+| `data-has-description` | The field has a `description` set |
+
+Example — style required fields and error states with plain CSS:
+
+```css
+[data-required]::after {
+  content: ' *';
+  color: #dc2626;
+}
+
+[data-has-error] label {
+  color: #dc2626;
+}
+
+[data-field-type='boolean'] {
+  flex-direction: row;
+  align-items: center;
 }
 ```
 
@@ -130,10 +169,10 @@ const AccentSection = ({ title, children }) => (
 )
 
 // Gradient submit button
-const GradientButton = ({ isSubmitting, label, disabled }) => (
+const GradientButton = ({ isSubmitting, label }) => (
   <button
     type='submit'
-    disabled={disabled || isSubmitting}
+    disabled={isSubmitting}
     style={{
       background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
       color: '#fff',
@@ -141,8 +180,8 @@ const GradientButton = ({ isSubmitting, label, disabled }) => (
       borderRadius: 8,
       padding: '10px 24px',
       fontWeight: 600,
-      cursor: disabled || isSubmitting ? 'not-allowed' : 'pointer',
-      opacity: disabled || isSubmitting ? 0.6 : 1,
+      cursor: isSubmitting ? 'not-allowed' : 'pointer',
+      opacity: isSubmitting ? 0.6 : 1,
       width: '100%',
     }}
   >

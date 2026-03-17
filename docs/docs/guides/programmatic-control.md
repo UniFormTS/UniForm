@@ -6,7 +6,7 @@ description: Use the ref handle to imperatively control the form from outside it
 
 # Programmatic Control
 
-Attach a `ref` to `<AutoForm>` to get an `AutoFormHandle` — a superset of React Hook Form's `UseFormReturn` — that lets you read and set values, trigger validation, reset the form, and check submission state from anywhere in your component tree.
+Attach a `ref` to `<AutoForm>` to get an `AutoFormHandle` — a superset of [`FormMethods`](../api/types#formmethods) — that lets you read and set values, trigger submission, reset the form, and check submission state from anywhere in your component tree.
 
 ```tsx
 import { useRef } from 'react'
@@ -19,7 +19,7 @@ const formRef = useRef<AutoFormHandle<typeof schema>>(null)
 
 ## Available methods
 
-All methods from React Hook Form's `UseFormReturn` are available, plus:
+`AutoFormHandle` exposes all [`FormMethods`](../api/types#formmethods) plus:
 
 | Member         | Type                           | Description                                      |
 | -------------- | ------------------------------ | ------------------------------------------------ |

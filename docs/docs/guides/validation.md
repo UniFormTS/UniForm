@@ -6,35 +6,82 @@ description: Customise and internationalise Zod validation error messages.
 
 # Validation & Error Messages
 
-UniForm runs Zod validation through `zodResolver` from `@hookform/resolvers`. By default, Zod's own error messages are displayed. The `messages` prop lets you override them globally or per-type.
+UniForm runs Zod validation through `zodResolver` from `@hookform/resolvers`. By default, Zod's own error messages are displayed. The `messages` prop lets you override them globally or per-field.
 
 ## The `messages` prop
+
+`ValidationMessages` supports three levels of override:
+
+```ts
+type ValidationMessages = {
+  /** Global override for any required-field error */
+  required?: string
+  /** Per-field overrides — string replaces all errors on that field,
+   *  or an object maps Zod error codes to specific strings */
+  [fieldName: string]: string | Record<string, string> | undefined
+}
+```
+
+### Global required message
+
+Override the message shown for any missing required value:
+
+```tsx
+<AutoForm
+  messages={{ required: 'This field is required' }}
+  ...
+/>
+```
+
+This replaces errors for Zod's `too_small` (empty string, zero) and `invalid_type` (undefined on required field) codes.
+
+### Per-field string override
+
+Replace **all** error messages for a specific field with a single string:
 
 ```tsx
 <AutoForm
   messages={{
-    required: 'This field is required',
-    minLength: (min) => `Must be at least ${min} characters`,
-    maxLength: (max) => `Must be no more than ${max} characters`,
-    min: (min) => `Must be at least ${min}`,
-    max: (max) => `Must be at most ${max}`,
     email: 'Please enter a valid email address',
-    url: 'Please enter a valid URL',
-    custom: (msg) => msg,
+    username: 'Username is invalid',
   }}
   ...
 />
 ```
 
-All properties are optional — only provide the ones you want to override.
+### Per-field per-code override
+
+Map Zod error codes to specific messages for fine-grained control:
+
+```tsx
+<AutoForm
+  messages={{
+    username: {
+      too_small: 'Username must be at least 3 characters',
+      too_big: 'Username cannot exceed 20 characters',
+    },
+    age: {
+      too_small: 'You must be at least 13 years old',
+      invalid_type: 'Age must be a number',
+    },
+  }}
+  ...
+/>
+```
+
+Common Zod error codes: `too_small`, `too_big`, `invalid_type`, `invalid_string`, `invalid_enum_value`.
 
 ## Resolution order
 
-For each field error, UniForm resolves the message in this order:
+`messages[fieldName]` accepts **either** a `string` (replaces all errors on that field) **or** an object (maps individual Zod error codes to strings). These are two alternative shapes — you choose one per field.
 
-1. The `messages` override for the matching Zod issue code
-2. The message from the Zod schema itself (e.g. `z.string().min(3, 'Too short!')`)
-3. Zod's default English message
+For each field error, UniForm resolves the message in this priority:
+
+1. **Per-field string** — if `messages[fieldName]` is a `string`, it replaces every error on that field regardless of error code
+2. **Per-field per-code** — if `messages[fieldName]` is an object, the matching `messages[fieldName][error.code]` string is used
+3. **Global `messages.required`** — when the error is a required-field error (`too_small` or `invalid_type`) and no per-field override matched
+4. **Schema message** — the message passed directly in the schema (e.g. `z.string().min(3, 'Too short!')`)
+5. **Zod's default English message**
 
 ## Using with `createAutoForm`
 
@@ -44,8 +91,7 @@ Bake messages into a factory so all forms in your app share the same wording:
 export const MyForm = createAutoForm({
   messages: {
     required: 'Required',
-    email: 'Invalid email',
-    minLength: (n) => `${n}+ characters required`,
+    email: 'Invalid email address',
   },
 })
 ```
@@ -56,7 +102,6 @@ export const MyForm = createAutoForm({
 const schema = z.object({
   username: z.string().min(3).max(20),
   email: z.string().email(),
-  website: z.string().url().optional().or(z.literal('')),
   age: z.number().min(13).max(120),
 })
 
@@ -94,7 +139,6 @@ function App() {
         fields={{
           username: { label: 'Username', description: '3–20 characters' },
           email: { label: 'Email address' },
-          website: { label: 'Personal website (optional)' },
           age: { label: 'Age' },
         }}
         onSubmit={(v) => setResult(v)}

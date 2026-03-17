@@ -24,7 +24,7 @@ UniForm has first-class support for async workflows at every layer — submittin
 />
 ```
 
-While the returned promise is pending, the submit button receives `isSubmitting={true}` as a prop.
+While the returned promise is pending, the submit button receives `isSubmitting={true}`. Use this to show a loading state or disable the button.
 
 ```jsx live noInline
 const schema = z.object({
@@ -34,10 +34,10 @@ const schema = z.object({
 
 const contactForm = createForm(schema)
 
-const SpinnerButton = ({ isSubmitting, label, disabled }) => (
+const SpinnerButton = ({ isSubmitting, label }) => (
   <button
     type='submit'
-    disabled={disabled || isSubmitting}
+    disabled={isSubmitting}
     style={{
       padding: '8px 20px',
       background: '#4F46E5',

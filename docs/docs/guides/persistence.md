@@ -29,14 +29,19 @@ Add `persistKey` to auto-save the form values to storage whenever they change. O
 
 ## Custom storage adapter
 
-```ts
-const myStorage = {
-  getItem: (key) => fetch(`/api/drafts/${key}`).then(r => r.text()),
-  setItem: (key, value) => fetch(`/api/drafts/${key}`, { method: 'PUT', body: value }),
-  removeItem: (key) => fetch(`/api/drafts/${key}`, { method: 'DELETE' }),
-}
+The adapter must be **synchronous** — `getItem` must return `string | null`, not a `Promise`. This is compatible with the browser's built-in `localStorage` and `sessionStorage`.
 
-<AutoForm persistStorage={myStorage} persistKey="invoice-draft" ... />
+A common use case is namespacing keys or using an in-memory store during testing:
+
+```ts
+// Namespace all keys under a user-specific prefix
+const userStorage = (userId: string) => ({
+  getItem: (key: string) => localStorage.getItem(`user:${userId}:${key}`),
+  setItem: (key: string, value: string) => localStorage.setItem(`user:${userId}:${key}`, value),
+  removeItem: (key: string) => localStorage.removeItem(`user:${userId}:${key}`),
+})
+
+<AutoForm persistStorage={userStorage(currentUser.id)} persistKey="invoice-draft" ... />
 ```
 
 ## Live Example

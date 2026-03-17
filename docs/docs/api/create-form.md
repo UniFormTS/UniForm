@@ -16,7 +16,7 @@ const myForm = createForm(schema)
 
 ## `setOnChange(field, handler)`
 
-Register a reactive handler that fires whenever `field` changes. The handler receives the new `value` and the `UniFormContext` which exposes `setValue`, `getValues`, and `formMethods` (the full React Hook Form handle).
+Register a reactive handler that fires whenever `field` changes. The handler receives the new `value` and a `UniFormContext` with full form control methods.
 
 ```ts
 myForm.setOnChange('country', async (value, ctx) => {
@@ -25,21 +25,26 @@ myForm.setOnChange('country', async (value, ctx) => {
 })
 ```
 
-You can register **multiple** handlers for the same field — they run in registration order.
+Only **one** handler per field is supported. Calling `setOnChange` again for the same field replaces the previous handler. `setOnChange` returns `this` for fluent chaining.
 
 ### `UniFormContext<TSchema>`
 
-`UniFormContext` extends all [`FormMethods`](/docs/api/types#formmethods) and adds:
+`UniFormContext` extends all [`FormMethods`](/docs/api/types#formmethods) and adds one extra method:
 
 | Property       | Type                                                    | Description                                                  |
 | -------------- | ------------------------------------------------------- | ------------------------------------------------------------ |
 | `setValue`     | `(field, value) => void`                                | Set another field's value programmatically                   |
 | `setValues`    | `(values: Partial<T>) => void`                          | Set multiple field values at once                            |
 | `getValues`    | `() => z.infer<TSchema>`                                | Snapshot of all current values                               |
-| `setFieldMeta` | `(field, meta: Partial<FieldDependencyResult>) => void` | Dynamically override a field's label/options/disabled/hidden |
-| `reset`        | `(values?) => void`                                     | Reset the form                                               |
+| `resetField`   | `(field) => void`                                       | Reset a single field to its default value                    |
+| `reset`        | `(values?) => void`                                     | Reset the entire form                                        |
 | `setError`     | `(field, message) => void`                              | Set a validation error                                       |
+| `setErrors`    | `(errors) => void`                                      | Set errors on multiple fields at once                        |
 | `clearErrors`  | `(fields?) => void`                                     | Clear errors                                                 |
+| `submit`       | `() => void`                                            | Programmatically trigger form submission                     |
+| `focus`        | `(field) => void`                                       | Focus a specific field by name                               |
+| `watch`        | `(field?) => value`                                     | Subscribe to a field (or all values)                         |
+| `setFieldMeta` | `(field, meta: Partial<FieldDependencyResult>) => void` | Dynamically override a field's label/options/disabled/hidden |
 
 ## `setCondition(field, predicate)`
 

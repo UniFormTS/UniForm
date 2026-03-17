@@ -10,18 +10,63 @@ The `fields` prop on `<AutoForm>` accepts a map of field paths to `FieldOverride
 
 ## `FieldOverride` reference
 
-| Property      | Type                      | Description                                         |
-| ------------- | ------------------------- | --------------------------------------------------- |
-| `label`       | `string`                  | Override auto-derived label                         |
-| `description` | `string`                  | Help text shown below the field                     |
-| `placeholder` | `string`                  | Placeholder for text inputs                         |
-| `order`       | `number`                  | Render order (lower = first)                        |
-| `span`        | `number`                  | Column span (1–12) in a 12-column grid              |
-| `section`     | `string`                  | Group field into a named section                    |
-| `hidden`      | `boolean`                 | Hard-hide (never renders, never validates)          |
-| `disabled`    | `boolean`                 | Disable just this field                             |
-| `component`   | `string`                  | Registry key override (`"textarea"`, `"rating"`, …) |
-| `options`     | `Array<{ label, value }>` | Override select options for enum fields             |
+| Property      | Type                                                | Description                                                                 |
+| ------------- | --------------------------------------------------- | --------------------------------------------------------------------------- |
+| `label`       | `string`                                            | Override auto-derived label                                                 |
+| `description` | `string`                                            | Help text shown below the field                                             |
+| `placeholder` | `string`                                            | Placeholder for text inputs                                                 |
+| `order`       | `number`                                            | Render order (lower = first)                                                |
+| `span`        | `number`                                            | Column span (1–12) in a 12-column grid                                      |
+| `section`     | `string`                                            | Group field into a named section                                            |
+| `hidden`      | `boolean`                                           | Hard-hide (never renders, never validates)                                  |
+| `disabled`    | `boolean`                                           | Disable just this field                                                     |
+| `component`   | `string \| React.ComponentType<FieldProps>`         | Registry key (`"textarea"`, `"rating"`, …) **or** an inline React component |
+| `options`     | `Array<{ label: string; value: string \| number }>` | Override select options for enum fields                                     |
+| `condition`   | `(values) => boolean`                               | Show (`true`) / hide (`false`) based on current form values                 |
+| `onChange`    | `(value, form: FormMethods) => void \| Promise`     | Called when this field changes; access all form methods via `form`          |
+| `movable`     | `boolean`                                           | _(array fields)_ Enable move-up/move-down row controls                      |
+| `duplicable`  | `boolean`                                           | _(array fields)_ Enable a duplicate row button                              |
+| `collapsible` | `boolean`                                           | _(array fields)_ Enable collapse/expand per row                             |
+
+## Inline `condition`
+
+You can show/hide a field inline without calling `form.setCondition()`:
+
+```tsx
+fields={{
+  vatNumber: {
+    condition: (values) => values.isBusinessAccount === true,
+  },
+}}
+```
+
+For more complex cases involving multiple fields, use [`createForm()` with `setCondition`](../api/create-form#setconditionfield-predicate).
+
+## Inline `onChange`
+
+React to a field change without `createForm().setOnChange()`:
+
+```tsx
+fields={{
+  country: {
+    onChange: async (value, form) => {
+      const regions = await fetchRegions(value)
+      form.setValue('region', regions[0])
+    },
+  },
+}}
+```
+
+## Inline component
+
+`component` accepts either a registry key string or a React component directly:
+
+```tsx
+fields={{
+  bio: { component: 'textarea' },             // registry key
+  rating: { component: StarRatingComponent }, // inline component
+}}
+```
 
 ## Nested fields
 

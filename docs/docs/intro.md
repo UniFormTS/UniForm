@@ -7,37 +7,9 @@ sidebar_position: 1
 
 UniForm is a headless React + Zod V4 form library. Give it a Zod schema and it renders a fully functional, fully typed form — inputs, labels, validation, error messages, sections, conditional fields, arrays, and more. You bring the styles and components.
 
-## Features
-
-- **Schema-driven** — define your form once with Zod V4, get inputs, labels, validation, and types for free
-- **Headless** — zero CSS, zero opinions; bring your own design system
-- **Full Zod V4 support** — scalars, enums, objects, arrays, optionals, nullables, defaults, pipes/transforms, unions, discriminated unions
-- **react-hook-form** under the hood — performant, uncontrolled forms with `zodResolver`
-- **`createForm()` / `UniForm`** — type-safe form definition object that lives outside React; attach typed `setOnChange` handlers per field with access to all form methods
-- **Per-field `onChange` in `fields` prop** — react to individual field changes inline, with typed values and full form control methods
-- **Per-field custom components** — pass any `React.ComponentType<FieldProps>` directly as `meta.component` or register under a custom string key
-- **Layout hooks** — `classNames`, `fieldWrapper`, `layout.formWrapper`, `layout.sectionWrapper`, `layout.submitButton`
-- **Section grouping** — group fields into named sections via `meta.section`
-- **Conditional fields** — show/hide fields based on form values with `meta.condition`
-- **Field ordering** — control render order with `meta.order`
-- **`createAutoForm()` factory** — bake in your design system defaults once, use everywhere
-- **Deep field overrides** — dot-notated `fields` prop for nested object/array overrides
-- **Pluggable coercion** — automatic string→number, string→Date with customizable coercion map
-- **Custom validation messages** — global, per-field, and per-field-per-error-code message overrides
-- **Programmatic control via ref** — `reset()`, `submit()`, `setValues()`, `getValues()`, `setErrors()`, `clearErrors()`, `focus()`, `isSubmitting` via `AutoFormHandle`
-- **Form state persistence** — auto-save form values to `localStorage` (or custom storage) with configurable debounce
-- **Enhanced array fields** — opt-in row reordering, duplicate, collapsible rows, `minItems`/`maxItems` constraints
-- **Value cascade** — `onValuesChange` fires on every change with the full form values
-- **i18n / custom labels** — `labels` prop replaces every hard-coded UI string
-- **Async `setOnChange`** — handlers can be `async`; fetch dependent data and apply results via `ctx.setFieldMeta`
-- **Async `defaultValues`** — pass `() => Promise<Partial<TValues>>` to pre-fill from an API with a loading fallback
-- **Tree-shakeable** — ESM + CJS builds via tsup with `sideEffects: false`
-
 ## Quick Start
 
-First, [install the package](./installation).
-
-Then define a schema and render a form:
+[Install the package](./installation), then define a schema and render a form:
 
 ```jsx live noInline
 const schema = z.object({
@@ -77,10 +49,25 @@ function App() {
 render(<App />)
 ```
 
-UniForm introspects the schema, renders the right input for each field type, validates with Zod on submit, and calls `onSubmit` with fully typed values.
+UniForm introspects the schema, renders the right input for each field type (`z.string()` → text input, `z.enum()` → select, `z.boolean()` → checkbox), validates with Zod on submit, and calls `onSubmit` with fully typed values.
+
+## Key features
+
+- **Schema-driven** — define your form once with Zod V4; inputs, labels, validation, and TypeScript types are derived automatically
+- **Headless** — zero CSS, zero opinions; bring your own design system via the component registry and layout slots
+- **`createForm()` / `<AutoForm>`** — a type-safe form object lives outside React; attach typed `setOnChange` and `setCondition` handlers per field
+- **Per-field overrides** — customise labels, descriptions, ordering, column span, and components via the `fields` prop without changing the schema
+- **Conditional fields** — show/hide fields based on form values; hidden fields are unregistered from validation and excluded from submit
+- **Array fields** — `z.array(z.object(...))` renders a repeating group with add/remove/reorder controls
+- **Async everywhere** — async `onSubmit`, async `setOnChange` handlers, and async `defaultValues` with a loading fallback
+- **Programmatic control** — `reset()`, `submit()`, `setValues()`, `getValues()`, `setErrors()`, `focus()` via a `ref`
+- **Persistence** — auto-save form values to `sessionStorage` (or any custom storage) with configurable debounce
+- **`createAutoForm()`** — bake in your design system defaults once; use everywhere
 
 ## Next Steps
 
-- Read the [`<AutoForm>` Props reference](./api/auto-form) for the full API
-- Learn about [`createForm()`](./api/create-form) for typed field dependencies
-- Explore the [Guides](./guides/custom-components) for recipes and advanced patterns
+New to UniForm? Work through the [tutorial](./tutorial) for a step-by-step walkthrough.
+
+Want to understand how everything fits together? Read [How UniForm Works](./concepts).
+
+Ready to explore specific features? Jump into the [Guides](./guides/custom-components) or the [`<AutoForm>` Props reference](./api/auto-form).

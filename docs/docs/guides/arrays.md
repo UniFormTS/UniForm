@@ -6,7 +6,11 @@ description: Render and manage repeating groups of fields from z.array() schemas
 
 # Array Fields
 
-Any `z.array(z.object(...))` field is automatically rendered as a repeating group. Each row is an independent nested form segment rendered below an **Add** button.
+`z.array(z.object(...))` fields are automatically rendered as a repeating group. Each row is an independent nested form segment rendered below an **Add** button.
+
+:::note Object arrays only
+UniForm renders array fields whose item schema is a `z.object(...)`. Arrays of primitives (e.g. `z.array(z.string())`) are not rendered as repeating fields — use a custom component for those cases.
+:::
 
 ```ts
 const schema = z.object({
@@ -29,44 +33,42 @@ By default each row gets:
 | Remove              | Removes that row from the array |
 | Move Up / Move Down | Reorders rows                   |
 
-You can add **Duplicate** by setting `arrayRowLayout` in `layout`:
+Enable **Duplicate** and **Collapse** per-row via the `fields` prop:
 
 ```tsx
-const MyRowLayout = ({
-  children,
-  onRemove,
-  onDuplicate,
-  canMoveUp,
-  canMoveDown,
-  onMoveUp,
-  onMoveDown,
-}) => (
+<AutoForm
+  fields={{
+    members: { duplicable: true, collapsible: true },
+  }}
+  ...
+/>
+```
+
+You can also replace the entire row layout via `layout.arrayRowLayout`. The component receives `children` (the row's fields) and a `buttons` object containing pre-rendered button nodes — place them wherever you like:
+
+```tsx
+const MyRowLayout = ({ children, buttons, index }) => (
   <div className='array-row'>
+    {buttons.collapse}
     {children}
     <div className='row-controls'>
-      <button type='button' onClick={onMoveUp} disabled={!canMoveUp}>
-        ↑
-      </button>
-      <button type='button' onClick={onMoveDown} disabled={!canMoveDown}>
-        ↓
-      </button>
-      <button type='button' onClick={onDuplicate}>
-        ⊕ Duplicate
-      </button>
-      <button type='button' onClick={onRemove}>
-        ✕ Remove
-      </button>
+      {buttons.moveUp}
+      {buttons.moveDown}
+      {buttons.duplicate}
+      {buttons.remove}
     </div>
   </div>
 )
 ```
+
+See [`ArrayRowLayoutProps`](/docs/api/types#arrayrowlayoutprops) for the full type.
 
 ## Labels
 
 Override the Add / Remove button labels via the `labels` prop for i18n:
 
 ```tsx
-<AutoForm labels={{ addItem: '+ Add member', removeItem: 'Remove' }} ... />
+<AutoForm labels={{ arrayAdd: '+ Add member', arrayRemove: 'Remove' }} ... />
 ```
 
 ## Minimum / maximum items
@@ -141,7 +143,7 @@ function App() {
         }}
         classNames={{ arrayDuplicate: 'ar-dup', arrayRemove: 'ar-rm' }}
         layout={{ arrayRowLayout: CompactRowLayout }}
-        labels={{ addItem: '+ Add member', submit: 'Create Team' }}
+        labels={{ arrayAdd: '+ Add member', submit: 'Create Team' }}
         onSubmit={(v) => setResult(v)}
       />
       {result && (

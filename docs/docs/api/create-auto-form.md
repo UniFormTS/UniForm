@@ -25,14 +25,16 @@ Then in any feature:
 
 ## `AutoFormConfig` options
 
-| Option       | Type                 | Description                                                                                       |
-| ------------ | -------------------- | ------------------------------------------------------------------------------------------------- |
-| `components` | `ComponentRegistry`  | Base component registry (merged with `defaultRegistry`)                                           |
-| `layout`     | `LayoutSlots`        | Default layout slots (formWrapper, sectionWrapper, submitButton, arrayRowLayout, loadingFallback) |
-| `classNames` | `FormClassNames`     | Default CSS class names                                                                           |
-| `messages`   | `ValidationMessages` | Default validation messages                                                                       |
-| `coercions`  | `CoercionMap`        | Default per-type coercions                                                                        |
-| `labels`     | `FormLabels`         | Default UI labels (submit, add, remove)                                                           |
+| Option         | Type                                     | Description                                                                                       |
+| -------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `components`   | `ComponentRegistry`                      | Base component registry (merged with `defaultRegistry`)                                           |
+| `fieldWrapper` | `React.ComponentType<FieldWrapperProps>` | Default field wrapper component                                                                   |
+| `layout`       | `LayoutSlots`                            | Default layout slots (formWrapper, sectionWrapper, submitButton, arrayRowLayout, loadingFallback) |
+| `classNames`   | `FormClassNames`                         | Default CSS class names                                                                           |
+| `disabled`     | `boolean`                                | When `true`, all fields in every form instance are disabled by default                            |
+| `messages`     | `ValidationMessages`                     | Default validation messages                                                                       |
+| `coercions`    | `CoercionMap`                            | Default per-field coercions                                                                       |
+| `labels`       | `FormLabels`                             | Default UI labels (submit, arrayAdd, arrayRemove, …)                                              |
 
 ### Merge behaviour
 
