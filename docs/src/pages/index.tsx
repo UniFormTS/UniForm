@@ -8,16 +8,19 @@ import styles from './index.module.css'
 
 const features = [
   {
+    icon: '🧩',
     title: 'Schema-driven',
     description:
       'Define your form once with Zod V4. UniForm introspects the schema and renders fully typed inputs, labels, validation, and coercions automatically.',
   },
   {
+    icon: '🎨',
     title: 'Headless',
     description:
       'Zero CSS, zero opinions. Bring your own design system, Tailwind classes, or any component library — UniForm only provides structure.',
   },
   {
+    icon: '⚙️',
     title: 'Fully customizable',
     description:
       'Swap any component, slot, wrapper, or field at every level. Per-instance, per-factory, or per-field — total control with a clean API.',
@@ -55,13 +58,24 @@ export default function Home(): ReactNode {
     <Layout title={siteConfig.title} description={siteConfig.tagline}>
       {/* Hero */}
       <header className={styles.heroBanner}>
+        <div className={styles.heroBadge}>
+          Zero styles · Total control · Zod V4
+        </div>
         <Heading as='h1' className={styles.heroTitle}>
           UniForm
         </Heading>
         <p className={styles.heroSubtitle}>{siteConfig.tagline}</p>
-        <Link className='button button--secondary button--lg' to='/docs/intro'>
-          Get Started →
-        </Link>
+        <div className={styles.heroButtons}>
+          <Link className='button button--primary button--lg' to='/docs/intro'>
+            Get Started →
+          </Link>
+          <Link
+            className='button button--secondary button--lg'
+            href='https://github.com/UniForm-dev/UniForm'
+          >
+            GitHub
+          </Link>
+        </div>
       </header>
 
       <main>
@@ -69,6 +83,7 @@ export default function Home(): ReactNode {
         <section className={styles.featuresGrid}>
           {features.map((f) => (
             <div key={f.title} className={styles.featureCard}>
+              <span className={styles.featureIcon}>{f.icon}</span>
               <Heading as='h3' className={styles.featureTitle}>
                 {f.title}
               </Heading>
