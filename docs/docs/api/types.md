@@ -253,6 +253,8 @@ type FieldWrapperProps = {
 }
 ```
 
+The default `fieldWrapper` exposes `index`, `depth`, and `span` as CSS custom properties (`--field-index`, `--field-depth`, `--field-span`) and sets `data-field-name`, `data-field-type`, `data-required`, `data-disabled`, `data-has-error`, and `data-has-description` attributes on the wrapper element. See [Layout & Styling — CSS variables and data attributes](../guides/layout#field-wrapper-css-variables) for details and examples.
+
 ---
 
 ## `FormMethods`
