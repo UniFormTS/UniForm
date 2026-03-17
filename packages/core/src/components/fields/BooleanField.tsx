@@ -8,12 +8,14 @@ type BooleanFieldProps = {
   field: FieldConfig
   control: Control
   effectiveName: string
+  shouldUnregister?: boolean
 }
 
 export function BooleanField({
   field,
   control,
   effectiveName,
+  shouldUnregister,
 }: BooleanFieldProps) {
   const {
     registry,
@@ -28,6 +30,7 @@ export function BooleanField({
     <Controller
       name={effectiveName}
       control={control}
+      shouldUnregister={shouldUnregister}
       render={({ field: rhfField, fieldState }) => (
         <Component
           name={effectiveName}

@@ -7,6 +7,7 @@ type ObjectFieldProps = {
   control: Control
   namePrefix?: string
   depth?: number
+  shouldUnregister?: boolean
 }
 
 export function ObjectField({
@@ -14,6 +15,7 @@ export function ObjectField({
   control,
   namePrefix,
   depth = 0,
+  shouldUnregister,
 }: ObjectFieldProps) {
   const children = field.children
 
@@ -25,6 +27,7 @@ export function ObjectField({
       namePrefix={namePrefix}
       index={idx}
       depth={depth + 1}
+      shouldUnregister={shouldUnregister}
     />
   ))
 

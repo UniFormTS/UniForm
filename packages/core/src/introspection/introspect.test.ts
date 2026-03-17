@@ -1,9 +1,6 @@
 import { describe, it, expect, assert } from 'vitest'
 import * as z from 'zod/v4'
-import {
-  introspectSchema,
-  introspectObjectSchema,
-} from './introspect'
+import { introspectSchema, introspectObjectSchema } from './introspect'
 import { parseDiscriminatedUnionMeta } from './discriminatedUnion'
 
 // ---------------------------------------------------------------------------

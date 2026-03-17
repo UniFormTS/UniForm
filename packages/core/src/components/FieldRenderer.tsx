@@ -17,6 +17,9 @@ export type FieldRendererProps = {
   index?: number
   /** Nesting depth (0 = top-level, 1 = inside object, etc.). */
   depth?: number
+  /** When `true`, unregisters the field's value on unmount so it resets to its default when reshown.
+   *  Auto-set for conditional fields; propagated to object children. */
+  shouldUnregister?: boolean
 }
 
 /**
@@ -61,7 +64,10 @@ export function FieldRenderer({
   namePrefix,
   index = 0,
   depth = 0,
+  shouldUnregister,
 }: FieldRendererProps) {
+  const effectiveShouldUnregister =
+    shouldUnregister ?? typeof field.meta.condition === 'function'
   const { fieldWrapper: FieldWrapper, messages } = useAutoFormContext()
   const { errors } = useFormState({ control })
   const effectiveName = getEffectiveName(field, namePrefix)
@@ -70,23 +76,22 @@ export function FieldRenderer({
   const hasDirectComponent = typeof field.meta.component === 'function'
 
   if (field.type === 'object' && !hasDirectComponent) {
-    const objectField = (
+    const objectField =
       effectiveName !== field.name ? { ...field, name: effectiveName } : field
-    ) as Extract<FieldConfig, { type: 'object' }>
     return (
       <ObjectField
         field={objectField}
         control={control}
         namePrefix={namePrefix}
         depth={depth}
+        shouldUnregister={effectiveShouldUnregister}
       />
     )
   }
 
   if (field.type === 'array' && !hasDirectComponent) {
-    const arrayField = (
+    const arrayField =
       effectiveName !== field.name ? { ...field, name: effectiveName } : field
-    ) as Extract<FieldConfig, { type: 'array' }>
     return (
       <ArrayField
         field={arrayField}
@@ -112,6 +117,7 @@ export function FieldRenderer({
           field={effectiveField}
           control={control}
           effectiveName={effectiveName}
+          shouldUnregister={effectiveShouldUnregister}
         />
       )
     }
@@ -121,6 +127,7 @@ export function FieldRenderer({
           field={effectiveField as Extract<FieldConfig, { type: 'select' }>}
           control={control}
           effectiveName={effectiveName}
+          shouldUnregister={effectiveShouldUnregister}
         />
       )
     }
@@ -136,6 +143,7 @@ export function FieldRenderer({
           field={effectiveField}
           control={control}
           effectiveName={effectiveName}
+          shouldUnregister={effectiveShouldUnregister}
         />
       )
     }

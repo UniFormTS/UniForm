@@ -15,7 +15,7 @@ UniForm takes a Zod schema and automatically renders a fully customizable form. 
 - **Per-field custom components** — pass any `React.ComponentType<FieldProps>` directly as `meta.component` (inline, no registry) or register under a custom string key; direct components bypass the registry _and_ the default `ArrayField`/`ObjectField` routing, allowing fully custom multi-value widgets for `array`-typed fields
 - **Layout hooks** — `classNames`, `fieldWrapper`, `layout.formWrapper`, `layout.sectionWrapper`, `layout.submitButton`
 - **Section grouping** — group fields into named sections via `meta.section`
-- **Conditional fields** — show/hide fields based on form values with `meta.condition`
+- **Conditional fields** — show/hide fields based on form values with `meta.condition`; hidden fields automatically reset to their default value
 - **Field ordering** — control render order with `meta.order`
 - **`createAutoForm()` factory** — bake in your design system defaults once, use everywhere
 - **Deep field overrides** — dot-notated `fields` prop for nested object/array overrides
@@ -626,7 +626,10 @@ The `span` value is set as `--field-span` CSS custom property on each field wrap
 
 ### Conditional Fields
 
-Show a field only when another field has a specific value:
+Show a field only when another field has a specific value. Conditional fields are fully lifecycle-managed:
+
+- **Hidden → not submitted:** fields whose condition starts `false` are never pre-registered in the form store, so they don't appear in `onSubmit` data.
+- **Shown → hidden:** when a condition becomes `false` and the field unmounts, its value is discarded — it starts fresh the next time it appears.
 
 ```tsx
 const schema = z.object({
