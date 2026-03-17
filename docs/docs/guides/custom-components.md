@@ -84,7 +84,10 @@ const StarRating = ({ value, onChange, error }) => (
         key={star}
         onClick={() => onChange(star)}
         style={{
-          color: (Number(value) || 0) >= star ? 'gold' : '#ccc',
+          color:
+            (Number(value) || 0) >= star
+              ? 'gold'
+              : 'var(--ifm-color-emphasis-400)',
           fontSize: 28,
           background: 'none',
           border: 'none',
@@ -96,7 +99,15 @@ const StarRating = ({ value, onChange, error }) => (
       </button>
     ))}
     {error && (
-      <p style={{ color: 'red', fontSize: 12, margin: '4px 0 0' }}>{error}</p>
+      <p
+        style={{
+          color: 'var(--ifm-color-danger)',
+          fontSize: 12,
+          margin: '4px 0 0',
+        }}
+      >
+        {error}
+      </p>
     )}
   </div>
 )
@@ -127,7 +138,7 @@ function App() {
         <pre
           style={{
             marginTop: '1rem',
-            background: '#f5f5f5',
+            background: 'var(--ifm-color-emphasis-200)',
             padding: '1rem',
             borderRadius: 6,
           }}

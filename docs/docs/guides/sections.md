@@ -43,7 +43,7 @@ const SectionCard = ({ title, children }) => (
 const SectionCard = ({ title, children }) => (
   <div
     style={{
-      border: '1px solid #e5e7eb',
+      border: '1px solid var(--ifm-color-emphasis-300)',
       borderRadius: 10,
       marginBottom: '1rem',
       overflow: 'hidden',
@@ -51,12 +51,12 @@ const SectionCard = ({ title, children }) => (
   >
     <div
       style={{
-        background: '#f9fafb',
-        borderBottom: '1px solid #e5e7eb',
+        background: 'var(--ifm-color-emphasis-200)',
+        borderBottom: '1px solid var(--ifm-color-emphasis-300)',
         padding: '0.6rem 1rem',
         fontWeight: 600,
         fontSize: 13,
-        color: '#374151',
+        color: 'var(--ifm-font-color-base)',
         textTransform: 'uppercase',
         letterSpacing: '0.05em',
       }}
@@ -106,7 +106,7 @@ function App() {
         <pre
           style={{
             marginTop: '1rem',
-            background: '#f5f5f5',
+            background: 'var(--ifm-color-emphasis-200)',
             padding: '1rem',
             borderRadius: 6,
           }}

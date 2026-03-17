@@ -57,12 +57,18 @@ function App() {
   const [sent, setSent] = React.useState(false)
   return (
     <div style={{ fontFamily: 'system-ui', maxWidth: 460 }}>
-      <p style={{ fontSize: 13, color: '#6b7280', marginBottom: '1rem' }}>
+      <p
+        style={{
+          fontSize: 13,
+          color: 'var(--ifm-color-emphasis-600)',
+          marginBottom: '1rem',
+        }}
+      >
         Values are auto-saved to <code>sessionStorage</code>. Unmount and
         remount the component to see persistence in action.
       </p>
       {sent ? (
-        <p style={{ color: 'green', fontWeight: 600 }}>
+        <p style={{ color: 'var(--ifm-color-success)', fontWeight: 600 }}>
           Message sent! Draft cleared.
         </p>
       ) : (
