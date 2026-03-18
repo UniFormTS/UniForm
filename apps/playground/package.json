@@ -1,5 +1,5 @@
 {
-  "name": "@uniform-dev/playground",
+  "name": "@uniform-ts/playground",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,7 +10,7 @@
     "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
-    "@uniform-dev/core": "workspace:*",
+    "@uniform-ts/core": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zod": "^3.25.0"

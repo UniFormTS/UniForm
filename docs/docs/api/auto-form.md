@@ -8,7 +8,7 @@ sidebar_position: 1
 `<AutoForm>` introspects the provided Zod schema, renders the appropriate field component for each field type, validates on submit using `zodResolver`, and calls `onSubmit` with fully typed, validated values.
 
 ```tsx
-import { AutoForm, createForm } from '@uniform-dev/core'
+import { AutoForm, createForm } from '@uniform-ts/core'
 
 const myForm = createForm(schema)
 
