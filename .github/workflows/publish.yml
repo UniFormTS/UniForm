@@ -38,7 +38,6 @@ jobs:
         run: pnpm test
 
       - name: Version bump
-        working-directory: packages/core
         run: pnpm -r version ${{ github.event.inputs.version }} --no-git-tag-version
 
       - uses: actions/setup-node@v4
