@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import * as z from 'zod/v4'
-import { AutoForm, createAutoForm, createForm } from '@uniform-dev/core'
+import { AutoForm, createAutoForm, createForm } from '@uniform-ts/core'
 import { SubmittedData } from './shared'
 
 // ---------------------------------------------------------------------------

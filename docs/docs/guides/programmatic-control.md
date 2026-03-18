@@ -10,7 +10,7 @@ Attach a `ref` to `<AutoForm>` to get an `AutoFormHandle` — a superset of [`Fo
 
 ```tsx
 import { useRef } from 'react'
-import type { AutoFormHandle } from '@uniform-dev/core'
+import type { AutoFormHandle } from '@uniform-ts/core'
 
 const formRef = useRef<AutoFormHandle<typeof schema>>(null)
 

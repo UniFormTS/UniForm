@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import * as z from 'zod/v4'
-import { AutoForm, createAutoForm, createForm } from '@uniform-dev/core'
-import type { FieldProps, SelectOption } from '@uniform-dev/core'
+import { AutoForm, createAutoForm, createForm } from '@uniform-ts/core'
+import type { FieldProps, SelectOption } from '@uniform-ts/core'
 import {
   BrandedFieldWrapper,
   BrandedSubmitButton,

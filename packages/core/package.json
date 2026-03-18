@@ -1,14 +1,14 @@
 {
-  "name": "@uniform-dev/core",
-  "version": "0.0.8",
+  "name": "@uniform-ts/core",
+  "version": "0.0.0",
   "private": false,
   "description": "UniForm – auto-render forms from Zod schemas",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/UniForm-dev/UniForm.git"
+    "url": "https://github.com/UniFormTS/UniForm.git"
   },
-  "homepage": "https://github.com/UniForm-dev/UniForm#readme",
+  "homepage": "https://github.com/UniFormTS/UniForm#readme",
   "keywords": [
     "react",
     "form",

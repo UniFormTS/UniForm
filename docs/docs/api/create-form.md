@@ -8,7 +8,7 @@ sidebar_position: 2
 `createForm(schema)` creates a `UniForm` instance that binds a Zod schema to a reactive `setOnChange` / `setCondition` pipeline. Pass the resulting object to `<AutoForm form={...}>`.
 
 ```ts
-import { createForm } from '@uniform-dev/core'
+import { createForm } from '@uniform-ts/core'
 import { z } from 'zod'
 
 const myForm = createForm(schema)

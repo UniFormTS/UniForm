@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import * as z from 'zod/v4'
-import { AutoForm, createForm } from '@uniform-dev/core'
+import { AutoForm, createForm } from '@uniform-ts/core'
 import { SubmittedData } from './shared'
 
 const teamSchema = z.object({

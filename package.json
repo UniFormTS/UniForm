@@ -1,12 +1,12 @@
 {
   "name": "uniform-monorepo",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.0.0",
   "scripts": {
-    "dev": "pnpm --filter @uniform-dev/playground dev",
-    "build": "pnpm --filter @uniform-dev/core build",
-    "build:watch": "pnpm --filter @uniform-dev/core dev",
-    "test": "pnpm --filter @uniform-dev/core test",
+    "dev": "pnpm --filter @uniform-ts/playground dev",
+    "build": "pnpm --filter @uniform-ts/core build",
+    "build:watch": "pnpm --filter @uniform-ts/core dev",
+    "test": "pnpm --filter @uniform-ts/core test",
     "lint": "pnpm -r lint",
     "format": "pnpx prettier --write '{apps,packages}/**/*.{ts,tsx,js,jsx,css,scss,html}'",
     "docs:dev": "pnpm --filter docs run start",

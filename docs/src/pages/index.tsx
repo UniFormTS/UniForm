@@ -27,7 +27,7 @@ const features = [
   },
 ]
 
-const installCode = `npm install @uniform-dev/core react react-hook-form zod`
+const installCode = `npm install @uniform-ts/core react react-hook-form zod`
 
 const liveExample = `const schema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -71,7 +71,7 @@ export default function Home(): ReactNode {
           </Link>
           <Link
             className='button button--secondary button--lg'
-            href='https://github.com/UniForm-dev/UniForm'
+            href='https://github.com/UniFormTS/UniForm'
           >
             GitHub
           </Link>

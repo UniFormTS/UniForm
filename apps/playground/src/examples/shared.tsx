@@ -1,4 +1,4 @@
-import type { FieldProps, FieldWrapperProps } from '@uniform-dev/core'
+import type { FieldProps, FieldWrapperProps } from '@uniform-ts/core'
 
 // ---------------------------------------------------------------------------
 // SubmittedData — shows the form result as pretty-printed JSON

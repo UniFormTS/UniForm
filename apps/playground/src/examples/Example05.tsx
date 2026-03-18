@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import * as z from 'zod/v4'
-import { createAutoForm, createForm } from '@uniform-dev/core'
+import { createAutoForm, createForm } from '@uniform-ts/core'
 import { BrandedInput, BrandedFieldWrapper, SubmittedData } from './shared'
 
 const invoiceSchema = z.object({

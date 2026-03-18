@@ -18,7 +18,7 @@ const config: Config = {
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
-  organizationName: 'UniForm-dev', // Usually your GitHub org/user name.
+  organizationName: 'UniFormTS', // Usually your GitHub org/user name.
   projectName: 'UniForm', // Usually your repo name.
 
   onBrokenLinks: 'throw',
@@ -69,7 +69,7 @@ const config: Config = {
           label: 'Docs',
         },
         {
-          href: 'https://github.com/UniForm-dev/UniForm',
+          href: 'https://github.com/UniFormTS/UniForm',
           label: 'GitHub',
           position: 'right',
         },
@@ -91,7 +91,7 @@ const config: Config = {
           items: [
             {
               label: 'GitHub',
-              href: 'https://github.com/UniForm-dev/UniForm',
+              href: 'https://github.com/UniFormTS/UniForm',
             },
           ],
         },
