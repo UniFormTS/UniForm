@@ -17,25 +17,25 @@ const myForm = createForm(schema)
 
 ## Props Reference
 
-| Prop              | Type                                                                      | Default               | Description                                                                                  |
-| ----------------- | ------------------------------------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------- |
-| `form`            | `UniForm<TSchema>`                                                        | _required_            | A `UniForm` / `createForm` instance carrying the schema and setOnChange handlers             |
-| `onSubmit`        | `(values: z.infer<TSchema>) => void \| Promise<void>`                     | _required_            | Called with fully typed, validated values on successful submit                               |
-| `defaultValues`   | `Partial<z.infer<TSchema>>` or `() => Promise<Partial<z.infer<TSchema>>>` | `{}`                  | Pre-fill form fields. Pass an async function to load from an API                             |
-| `components`      | `ComponentRegistry`                                                       | `defaultRegistry`     | Override field type → component mapping                                                      |
-| `fields`          | `Record<string, Partial<FieldOverride>>`                                  | `{}`                  | Per-field metadata overrides (supports dot-notated paths for nested fields)                  |
-| `fieldWrapper`    | `React.ComponentType<FieldWrapperProps>`                                  | `DefaultFieldWrapper` | Wrap each scalar field in a custom container                                                 |
-| `layout`          | `LayoutSlots`                                                             | `{}`                  | Replace form wrapper, section wrapper, submit button, array row layout, or `loadingFallback` |
-| `classNames`      | `FormClassNames`                                                          | `{}`                  | CSS class names for form, field wrappers, labels, errors, descriptions                       |
-| `disabled`        | `boolean`                                                                 | `false`               | Disable all form fields and the submit button                                                |
-| `coercions`       | `CoercionMap`                                                             | `defaultCoercionMap`  | Custom per-type value coercion functions                                                     |
-| `messages`        | `ValidationMessages`                                                      | `undefined`           | Custom validation error messages                                                             |
-| `ref`             | `React.Ref<AutoFormHandle>`                                               | `undefined`           | Imperative handle for programmatic control                                                   |
-| `persistKey`      | `string`                                                                  | `undefined`           | When set, form values auto-save to storage under this key                                    |
-| `persistDebounce` | `number`                                                                  | `300`                 | Debounce interval in ms for persistence writes                                               |
-| `persistStorage`  | `PersistStorage`                                                          | `sessionStorage`      | Custom storage adapter (must implement `getItem`/`setItem`/`removeItem`)                     |
-| `onValuesChange`  | `(values: z.infer<TSchema>) => void`                                      | `undefined`           | Called on every field change with the full current form values                               |
-| `labels`          | `FormLabels`                                                              | `{}`                  | Override hard-coded UI text (submit button, array buttons) for i18n                          |
+| Prop              | Type                                                                      | Required | Description                                                                                                    |
+| ----------------- | ------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------- |
+| `form`            | `UniForm<TSchema>`                                                        | Yes      | A `UniForm` / `createForm` instance carrying the schema and setOnChange handlers                               |
+| `onSubmit`        | `(values: z.infer<TSchema>) => void \| Promise<void>`                     | Yes      | Called with fully typed, validated values on successful submit                                                 |
+| `defaultValues`   | `Partial<z.infer<TSchema>>` or `() => Promise<Partial<z.infer<TSchema>>>` | No       | Pre-fill form fields. Pass an async function to load from an API. Defaults to `{}`                             |
+| `components`      | `ComponentRegistry`                                                       | No       | Override field type → component mapping. Defaults to `defaultRegistry`                                         |
+| `fields`          | `Record<string, Partial<FieldOverride>>`                                  | No       | Per-field metadata overrides (supports dot-notated paths for nested fields). Defaults to `{}`                  |
+| `fieldWrapper`    | `React.ComponentType<FieldWrapperProps>`                                  | No       | Wrap each scalar field in a custom container. Defaults to `DefaultFieldWrapper`                                |
+| `layout`          | `LayoutSlots`                                                             | No       | Replace form wrapper, section wrapper, submit button, array row layout, or `loadingFallback`. Defaults to `{}` |
+| `classNames`      | `FormClassNames`                                                          | No       | CSS class names for form, field wrappers, labels, errors, descriptions. Defaults to `{}`                       |
+| `disabled`        | `boolean`                                                                 | No       | Disable all form fields and the submit button. Defaults to `false`                                             |
+| `coercions`       | `CoercionMap`                                                             | No       | Custom per-type value coercion functions. Defaults to `defaultCoercionMap`                                     |
+| `messages`        | `ValidationMessages`                                                      | No       | Custom validation error messages                                                                               |
+| `ref`             | `React.Ref<AutoFormHandle>`                                               | No       | Imperative handle for programmatic control                                                                     |
+| `persistKey`      | `string`                                                                  | No       | When set, form values auto-save to storage under this key                                                      |
+| `persistDebounce` | `number`                                                                  | No       | Debounce interval in ms for persistence writes. Defaults to `300`                                              |
+| `persistStorage`  | `PersistStorage`                                                          | No       | Custom storage adapter (must implement `getItem`/`setItem`/`removeItem`). Defaults to `sessionStorage`         |
+| `onValuesChange`  | `(values: z.infer<TSchema>) => void`                                      | No       | Called on every field change with the full current form values                                                 |
+| `labels`          | `FormLabels`                                                              | No       | Override hard-coded UI text (submit button, array buttons) for i18n. Defaults to `{}`                          |
 
 ## Live Example
 
