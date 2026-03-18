@@ -197,7 +197,6 @@ div[class*='codeBlockContainer'] {
 /* ── Tables ──────────────────────────────────────────────── */
 table {
   border-radius: 10px;
-  overflow: hidden;
   width: 100%;
   border-collapse: collapse;
 }

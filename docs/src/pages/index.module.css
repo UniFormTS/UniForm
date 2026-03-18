@@ -122,6 +122,30 @@
   justify-content: center;
 }
 
+.heroButtons :global(.button--primary) {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #4f46e5;
+}
+
+.heroButtons :global(.button--primary:hover) {
+  background: #f0f4ff;
+  border-color: #f0f4ff;
+  color: #4f46e5;
+}
+
+.heroButtons :global(.button--secondary) {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.6);
+  color: #ffffff;
+}
+
+.heroButtons :global(.button--secondary:hover) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #ffffff;
+  color: #ffffff;
+}
+
 /* ── Features ──────────────────────────────────────────────── */
 .featuresGrid {
   padding: 4.5rem 2rem;
@@ -144,8 +168,8 @@
 }
 
 .featureCard:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 16px 40px var(--color-card-shadow);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 28px var(--color-card-shadow);
 }
 
 .featureIcon {
