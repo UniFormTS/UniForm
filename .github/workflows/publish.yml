@@ -40,7 +40,7 @@ jobs:
 
       - name: Version bump
         working-directory: packages/core
-        run: npm version ${{ github.event.inputs.version }}
+        run: pnpm version ${{ github.event.inputs.version }} --no-git-tag-version
 
       - name: Publish
         working-directory: packages/core
