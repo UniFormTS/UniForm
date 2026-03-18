@@ -8,7 +8,7 @@ sidebar_position: 3
 `createAutoForm(config)` creates a pre-configured `<AutoForm>` component that bakes in your design system's components, layout slots, class names, and other defaults. Consumer code only needs to supply `form`, `onSubmit`, and any per-instance overrides.
 
 ```ts
-import { createAutoForm } from '@uniform/core'
+import { createAutoForm } from '@uniform-dev/core'
 
 export const MyForm = createAutoForm({
   components: myRegistry,

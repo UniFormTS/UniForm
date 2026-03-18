@@ -5,7 +5,7 @@ sidebar_position: 4
 
 # TypeScript API
 
-All public types are re-exported from `@uniform/core`.
+All public types are re-exported from `@uniform-dev/core`.
 
 ```ts
 import type {
@@ -26,7 +26,7 @@ import type {
   CoercionMap,
   PersistStorage,
   FormMethods,
-} from '@uniform/core'
+} from '@uniform-dev/core'
 ```
 
 ---

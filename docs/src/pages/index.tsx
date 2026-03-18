@@ -27,7 +27,7 @@ const features = [
   },
 ]
 
-const installCode = `npm install @uniform/core react react-hook-form zod`
+const installCode = `npm install @uniform-dev/core react react-hook-form zod`
 
 const liveExample = `const schema = z.object({
   name: z.string().min(1, 'Name is required'),

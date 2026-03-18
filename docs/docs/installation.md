@@ -7,10 +7,10 @@ sidebar_position: 4
 
 ## Package Manager
 
-Install `@uniform/core` along with its peer dependencies:
+Install `@uniform-dev/core` along with its peer dependencies:
 
 ```bash npm2yarn
-npm install @uniform/core react react-hook-form zod
+npm install @uniform-dev/core react react-hook-form zod
 ```
 
 :::note Zod V4 import path
@@ -28,11 +28,11 @@ UniForm requires the Zod V4 API. How you import it depends on which version of t
 
 ## Imports
 
-Everything you need is exported from `@uniform/core`:
+Everything you need is exported from `@uniform-dev/core`:
 
 ```ts
-import { createForm, AutoForm, createAutoForm } from '@uniform/core'
-import type { FieldProps, AutoFormHandle } from '@uniform/core'
+import { createForm, AutoForm, createAutoForm } from '@uniform-dev/core'
+import type { FieldProps, AutoFormHandle } from '@uniform-dev/core'
 ```
 
 ## TypeScript Configuration

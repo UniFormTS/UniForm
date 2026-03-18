@@ -19,7 +19,7 @@ You can override any key without replacing the others — your registry is merge
 Every field component receives [`FieldProps`](/docs/api/types#fieldprops):
 
 ```tsx
-import type { FieldProps } from '@uniform/core'
+import type { FieldProps } from '@uniform-dev/core'
 
 export function StarRating({ value, onChange, error }: FieldProps) {
   return (

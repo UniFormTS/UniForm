@@ -6,7 +6,7 @@ import {
   createAutoForm,
   defaultRegistry,
   mergeRegistries,
-} from '@uniform/core'
+} from '@uniform-dev/core'
 
 const ReactLiveScope = {
   React,

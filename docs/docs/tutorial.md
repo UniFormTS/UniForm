@@ -54,7 +54,7 @@ The schema is the single source of truth. UniForm derives field types, required/
 Call `createForm` with the schema. This creates a `UniForm` instance that you will pass to `<AutoForm>`.
 
 ```ts
-import { createForm } from '@uniform/core'
+import { createForm } from '@uniform-dev/core'
 
 const registrationForm = createForm(registrationSchema)
 ```
@@ -68,7 +68,7 @@ Define `registrationForm` at module scope — outside any React component. It is
 Pass the form object to `<AutoForm>` along with an `onSubmit` handler. UniForm renders an input for each field and validates on submit.
 
 ```tsx
-import { AutoForm } from '@uniform/core'
+import { AutoForm } from '@uniform-dev/core'
 
 function RegistrationPage() {
   return (
@@ -144,7 +144,7 @@ When the user changes `role` to `admin` or `moderator`, `adminCode` appears. Whe
 UniForm's built-in inputs are intentionally minimal. Here is how to swap the `string` type for a styled component from your design system.
 
 ```tsx
-import type { FieldProps } from '@uniform/core'
+import type { FieldProps } from '@uniform-dev/core'
 
 function MyTextInput({
   value,

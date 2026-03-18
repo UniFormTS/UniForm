@@ -38,14 +38,14 @@ UniForm takes a Zod schema and automatically renders a fully customizable form. 
 ### Installation
 
 ```bash
-npm install @uniform/core react react-hook-form zod
+npm install @uniform-dev/core react react-hook-form zod
 ```
 
 ### Basic Usage
 
 ```tsx
 import * as z from 'zod/v4'
-import { createForm, AutoForm } from '@uniform/core'
+import { createForm, AutoForm } from '@uniform-dev/core'
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -105,7 +105,7 @@ That's it — UniForm introspects the schema, renders appropriate inputs, valida
 The main reason to use `UniForm` over passing a bare schema is typed `setOnChange` handlers: you can react to individual field changes, read the new value (typed to the schema), and call any form method — all outside React.
 
 ```tsx
-import { createForm, AutoForm } from '@uniform/core'
+import { createForm, AutoForm } from '@uniform-dev/core'
 
 const addressForm = createForm(addressSchema)
   .setOnChange('country', (value, ctx) => {
@@ -153,7 +153,7 @@ const form = createForm(schema).condition(
 Factory function that returns a pre-configured `<AutoForm>` component with baked-in defaults.
 
 ```tsx
-import { createAutoForm } from '@uniform/core'
+import { createAutoForm } from '@uniform-dev/core'
 
 const MyAutoForm = createAutoForm({
   components: { string: MyTextInput, number: MyNumberInput },
@@ -659,7 +659,7 @@ Pass a `z.discriminatedUnion` directly to `createForm` — no flat schema needed
 
 ```tsx
 import * as z from 'zod/v4'
-import { createForm, AutoForm } from '@uniform/core'
+import { createForm, AutoForm } from '@uniform-dev/core'
 
 const notificationUnion = z.discriminatedUnion('channel', [
   z.object({
@@ -746,7 +746,7 @@ type PersistStorage = {
 ### Factory Pattern with `createAutoForm`
 
 ```tsx
-import { createAutoForm, createForm } from '@uniform/core'
+import { createAutoForm, createForm } from '@uniform-dev/core'
 
 const AppAutoForm = createAutoForm({
   components: {
@@ -795,8 +795,8 @@ Use `ref` to control the form from outside — ideal for wizards, external save 
 
 ```tsx
 import { useRef } from 'react'
-import { AutoForm } from '@uniform/core'
-import type { AutoFormHandle } from '@uniform/core'
+import { AutoForm } from '@uniform-dev/core'
+import type { AutoFormHandle } from '@uniform-dev/core'
 
 function WizardForm() {
   const formRef = useRef<AutoFormHandle<typeof schema>>(null)
@@ -849,8 +849,8 @@ function EditProfileForm() {
 
 ```tsx
 import { useRef } from 'react'
-import { AutoForm } from '@uniform/core'
-import type { AutoFormHandle } from '@uniform/core'
+import { AutoForm } from '@uniform-dev/core'
+import type { AutoFormHandle } from '@uniform-dev/core'
 
 const schema = z.object({
   plan: z.enum(['free', 'pro', 'enterprise']),
@@ -971,7 +971,7 @@ Style the array buttons via `classNames`:
 Use `layout.arrayRowLayout` to control where buttons appear within each array row:
 
 ```tsx
-import type { ArrayRowLayoutProps } from '@uniform/core'
+import type { ArrayRowLayoutProps } from '@uniform-dev/core'
 
 function HorizontalRowLayout({
   children,
@@ -1084,7 +1084,7 @@ const formRef = useRef<AutoFormHandle<typeof schema>>(null)
 
 ```bash
 pnpm install       # Install dependencies
-pnpm build         # Build @uniform/core
+pnpm build         # Build @uniform-dev/core
 pnpm test          # Run all tests
 pnpm dev           # Start the playground dev server
 ```
@@ -1094,7 +1094,7 @@ pnpm dev           # Start the playground dev server
 ```
 uniform/
 ├── packages/
-│   └── core/          # The library (@uniform/core)
+│   └── core/          # The library (@uniform-dev/core)
 └── apps/
     └── playground/    # Vite + React dev app
 ```
