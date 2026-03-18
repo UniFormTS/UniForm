@@ -39,7 +39,12 @@ jobs:
 
       - name: Version bump
         working-directory: packages/core
-        run: pnpm -r version ${{ github.event.inputs.version }} --no-git-tag-version
+        run: pnpm version ${{ github.event.inputs.version }} --no-git-tag-version
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
 
       - name: Publish
         working-directory: packages/core
