@@ -38,7 +38,12 @@ jobs:
         run: pnpm test
 
       - name: Version bump
-        run: pnpm -r version ${{ github.event.inputs.version }} --no-git-tag-version
+        run: pnpm --filter @uniform-dev/core version ${{ github.event.inputs.version }} --no-git-tag-version
+
+      - name: Verify Version Change (Debug)
+        run: |
+          echo "New version in packages/core is:"
+          node -p "require('./packages/core/package.json').version"
 
       - uses: actions/setup-node@v4
         with:
