@@ -25,10 +25,6 @@ jobs:
         with:
           version: 9
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-
       - run: pnpm install --frozen-lockfile
 
       - name: Build
@@ -38,7 +34,22 @@ jobs:
         run: pnpm test
 
       - name: Version bump
-        run: pnpm --filter @uniform-dev/core version ${{ github.event.inputs.version }} --no-git-tag-version
+        run: |
+          TYPE=${{ github.event.inputs.version }}
+          FILE=packages/core/package.json
+
+          CURRENT=$(node -p "require('./$FILE').version")
+          NEXT=$(pnpm exec semver $CURRENT -i $TYPE)
+
+          echo "Next version: $NEXT"
+
+          node << EOF
+          const fs = require('fs')
+          const path = '$FILE'
+          const pkg = JSON.parse(fs.readFileSync(path, 'utf8'))
+          pkg.version = '$NEXT'
+          fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n')
+          EOF
 
       - name: Verify Version Change (Debug)
         run: |

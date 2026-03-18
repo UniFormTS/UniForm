@@ -21,5 +21,8 @@
     "onlyBuiltDependencies": [
       "esbuild"
     ]
+  },
+  "devDependencies": {
+    "semver": "^7.7.4"
   }
 }
