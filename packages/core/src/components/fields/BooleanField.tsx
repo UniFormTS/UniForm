@@ -37,7 +37,7 @@ export function BooleanField({
           value={(rhfField.value as unknown) ?? false}
           onChange={(value) => {
             rhfField.onChange(value)
-            field.meta.onChange?.(value, formMethods)
+            void field.meta.onChange?.(value, formMethods)
           }}
           onBlur={rhfField.onBlur}
           ref={rhfField.ref}
@@ -48,6 +48,7 @@ export function BooleanField({
           required={field.required}
           disabled={field.meta.disabled || rhfField.disabled || contextDisabled}
           meta={field.meta}
+          schema={field.schema}
         />
       )}
     />

@@ -40,7 +40,7 @@ export function ScalarField({
           onChange={(value) => {
             const coerced = coerceValue(field.type, value, coercions)
             rhfField.onChange(coerced)
-            field.meta.onChange?.(coerced, formMethods)
+            void field.meta.onChange?.(coerced, formMethods)
           }}
           onBlur={rhfField.onBlur}
           ref={rhfField.ref}
@@ -50,7 +50,9 @@ export function ScalarField({
           error={fieldState.error?.message}
           required={field.required}
           disabled={field.meta.disabled || contextDisabled}
+          options={field.meta.options}
           meta={field.meta}
+          schema={field.schema}
         />
       )}
     />

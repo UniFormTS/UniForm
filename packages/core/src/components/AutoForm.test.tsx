@@ -3147,3 +3147,51 @@ describe('AutoForm — discriminated union', () => {
     expect(screen.getByPlaceholderText('you@example.com')).toBeInTheDocument()
   })
 })
+
+// ---------------------------------------------------------------------------
+// z.string() with meta.component = 'select' and meta.options
+// ---------------------------------------------------------------------------
+
+describe('z.string() rendered as select via meta', () => {
+  const schema = z.object({
+    role: z.string().meta({
+      component: 'select',
+      options: [
+        { label: 'User', value: 'user' },
+        { label: 'Admin', value: 'admin' },
+        { label: 'Editor', value: 'editor' },
+      ],
+    }),
+  })
+
+  it('renders a select element', () => {
+    render(<AutoForm form={new UniForm(schema)} onSubmit={vi.fn()} />)
+    expect(screen.getByRole('combobox')).toBeInTheDocument()
+  })
+
+  it('renders the correct options', () => {
+    render(<AutoForm form={new UniForm(schema)} onSubmit={vi.fn()} />)
+    const select = screen.getByRole('combobox')
+    const options = within(select).getAllByRole('option')
+    expect(options).toHaveLength(3)
+    expect(options[0]).toHaveValue('user')
+    expect(options[1]).toHaveValue('admin')
+    expect(options[2]).toHaveValue('editor')
+  })
+
+  it('submits the selected value as a string', async () => {
+    const onSubmit = vi.fn()
+    const { user } = setup(
+      <AutoForm
+        form={new UniForm(schema)}
+        defaultValues={{ role: 'user' }}
+        onSubmit={onSubmit}
+      />,
+    )
+    await user.selectOptions(screen.getByRole('combobox'), 'admin')
+    await user.click(screen.getByRole('button', { name: /submit/i }))
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith({ role: 'admin' })
+    })
+  })
+})

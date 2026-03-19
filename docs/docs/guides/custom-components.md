@@ -10,7 +10,25 @@ UniForm ships with `defaultRegistry` — a minimal set of field components that 
 
 ## The component registry
 
-The registry maps a **type key** to a React component. The built-in keys are `string`, `number`, `boolean`, `date`, `select` (for `z.enum()` / `z.nativeEnum()`), and `textarea` (opt-in). You can add your own keys (e.g. `"slider"`, `"rating"`) and reference them via `fields={{ myField: { component: 'rating' } }}`.
+The registry maps a **type key** to a React component. The built-in keys are `string`, `number`, `boolean`, `date`, `select` (for `z.enum()` / `z.nativeEnum()`, or a string field with `meta.options`), and `textarea` (opt-in). You can add your own keys (e.g. `"slider"`, `"rating"`) and reference them via `fields={{ myField: { component: 'rating' } }}`.
+
+## Select from a string field
+
+You can render a `z.string()` field as a select by setting `meta.component: 'select'` and providing `meta.options`. UniForm will treat the field as type `"select"` during introspection and pass the options to your select component:
+
+```ts
+const schema = z.object({
+  role: z
+    .string()
+    .meta({ component: 'select', options: [
+      { label: 'User', value: 'user' },
+      { label: 'Admin', value: 'admin' },
+      { label: 'Editor', value: 'editor' },
+    ] }),
+})
+```
+
+This is an alternative to `z.enum(['user', 'admin', 'editor'])` — useful when the option list is defined at runtime, or when you want a plain `string` in the output type rather than a union literal.
 
 You can override any key without replacing the others — your registry is merged with `defaultRegistry`. For the full type definition and resolution order see [`ComponentRegistry`](/docs/api/types#componentregistry) in the API reference.
 

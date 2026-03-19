@@ -45,6 +45,7 @@ export function parseDiscriminatedUnionMeta(schema: z.$ZodDiscriminatedUnion): {
     label: deriveLabel(discriminatorKey),
     required: true,
     meta: {},
+    schema,
     options: discriminatorOptions,
   }
 
@@ -95,6 +96,7 @@ export function introspectDiscriminatedUnionSchema(
     label: deriveLabel(discriminatorKey),
     required: true,
     meta: {},
+    schema,
     options: discriminatorOptions,
   }
 

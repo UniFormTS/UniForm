@@ -38,7 +38,7 @@ export function SelectField({
           value={(rhfField.value as unknown) ?? ''}
           onChange={(value) => {
             rhfField.onChange(value)
-            field.meta.onChange?.(value, formMethods)
+            void field.meta.onChange?.(value, formMethods)
           }}
           onBlur={rhfField.onBlur}
           ref={rhfField.ref}
@@ -50,6 +50,7 @@ export function SelectField({
           disabled={field.meta.disabled || contextDisabled}
           options={field.options}
           meta={field.meta}
+          schema={field.schema}
         />
       )}
     />

@@ -468,7 +468,26 @@ const schema = z.object({
 
 Zod still validates the array (`.min(1)` etc.) — only the _render_ is taken over by your component.
 
-#### Option 2 — Named key in the registry
+#### Option 2 — String field as select
+
+A `z.string()` field can be rendered as a select by setting `meta.component: 'select'` together with `meta.options`. UniForm treats it as type `"select"` during introspection:
+
+```ts
+const schema = z.object({
+  role: z.string().meta({
+    component: 'select',
+    options: [
+      { label: 'User', value: 'user' },
+      { label: 'Admin', value: 'admin' },
+      { label: 'Editor', value: 'editor' },
+    ],
+  }),
+})
+```
+
+This is an alternative to `z.enum(...)` — useful when the option list is dynamic or when you need a plain `string` output type rather than a union literal.
+
+#### Option 3 — Named key in the registry
 
 Register a component under a custom string key — either in `createAutoForm` or the `components` prop — then reference it with `meta.component: 'yourKey'`:
 

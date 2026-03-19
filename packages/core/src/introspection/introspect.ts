@@ -47,34 +47,44 @@ export function introspectSchema(
   // Never throw — unknown types gracefully return 'unknown'
   try {
     if (kind === 'string') {
-      type = 'string'
-      // Handle standalone format schemas: z.email(), z.url(), z.uuid()
-      // These are ZodStringFormat types with def.format set directly.
-      const defFormat = (def as z.$ZodStringFormatDef).format as
-        | string
-        | undefined
-      if (defFormat === 'email') {
-        mergedMeta['inputType'] = 'email'
-      } else if (defFormat === 'url') {
-        mergedMeta['inputType'] = 'url'
-      } else if (defFormat === 'uuid') {
-        mergedMeta['inputType'] = 'uuid'
+      // If meta declares a select component with options, treat the field as a select
+      if (
+        mergedMeta.component === 'select' &&
+        Array.isArray(mergedMeta.options) &&
+        mergedMeta.options.length > 0
+      ) {
+        type = 'select'
+        options = mergedMeta.options
       } else {
-        // Handle chained format checks: z.string().email() etc.
-        // v4 check shape: { check: 'string_format', format: 'email' | 'url' | 'uuid' | ... }
-        const checks = def.checks ?? []
-        const hasFormat = (fmt: string) =>
-          checks.some(
-            (c) =>
-              c._zod.def.check === 'string_format' &&
-              (c._zod.def as z.$ZodCheckStringFormatDef).format === fmt,
-          )
-        if (hasFormat('email')) {
+        type = 'string'
+        // Handle standalone format schemas: z.email(), z.url(), z.uuid()
+        // These are ZodStringFormat types with def.format set directly.
+        const defFormat = (def as z.$ZodStringFormatDef).format as
+          | string
+          | undefined
+        if (defFormat === 'email') {
           mergedMeta['inputType'] = 'email'
-        } else if (hasFormat('url')) {
+        } else if (defFormat === 'url') {
           mergedMeta['inputType'] = 'url'
-        } else if (hasFormat('uuid')) {
+        } else if (defFormat === 'uuid') {
           mergedMeta['inputType'] = 'uuid'
+        } else {
+          // Handle chained format checks: z.string().email() etc.
+          // v4 check shape: { check: 'string_format', format: 'email' | 'url' | 'uuid' | ... }
+          const checks = def.checks ?? []
+          const hasFormat = (fmt: string) =>
+            checks.some(
+              (c) =>
+                c._zod.def.check === 'string_format' &&
+                (c._zod.def as z.$ZodCheckStringFormatDef).format === fmt,
+            )
+          if (hasFormat('email')) {
+            mergedMeta['inputType'] = 'email'
+          } else if (hasFormat('url')) {
+            mergedMeta['inputType'] = 'url'
+          } else if (hasFormat('uuid')) {
+            mergedMeta['inputType'] = 'uuid'
+          }
         }
       }
     } else if (kind === 'number') {
@@ -124,16 +134,28 @@ export function introspectSchema(
         }
       }
     } else if (def.type === 'union') {
-      type = 'union'
       const unionDef = def as z.$ZodDiscriminatedUnionDef | z.$ZodUnionDef
-      if ('discriminator' in unionDef) {
-        // ZodDiscriminatedUnion: def.discriminator + def.options[]
-        discriminatorKey = unionDef.discriminator
-      }
       const variants = unionDef.options as z.$ZodAny[]
-      unionVariants = variants.map((variant, i) =>
-        introspectSchema(variant, String(i), path),
-      )
+
+      if ('discriminator' in unionDef) {
+        // Discriminated union — keep full union treatment
+        type = 'union'
+        discriminatorKey = unionDef.discriminator
+        unionVariants = variants.map((variant, i) =>
+          introspectSchema(variant, String(i), path),
+        )
+      } else {
+        // Plain union (z.or()) — collapse to the first variant.
+        // The original schema is preserved on `schema` for custom components.
+        const collapsed = introspectSchema(variants[0], name, parentPath)
+        return {
+          ...collapsed,
+          name: path,
+          label,
+          meta: { ...collapsed.meta, ...mergedMeta },
+          schema: inner,
+        } as FieldConfig
+      }
     }
   } catch {
     type = 'unknown'
@@ -145,6 +167,7 @@ export function introspectSchema(
     label,
     required,
     meta: mergedMeta,
+    schema: inner,
     ...(options !== undefined && { options }),
     ...(children !== undefined && { children }),
     ...(itemConfig !== undefined && { itemConfig }),

@@ -33,10 +33,13 @@ function Page() {
 
 When `<AutoForm>` mounts, it walks the Zod schema and builds an ordered list of **field descriptors**. For each field it determines:
 
-1. **Type key** — derived from the Zod type (`z.string()` → `"string"`, `z.enum(...)` → `"select"`, `z.boolean()` → `"boolean"`, etc.)
+1. **Type key** — derived from the Zod type (`z.string()` → `"string"`, `z.enum(...)` → `"select"`, `z.boolean()` → `"boolean"`, etc.). A `z.string()` field with `.meta({ component: 'select', options: [...] })` is also treated as `"select"` — see [Custom Components](./guides/custom-components#select-from-a-string-field).
 2. **Required** — whether the field is optional or nullable in the schema
-3. **Options** — for enum/nativeEnum fields, the list of valid values
+3. **Options** — for enum/nativeEnum fields, or string fields with `meta.options`, the list of valid values
 4. **Default value** — from `.default(...)` in the schema, or from the `defaultValues` prop
+5. **Schema** — the original Zod schema (after transparent wrappers are stripped), available on every field as an escape hatch for custom components
+
+Plain unions (`z.union([...])` / `.or()`) are collapsed to their first variant for rendering purposes; validation still runs against the full union schema. See [Plain Unions](./guides/plain-unions) for details. For variant-switching forms, use `z.discriminatedUnion()` — see [Discriminated Unions](./guides/discriminated-unions).
 
 ## Component resolution
 
