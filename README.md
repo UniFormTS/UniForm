@@ -14,7 +14,7 @@ UniForm takes a Zod schema and automatically renders a fully customizable form. 
 - **Per-field `onChange` in `fields` prop** — react to individual field changes inline, with typed values and full form control methods
 - **Per-field custom components** — pass any `React.ComponentType<FieldProps>` directly as `meta.component` (inline, no registry) or register under a custom string key; direct components bypass the registry _and_ the default `ArrayField`/`ObjectField` routing, allowing fully custom multi-value widgets for `array`-typed fields
 - **Layout hooks** — `classNames`, `fieldWrapper`, `layout.formWrapper`, `layout.sectionWrapper`, `layout.submitButton`
-- **Section grouping** — group fields into named sections via `meta.section`
+- **Section grouping** — group fields into named sections via `meta.section`; style or swap individual section wrappers via `layout.sections`
 - **Conditional fields** — show/hide fields based on form values with `meta.condition`; hidden fields automatically reset to their default value
 - **Field ordering** — control render order with `meta.order`
 - **`createAutoForm()` factory** — bake in your design system defaults once, use everywhere
@@ -178,7 +178,7 @@ const MyAutoForm = createAutoForm({
 | -------------- | ---------------------------------------- | ------------------------------------------------ |
 | `components`   | `ComponentRegistry`                      | Deep merge (instance overrides specific keys)    |
 | `fieldWrapper` | `React.ComponentType<FieldWrapperProps>` | Instance replaces factory                        |
-| `layout`       | `LayoutSlots`                            | Shallow merge                                    |
+| `layout`       | `LayoutSlots`                            | Shallow merge (except `sections` — deep-merged)  |
 | `classNames`   | `FormClassNames`                         | Shallow merge                                    |
 | `disabled`     | `boolean`                                | OR logic (either `true` → disabled)              |
 | `coercions`    | `CoercionMap`                            | Shallow merge                                    |
@@ -307,11 +307,29 @@ type LayoutSlots = {
   sectionWrapper?: React.ComponentType<{
     children: React.ReactNode
     title: string
+    className?: string
   }>
   submitButton?: React.ComponentType<{ isSubmitting: boolean }>
   arrayRowLayout?: React.ComponentType<ArrayRowLayoutProps>
   /** Shown while async `defaultValues` are resolving. Default: `<p>Loading…</p>` */
   loadingFallback?: React.ReactNode
+  /** Per-section styling / component overrides keyed by section title. */
+  sections?: Record<string, SectionConfig>
+}
+```
+
+#### `SectionConfig`
+
+```ts
+type SectionConfig = {
+  /** CSS class name forwarded to the section wrapper. */
+  className?: string
+  /** Replace the section wrapper component for this section only. */
+  component?: React.ComponentType<{
+    children: React.ReactNode
+    title: string
+    className?: string
+  }>
 }
 ```
 
@@ -633,8 +651,8 @@ The `span` value is set as `--field-span` CSS custom property on each field wrap
     city: { section: 'Address', order: 4 },
   }}
   layout={{
-    sectionWrapper: ({ children, title }) => (
-      <fieldset>
+    sectionWrapper: ({ children, title, className }) => (
+      <fieldset className={className}>
         <legend>{title}</legend>
         {children}
       </fieldset>
@@ -642,6 +660,23 @@ The `span` value is set as `--field-span` CSS custom property on each field wrap
   }}
 />
 ```
+
+Use `layout.sections` to style or swap the wrapper for individual sections:
+
+```tsx
+<AutoForm
+  form={myForm}
+  onSubmit={handleSubmit}
+  layout={{
+    sections: {
+      Personal: { className: 'bg-blue-50 p-4 rounded' },
+      Address: { component: AddressCard }, // completely different component
+    },
+  }}
+/>
+```
+
+`className` is forwarded as a prop to the active wrapper (global `sectionWrapper` or the per-section `component`). Factory-level and instance-level `sections` are merged — instance wins on conflicts.
 
 ### Conditional Fields
 

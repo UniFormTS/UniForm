@@ -3149,6 +3149,146 @@ describe('AutoForm — discriminated union', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Per-section styling via layout.sections
+// ---------------------------------------------------------------------------
+
+describe('layout.sections per-section styling', () => {
+  const schema = z.object({
+    name: z.string(),
+    street: z.string(),
+  })
+
+  it('126. className from layout.sections is applied to the matching fieldset', () => {
+    render(
+      <AutoForm
+        form={new UniForm(schema)}
+        onSubmit={vi.fn()}
+        fields={{
+          name: { section: 'Personal' },
+          street: { section: 'Address' },
+        }}
+        layout={{ sections: { Personal: { className: 'highlight' } } }}
+      />,
+    )
+    const fieldsets = document.querySelectorAll('fieldset')
+    const personalFieldset = Array.from(fieldsets).find(
+      (f) => f.querySelector('legend')?.textContent === 'Personal',
+    )
+    const addressFieldset = Array.from(fieldsets).find(
+      (f) => f.querySelector('legend')?.textContent === 'Address',
+    )
+    expect(personalFieldset).toHaveClass('highlight')
+    expect(addressFieldset).not.toHaveClass('highlight')
+  })
+
+  it('127. sections without a config entry are unaffected', () => {
+    render(
+      <AutoForm
+        form={new UniForm(schema)}
+        onSubmit={vi.fn()}
+        fields={{
+          name: { section: 'Personal' },
+          street: { section: 'Address' },
+        }}
+        layout={{ sections: { Personal: { className: 'highlight' } } }}
+      />,
+    )
+    const fieldsets = document.querySelectorAll('fieldset')
+    const addressFieldset = Array.from(fieldsets).find(
+      (f) => f.querySelector('legend')?.textContent === 'Address',
+    )
+    expect(addressFieldset?.className).toBeFalsy()
+  })
+
+  it('128. custom sectionWrapper that ignores className still works', () => {
+    const CustomSection = ({
+      children,
+      title,
+    }: {
+      children: React.ReactNode
+      title: string
+    }) => <div data-testid={`section-${title}`}>{children}</div>
+
+    render(
+      <AutoForm
+        form={new UniForm(schema)}
+        onSubmit={vi.fn()}
+        fields={{
+          name: { section: 'Personal' },
+          street: { section: 'Address' },
+        }}
+        layout={{
+          sectionWrapper: CustomSection,
+          sections: { Personal: { className: 'highlight' } },
+        }}
+      />,
+    )
+    expect(screen.getByTestId('section-Personal')).toBeInTheDocument()
+    expect(screen.getByTestId('section-Address')).toBeInTheDocument()
+  })
+
+  it('129. custom sectionWrapper that accepts className receives it', () => {
+    const CustomSection = ({
+      children,
+      title,
+      className,
+    }: {
+      children: React.ReactNode
+      title: string
+      className?: string
+    }) => (
+      <div data-testid={`section-${title}`} className={className}>
+        {children}
+      </div>
+    )
+
+    render(
+      <AutoForm
+        form={new UniForm(schema)}
+        onSubmit={vi.fn()}
+        fields={{
+          name: { section: 'Personal' },
+          street: { section: 'Address' },
+        }}
+        layout={{
+          sectionWrapper: CustomSection,
+          sections: { Personal: { className: 'custom-class' } },
+        }}
+      />,
+    )
+    const section = screen.getByTestId('section-Personal')
+    expect(section).toHaveClass('custom-class')
+  })
+
+  it('130. createAutoForm merges factory-level and instance-level sections', () => {
+    const ConfiguredForm = createAutoForm({
+      layout: { sections: { Personal: { className: 'factory-class' } } },
+    })
+
+    render(
+      <ConfiguredForm
+        form={new UniForm(schema)}
+        onSubmit={vi.fn()}
+        fields={{
+          name: { section: 'Personal' },
+          street: { section: 'Address' },
+        }}
+        layout={{ sections: { Address: { className: 'instance-class' } } }}
+      />,
+    )
+    const fieldsets = document.querySelectorAll('fieldset')
+    const personalFieldset = Array.from(fieldsets).find(
+      (f) => f.querySelector('legend')?.textContent === 'Personal',
+    )
+    const addressFieldset = Array.from(fieldsets).find(
+      (f) => f.querySelector('legend')?.textContent === 'Address',
+    )
+    expect(personalFieldset).toHaveClass('factory-class')
+    expect(addressFieldset).toHaveClass('instance-class')
+  })
+})
+
+// ---------------------------------------------------------------------------
 // z.string() with meta.component = 'select' and meta.options
 // ---------------------------------------------------------------------------
 

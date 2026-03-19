@@ -45,7 +45,14 @@ export function createAutoForm(config: AutoFormConfig) {
     )
 
     const mergedLayout = React.useMemo(
-      () => ({ ...config.layout, ...props.layout }),
+      () => ({
+        ...config.layout,
+        ...props.layout,
+        sections:
+          config.layout?.sections || props.layout?.sections
+            ? { ...config.layout?.sections, ...props.layout?.sections }
+            : undefined,
+      }),
       [props.layout],
     )
 

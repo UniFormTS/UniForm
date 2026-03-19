@@ -9,6 +9,7 @@ import type {
   FieldMeta,
   FormMethods,
   FieldDependencyResult,
+  ResolvedLayoutSlots,
 } from '../types'
 import type { UniForm, UniFormContext } from '../UniForm'
 import { introspectObjectSchema } from '../introspection/introspect'
@@ -345,7 +346,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   const sections = useSectionGrouping(visibleFields)
 
   const resolvedLayout = React.useMemo(
-    () => ({
+    (): ResolvedLayoutSlots => ({
       formWrapper: layout?.formWrapper ?? DefaultFormWrapper,
       sectionWrapper: layout?.sectionWrapper ?? DefaultSectionWrapper,
       submitButton: layout?.submitButton ?? DefaultSubmitButton,
@@ -431,10 +432,17 @@ export function AutoForm<TSchema extends z.$ZodObject>(
               )
             }
 
+            const sectionConfig = layout?.sections?.[section.title]
+            const PerSectionWrapper = sectionConfig?.component ?? SectionWrapper
+
             return (
-              <SectionWrapper key={section.title} title={section.title}>
+              <PerSectionWrapper
+                key={section.title}
+                title={section.title}
+                className={sectionConfig?.className}
+              >
                 {renderedFields}
-              </SectionWrapper>
+              </PerSectionWrapper>
             )
           })}
           <SubmitButton
