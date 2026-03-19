@@ -262,6 +262,26 @@ type FieldConfigBase = {
   required: boolean
   /** Merged UI metadata for the field. */
   meta: FieldMeta
+  /**
+   * The original Zod schema for this field, after transparent wrappers
+   * (`optional`, `nullable`, `default`, `pipe`) have been stripped.
+   *
+   * This is a general escape hatch for custom components that need to inspect
+   * the raw schema — for example, to read union variants, access custom Zod
+   * metadata not captured by introspection, or build schema-aware validation UI.
+   *
+   * @example
+   * function MyUnionInput({ field }: FieldProps) {
+   *   // Inspect the original schema for any edge case
+   *   const schema = field.schema
+   *   if (schema._zod.def.type === 'union') {
+   *     const variants = (schema._zod.def as z.$ZodUnionDef).options
+   *     // render a type-switcher using the raw Zod variants
+   *   }
+   *   return <input ... />
+   * }
+   */
+  schema: z.$ZodType
 }
 
 /**
@@ -344,6 +364,12 @@ export type FieldProps = {
   options?: SelectOption[]
   /** Full field metadata, including any custom keys. */
   meta: FieldMeta
+  /**
+   * The original Zod schema for this field (after transparent wrappers are stripped).
+   * Use this as an escape hatch when you need capabilities beyond what `FieldConfig`
+   * exposes — e.g. inspecting union variants, accessing custom Zod refinements, etc.
+   */
+  schema: z.$ZodType
 }
 
 // ---------------------------------------------------------------------------

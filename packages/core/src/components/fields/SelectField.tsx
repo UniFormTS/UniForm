@@ -50,6 +50,7 @@ export function SelectField({
           disabled={field.meta.disabled || contextDisabled}
           options={field.options}
           meta={field.meta}
+          schema={field.schema}
         />
       )}
     />

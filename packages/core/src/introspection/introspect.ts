@@ -124,16 +124,28 @@ export function introspectSchema(
         }
       }
     } else if (def.type === 'union') {
-      type = 'union'
       const unionDef = def as z.$ZodDiscriminatedUnionDef | z.$ZodUnionDef
-      if ('discriminator' in unionDef) {
-        // ZodDiscriminatedUnion: def.discriminator + def.options[]
-        discriminatorKey = unionDef.discriminator
-      }
       const variants = unionDef.options as z.$ZodAny[]
-      unionVariants = variants.map((variant, i) =>
-        introspectSchema(variant, String(i), path),
-      )
+
+      if ('discriminator' in unionDef) {
+        // Discriminated union — keep full union treatment
+        type = 'union'
+        discriminatorKey = unionDef.discriminator
+        unionVariants = variants.map((variant, i) =>
+          introspectSchema(variant, String(i), path),
+        )
+      } else {
+        // Plain union (z.or()) — collapse to the first variant.
+        // The original schema is preserved on `schema` for custom components.
+        const collapsed = introspectSchema(variants[0], name, parentPath)
+        return {
+          ...collapsed,
+          name: path,
+          label,
+          meta: { ...collapsed.meta, ...mergedMeta },
+          schema: inner,
+        } as FieldConfig
+      }
     }
   } catch {
     type = 'unknown'
@@ -145,6 +157,7 @@ export function introspectSchema(
     label,
     required,
     meta: mergedMeta,
+    schema: inner,
     ...(options !== undefined && { options }),
     ...(children !== undefined && { children }),
     ...(itemConfig !== undefined && { itemConfig }),

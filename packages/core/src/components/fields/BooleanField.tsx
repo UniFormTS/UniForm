@@ -48,6 +48,7 @@ export function BooleanField({
           required={field.required}
           disabled={field.meta.disabled || rhfField.disabled || contextDisabled}
           meta={field.meta}
+          schema={field.schema}
         />
       )}
     />

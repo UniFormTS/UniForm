@@ -451,7 +451,88 @@ describe('array min/max constraints', () => {
 })
 
 // ---------------------------------------------------------------------------
-// 17. parseDiscriminatedUnionMeta
+// 17. Plain unions (z.or / z.union)
+// ---------------------------------------------------------------------------
+
+describe('plain union (z.or / z.union)', () => {
+  it('collapses z.number().or(z.literal("")) to type "number"', () => {
+    const result = introspectSchema(
+      z.number().or(z.literal('')),
+      'amount',
+    )
+    expect(result.type).toBe('number')
+    expect(result.name).toBe('amount')
+  })
+
+  it('collapses z.union([z.string(), z.number()]) to type "string" (first variant wins)', () => {
+    const result = introspectSchema(z.union([z.string(), z.number()]), 'value')
+    expect(result.type).toBe('string')
+  })
+
+  it('collapses z.string().optional().or(z.literal("none")) — required is false', () => {
+    const result = introspectSchema(
+      z.string().optional().or(z.literal('none')),
+      'field',
+    )
+    // First variant is z.string().optional() → required=false, type=string
+    expect(result.required).toBe(false)
+    expect(result.type).toBe('string')
+  })
+
+  it('preserves the original union schema on field.schema', () => {
+    const union = z.number().or(z.literal(''))
+    const result = introspectSchema(union, 'amount')
+    // field.schema points at the unwrapped union, not the collapsed inner type
+    expect(result.schema).toBe(union)
+  })
+
+  it('collapses a union whose first variant is an enum — produces type "select"', () => {
+    const result = introspectSchema(
+      z.union([z.enum(['a', 'b']), z.literal('other')]),
+      'choice',
+    )
+    expect(result.type).toBe('select')
+  })
+
+  it('does NOT produce type "union" for a plain union', () => {
+    const result = introspectSchema(z.string().or(z.number()), 'field')
+    expect(result.type).not.toBe('union')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 18. schema field — escape hatch
+// ---------------------------------------------------------------------------
+
+describe('schema field (escape hatch)', () => {
+  it('exposes the inner Zod schema on every scalar field', () => {
+    const s = z.string()
+    const result = introspectSchema(s, 'name')
+    expect(result.schema).toBe(s)
+  })
+
+  it('exposes the unwrapped schema (not the optional wrapper) for optional fields', () => {
+    const inner = z.string()
+    const result = introspectSchema(inner.optional(), 'name')
+    expect(result.schema).toBe(inner)
+  })
+
+  it('exposes the unwrapped schema for .default() fields', () => {
+    const inner = z.number()
+    const result = introspectSchema(inner.default(0), 'count')
+    expect(result.schema).toBe(inner)
+  })
+
+  it('exposes the union schema (not the collapsed variant) for plain unions', () => {
+    const union = z.string().or(z.number())
+    const result = introspectSchema(union, 'field')
+    // schema is the plain union, not z.string()
+    expect(result.schema).toBe(union)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 19. parseDiscriminatedUnionMeta
 // ---------------------------------------------------------------------------
 
 describe('parseDiscriminatedUnionMeta', () => {

@@ -51,6 +51,7 @@ export function ScalarField({
           required={field.required}
           disabled={field.meta.disabled || contextDisabled}
           meta={field.meta}
+          schema={field.schema}
         />
       )}
     />

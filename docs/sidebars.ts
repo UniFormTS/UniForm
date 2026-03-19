@@ -29,6 +29,7 @@ const sidebars: SidebarsConfig = {
         'guides/validation',
         'guides/persistence',
         'guides/programmatic-control',
+        'guides/plain-unions',
         'guides/discriminated-unions',
         'guides/async',
       ],

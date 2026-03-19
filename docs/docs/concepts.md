@@ -37,6 +37,9 @@ When `<AutoForm>` mounts, it walks the Zod schema and builds an ordered list of 
 2. **Required** — whether the field is optional or nullable in the schema
 3. **Options** — for enum/nativeEnum fields, the list of valid values
 4. **Default value** — from `.default(...)` in the schema, or from the `defaultValues` prop
+5. **Schema** — the original Zod schema (after transparent wrappers are stripped), available on every field as an escape hatch for custom components
+
+Plain unions (`z.union([...])` / `.or()`) are collapsed to their first variant for rendering purposes; validation still runs against the full union schema. See [Plain Unions](./guides/plain-unions) for details. For variant-switching forms, use `z.discriminatedUnion()` — see [Discriminated Unions](./guides/discriminated-unions).
 
 ## Component resolution
 

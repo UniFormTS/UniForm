@@ -653,6 +653,48 @@ const myForm = createForm(schema)
 />
 ```
 
+### Plain Unions
+
+Plain Zod unions (`z.union([...])` / `.or()`) are rendered using the **first variant** as the field type. This keeps the default form UX simple — no type-switcher UI is generated automatically.
+
+```tsx
+// Renders as a number input (first variant wins)
+const schema = z.object({
+  quantity: z.number().or(z.literal('')),
+  //         ^^^^^^^^ rendered as number
+})
+```
+
+Validation still uses the **full** union schema — Zod accepts any of the listed types on submit.
+
+#### Accessing the full schema in a custom component
+
+Every field component receives `field.schema` — the original Zod schema for that field (after transparent wrappers like `optional`/`default` are stripped). This is a general escape hatch for anything introspection doesn't expose.
+
+For union fields this means you can inspect all variants directly from the Zod schema:
+
+```tsx
+import * as z from 'zod/v4/core'
+import type { FieldProps } from '@uniform-ts/core'
+
+function UnionAwareInput({ field, value, onChange }: FieldProps) {
+  const def = field.schema._zod.def
+
+  if (def.type === 'union') {
+    const variants = (def as z.$ZodUnionDef).options
+    // build a type-switcher, merge options, etc.
+  }
+
+  return <input ... />
+}
+
+const schema = z.object({
+  quantity: z.number().or(z.literal('')).meta({ component: UnionAwareInput }),
+})
+```
+
+`field.schema` is available on every field — not just unions — making it a universal escape hatch for custom validation UI, schema-derived tooltips, or any other use case the library doesn't cover out of the box.
+
 ### Discriminated Unions
 
 Pass a `z.discriminatedUnion` directly to `createForm` — no flat schema needed:
