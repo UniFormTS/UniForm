@@ -452,6 +452,21 @@ export type ArrayRowLayoutProps = {
 }
 
 /**
+ * Per-section styling overrides forwarded to the `sectionWrapper` component.
+ * Keys are section titles; values control how that section wrapper is styled.
+ */
+export type SectionConfig = {
+  /** CSS class name(s) applied to the section wrapper. */
+  className?: string
+  /** Replaces the section wrapper component entirely for this section. */
+  component?: React.ComponentType<{
+    children: React.ReactNode
+    title: string
+    className?: string
+  }>
+}
+
+/**
  * Optional layout slot overrides for top-level structural components of the
  * form. Provide only the slots you want to replace; omitted slots fall back
  * to the built-in defaults.
@@ -463,6 +478,7 @@ export type LayoutSlots = {
   sectionWrapper?: React.ComponentType<{
     children: React.ReactNode
     title: string
+    className?: string
   }>
   /** Custom submit button component. */
   submitButton?: React.ComponentType<{ isSubmitting: boolean; label: string }>
@@ -473,6 +489,11 @@ export type LayoutSlots = {
    * Defaults to a simple `<p>Loading…</p>` when not provided.
    */
   loadingFallback?: React.ReactNode
+  /**
+   * Per-section config keyed by section title.
+   * Forwarded to the `sectionWrapper` component as a `className` prop.
+   */
+  sections?: Record<string, SectionConfig>
 }
 
 /**
@@ -484,6 +505,7 @@ export type ResolvedLayoutSlots = {
   sectionWrapper: React.ComponentType<{
     children: React.ReactNode
     title: string
+    className?: string
   }>
   submitButton: React.ComponentType<{ isSubmitting: boolean; label: string }>
   arrayRowLayout: React.ComponentType<ArrayRowLayoutProps>

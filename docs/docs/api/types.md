@@ -16,6 +16,7 @@ import type {
   FieldOverride,
   LayoutSlots,
   ResolvedLayoutSlots,
+  SectionConfig,
   ComponentRegistry,
   FieldProps,
   FieldWrapperProps,
@@ -158,16 +159,40 @@ type LayoutSlots = {
   sectionWrapper?: React.ComponentType<{
     title: string
     children: React.ReactNode
+    className?: string
   }>
   submitButton?: React.ComponentType<{ isSubmitting: boolean; label: string }>
   arrayRowLayout?: React.ComponentType<ArrayRowLayoutProps>
   loadingFallback?: React.ReactNode
+  /** Per-section styling / component overrides keyed by section title. */
+  sections?: Record<string, SectionConfig>
 }
 ```
 
 :::note
 `formWrapper` receives only `children` — the `<form>` element and its `onSubmit` handler are managed by `<AutoForm>` itself, outside the wrapper.
 :::
+
+---
+
+## `SectionConfig`
+
+Per-section overrides applied when rendering a named section. All keys are optional — provide only what you need.
+
+```ts
+type SectionConfig = {
+  /** CSS class name forwarded to the section wrapper component. */
+  className?: string
+  /** Replace the section wrapper component for this section only. */
+  component?: React.ComponentType<{
+    children: React.ReactNode
+    title: string
+    className?: string
+  }>
+}
+```
+
+`className` and `component` can be combined: the `className` is forwarded to whatever component ends up rendering the section (the per-section `component` if provided, otherwise the global `sectionWrapper`).
 
 ---
 

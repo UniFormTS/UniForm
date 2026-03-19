@@ -26,15 +26,93 @@ The default `sectionWrapper` renders a `<fieldset>` with a `<legend>` containing
 
 ## Custom section card wrapper
 
+Replace the wrapper for **all** sections at once with `layout.sectionWrapper`:
+
 ```tsx
-const SectionCard = ({ title, children }) => (
-  <div className="section-card">
-    <h3 className="section-title">{title}</h3>
-    <div className="section-body">{children}</div>
+const SectionCard = ({ title, children, className }) => (
+  <div className={className}>
+    <h3>{title}</h3>
+    <div>{children}</div>
   </div>
 )
 
 <AutoForm layout={{ sectionWrapper: SectionCard }} ... />
+```
+
+## Per-section styling
+
+Use `layout.sections` to apply a `className` or swap the wrapper component for **individual** sections, without touching the others:
+
+```tsx
+<AutoForm
+  layout={{
+    sections: {
+      Personal: { className: 'bg-blue-50 p-4 rounded' },
+      Address: { className: 'bg-green-50 p-4 rounded' },
+    },
+  }}
+  ...
+/>
+```
+
+### Per-section component override
+
+For complete control over a single section, provide a `component`:
+
+```tsx
+const HighlightedSection = ({ title, children, className }) => (
+  <div className={`highlighted-section ${className ?? ''}`}>
+    <h2>{title}</h2>
+    {children}
+  </div>
+)
+
+<AutoForm
+  layout={{
+    sections: {
+      Personal: { component: HighlightedSection, className: 'vip' },
+      Address: { className: 'secondary' },
+    },
+  }}
+  ...
+/>
+```
+
+When `component` is provided it replaces the `sectionWrapper` for that section only. The `className` is forwarded to both the per-section `component` and the global `sectionWrapper`.
+
+### With `createAutoForm`
+
+Factory-level and instance-level `sections` are merged — instance wins on conflicts:
+
+```tsx
+const AppForm = createAutoForm({
+  layout: {
+    sections: {
+      Personal: { className: 'card' },
+    },
+  },
+})
+
+// Inherits factory 'Personal' class; adds 'Address' class on top
+<AppForm
+  layout={{ sections: { Address: { className: 'card card--secondary' } } }}
+  ...
+/>
+```
+
+## `SectionConfig` type
+
+```ts
+type SectionConfig = {
+  /** CSS class name forwarded to the section wrapper. */
+  className?: string
+  /** Replace the section wrapper component for this section only. */
+  component?: React.ComponentType<{
+    children: React.ReactNode
+    title: string
+    className?: string
+  }>
+}
 ```
 
 ## Live Example
