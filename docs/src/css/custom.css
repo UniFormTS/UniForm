@@ -66,6 +66,57 @@
   -webkit-backdrop-filter: blur(12px);
 }
 
+/* Mobile sidebar needs a solid background so menu items are visible */
+.navbar-sidebar {
+  background-color: var(--ifm-background-color);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  z-index: 10;
+  width: 90vw;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
+.navbar-sidebar__backdrop {
+  display: block;
+  opacity: 0.6;
+}
+
+.navbar-sidebar .navbar {
+  background-color: var(--ifm-background-color);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.navbar-sidebar__items {
+  background-color: var(--ifm-background-color);
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--ifm-navbar-height));
+  overflow-y: auto;
+}
+
+.navbar-sidebar__items .menu__link {
+  color: var(--ifm-font-color-base);
+}
+
+.navbar-sidebar__back {
+  display: none;
+}
+
+/* Divider between primary menu (Docs/GitHub) and secondary menu (doc pages) */
+.navbar-sidebar__items > .navbar-sidebar__item:first-child {
+  border-bottom: 1px solid var(--ifm-color-emphasis-300);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.navbar-sidebar__items--show-secondary {
+  transform: none;
+}
+
 .navbar__title {
   font-weight: 800;
   font-size: 1.05rem;
