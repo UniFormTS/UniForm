@@ -513,6 +513,38 @@ export interface SectionWrapperProps {
   className?: string
 }
 
+/**
+ * Props received by the `layout.objectWrapper` component.
+ * Replaces the default `<fieldset>` / `<legend>` wrapper rendered around
+ * nested object fields.
+ */
+export interface ObjectWrapperProps {
+  /** The rendered child fields. */
+  children: React.ReactNode
+  /** The field label (used as the legend / heading). May be undefined. */
+  label: string | undefined
+  /** CSS class name forwarded from `classNames.objectFieldset`. */
+  className?: string
+  /** CSS class name forwarded from `classNames.objectLegend` for the label element. */
+  labelClassName?: string
+}
+
+/**
+ * Props received by the `layout.arrayWrapper` component.
+ * Replaces the default `<fieldset>` / `<legend>` wrapper rendered around
+ * array fields.
+ */
+export interface ArrayWrapperProps {
+  /** The rendered array field body (rows + add button). */
+  children: React.ReactNode
+  /** The field label (used as the legend / heading). May be undefined. */
+  label: string | undefined
+  /** CSS class name forwarded from `classNames.arrayFieldset`. */
+  className?: string
+  /** CSS class name forwarded from `classNames.arrayLegend` for the label element. */
+  labelClassName?: string
+}
+
 /** Props received by the `layout.submitButton` component. */
 export interface SubmitButtonProps {
   isSubmitting: boolean
@@ -576,6 +608,16 @@ export type LayoutSlots = {
    */
   arrayFieldLayout?: React.ComponentType<ArrayFieldLayoutProps>
   /**
+   * Replaces the `<fieldset>` / `<legend>` wrapper rendered around nested
+   * object fields. Receives `label`, `className`, and `labelClassName` props.
+   */
+  objectWrapper?: React.ComponentType<ObjectWrapperProps>
+  /**
+   * Replaces the `<fieldset>` / `<legend>` wrapper rendered around array
+   * fields. Receives `label`, `className`, and `labelClassName` props.
+   */
+  arrayWrapper?: React.ComponentType<ArrayWrapperProps>
+  /**
    * Button component overrides for array fields. Set `base` to use your
    * design system's button everywhere; use specific keys to override
    * individual actions.
@@ -616,6 +658,8 @@ export type ResolvedLayoutSlots = {
   submitButton: React.ComponentType<SubmitButtonProps>
   arrayRowLayout: React.ComponentType<ArrayRowLayoutProps>
   arrayFieldLayout: React.ComponentType<ArrayFieldLayoutProps>
+  objectWrapper: React.ComponentType<ObjectWrapperProps>
+  arrayWrapper: React.ComponentType<ArrayWrapperProps>
   arrayButtons: ResolvedArrayButtonSlots
   loadingFallback: React.ReactNode
 }
@@ -650,6 +694,14 @@ export type FormClassNames = {
   arrayDuplicate?: string
   /** Class applied to the "collapse item" button in array fields. */
   arrayCollapse?: string
+  /** Class applied to the `<fieldset>` wrapper around nested object fields. */
+  objectFieldset?: string
+  /** Class applied to the `<legend>` label inside nested object fields. */
+  objectLegend?: string
+  /** Class applied to the `<fieldset>` wrapper around array fields. */
+  arrayFieldset?: string
+  /** Class applied to the `<legend>` label inside array fields. */
+  arrayLegend?: string
 }
 
 // ---------------------------------------------------------------------------

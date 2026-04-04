@@ -1,6 +1,7 @@
 import type { Control } from 'react-hook-form'
 import type { FieldConfig } from '../../types'
 import { FieldRenderer } from '../FieldRenderer'
+import { useAutoFormContext } from '../../context/AutoFormContext'
 
 type ObjectFieldProps = {
   field: Extract<FieldConfig, { type: 'object' }>
@@ -17,6 +18,7 @@ export function ObjectField({
   depth = 0,
   shouldUnregister,
 }: ObjectFieldProps) {
+  const { classNames, layout } = useAutoFormContext()
   const children = field.children
 
   const content = children.map((child, idx) => (
@@ -35,10 +37,14 @@ export function ObjectField({
     return <>{content}</>
   }
 
+  const ObjectWrapper = layout.objectWrapper
   return (
-    <fieldset>
-      {field.label && <legend>{field.label}</legend>}
+    <ObjectWrapper
+      label={field.label}
+      className={classNames.objectFieldset}
+      labelClassName={classNames.objectLegend}
+    >
       {content}
-    </fieldset>
+    </ObjectWrapper>
   )
 }

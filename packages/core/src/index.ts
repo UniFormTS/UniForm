@@ -19,6 +19,8 @@ export type {
   ArrayButtonSlots,
   ArrayRowLayoutProps,
   ArrayFieldLayoutProps,
+  ObjectWrapperProps,
+  ArrayWrapperProps,
   FormWrapperProps,
   SectionWrapperProps,
   SubmitButtonProps,
@@ -57,6 +59,8 @@ export { DefaultArrayButton } from './components/defaults/DefaultArrayButton'
 export { DefaultArrayCollapseButton } from './components/defaults/DefaultArrayCollapseButton'
 export { DefaultArrayFieldLayout } from './components/defaults/DefaultArrayFieldLayout'
 export { DefaultArrayRowLayout } from './components/defaults/DefaultArrayRowLayout'
+export { DefaultObjectWrapper } from './components/defaults/DefaultObjectWrapper'
+export { DefaultArrayWrapper } from './components/defaults/DefaultArrayWrapper'
 
 // Registry
 export { defaultRegistry } from './registry/defaultRegistry'

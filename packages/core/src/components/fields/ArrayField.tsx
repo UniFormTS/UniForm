@@ -93,7 +93,14 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
         }
       : itemConfig
 
-  const { add: AddBtn, remove: RemoveBtn, moveUp: MoveUpBtn, moveDown: MoveDownBtn, duplicate: DuplicateBtn, collapse: CollapseBtn } = layout.arrayButtons
+  const {
+    add: AddBtn,
+    remove: RemoveBtn,
+    moveUp: MoveUpBtn,
+    moveDown: MoveDownBtn,
+    duplicate: DuplicateBtn,
+    collapse: CollapseBtn,
+  } = layout.arrayButtons
   const ArrayFieldLayout = layout.arrayFieldLayout
   const RowLayout = layout.arrayRowLayout
 
@@ -232,11 +239,15 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
     return content
   }
 
+  const ArrayWrapper = layout.arrayWrapper
   return (
-    <fieldset>
-      {field.label && <legend>{field.label}</legend>}
+    <ArrayWrapper
+      label={field.label}
+      className={classNames.arrayFieldset}
+      labelClassName={classNames.arrayLegend}
+    >
       {content}
-    </fieldset>
+    </ArrayWrapper>
   )
 }
 

@@ -72,8 +72,8 @@ UniForm introspects the schema, renders appropriate inputs, validates with Zod, 
 | `components`    | `ComponentRegistry`                      | Map Zod types to your input components                   |
 | `fields`        | `Record<string, FieldOverride>`          | Per-field label, description, order, section, condition  |
 | `fieldWrapper`  | `React.ComponentType<FieldWrapperProps>` | Custom wrapper around every scalar field                 |
-| `layout`        | `LayoutSlots`                            | Replace form/section wrappers, submit button, array rows |
-| `classNames`    | `FormClassNames`                         | CSS classes for form, fields, labels, errors             |
+| `layout`        | `LayoutSlots`                            | Replace form/section/object/array wrappers, submit button, array rows |
+| `classNames`    | `FormClassNames`                         | CSS classes for form, fields, labels, errors, fieldset/legend wrappers |
 | `ref`           | `React.Ref<AutoFormHandle>`              | Imperative `reset`, `submit`, `setValues`, `getValues`   |
 | `persistKey`    | `string`                                 | Auto-save form state to `localStorage` under this key    |
 | `labels`        | `FormLabels`                             | Override built-in UI strings for i18n                    |

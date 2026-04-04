@@ -22,6 +22,8 @@ import { DefaultFormWrapper } from './defaults/DefaultFormWrapper'
 import { DefaultSectionWrapper } from './defaults/DefaultSectionWrapper'
 import { DefaultArrayRowLayout } from './defaults/DefaultArrayRowLayout'
 import { DefaultArrayFieldLayout } from './defaults/DefaultArrayFieldLayout'
+import { DefaultObjectWrapper } from './defaults/DefaultObjectWrapper'
+import { DefaultArrayWrapper } from './defaults/DefaultArrayWrapper'
 import { DefaultArrayButton } from './defaults/DefaultArrayButton'
 import { DefaultArrayCollapseButton } from './defaults/DefaultArrayCollapseButton'
 import { AutoFormContextProvider } from '../context/AutoFormContext'
@@ -353,6 +355,8 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       submitButton: layout?.submitButton ?? DefaultSubmitButton,
       arrayRowLayout: layout?.arrayRowLayout ?? DefaultArrayRowLayout,
       arrayFieldLayout: layout?.arrayFieldLayout ?? DefaultArrayFieldLayout,
+      objectWrapper: layout?.objectWrapper ?? DefaultObjectWrapper,
+      arrayWrapper: layout?.arrayWrapper ?? DefaultArrayWrapper,
       arrayButtons: {
         base,
         add: slots?.add ?? base,
@@ -370,6 +374,8 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     layout?.submitButton,
     layout?.arrayRowLayout,
     layout?.arrayFieldLayout,
+    layout?.objectWrapper,
+    layout?.arrayWrapper,
     layout?.arrayButtons,
     layout?.loadingFallback,
   ])

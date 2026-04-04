@@ -20,6 +20,7 @@ import Example19 from './examples/Example19'
 import Example20 from './examples/Example20'
 import Example21 from './examples/Example21'
 import Example22 from './examples/Example22'
+import Example23 from './examples/Example23'
 
 const examples = [
   { id: 'ex1', label: '1. classNames + span' },
@@ -44,6 +45,7 @@ const examples = [
   { id: 'ex20', label: '20. Async setOnChange' },
   { id: 'ex21', label: '21. Async Default Values' },
   { id: 'ex22', label: '22. Array Button & Field Layout' },
+  { id: 'ex23', label: '23. Object & Array Wrapper' },
 ]
 
 export default function App() {
@@ -132,6 +134,8 @@ export default function App() {
       <Example21 />
       <hr style={{ margin: '2rem 0' }} />
       <Example22 />
+      <hr style={{ margin: '2rem 0' }} />
+      <Example23 />
     </main>
   )
 }

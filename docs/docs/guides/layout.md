@@ -17,6 +17,8 @@ Pass a `layout` object to `<AutoForm>` (or `createAutoForm`) to override any slo
 | `formWrapper`      | `DefaultFormWrapper`      | `<form>` element + children                            |
 | `sectionWrapper`   | `DefaultSectionWrapper`   | `<fieldset>` + `<legend>` around grouped fields        |
 | `submitButton`     | `DefaultSubmitButton`     | `<button type="submit">`                               |
+| `objectWrapper`    | `DefaultObjectWrapper`    | `<fieldset>` + `<legend>` around nested object fields  |
+| `arrayWrapper`     | `DefaultArrayWrapper`     | `<fieldset>` + `<legend>` around array fields          |
 | `arrayRowLayout`   | `DefaultArrayRowLayout`   | Layout for a single array row (fields + action buttons)|
 | `arrayFieldLayout` | `DefaultArrayFieldLayout` | Layout for the whole array (all rows + Add button)     |
 | `arrayButtons`     | `DefaultArrayButton` × 6  | Button components for Add / Remove / Move / Duplicate  |
@@ -35,6 +37,22 @@ interface SectionWrapperProps { title: string; children: React.ReactNode; classN
 interface SubmitButtonProps {
   isSubmitting: boolean
   label: string
+}
+
+// objectWrapper — replaces <fieldset>/<legend> around nested object fields
+interface ObjectWrapperProps {
+  children: React.ReactNode
+  label: string | undefined      // field label used as the heading
+  className?: string             // forwarded from classNames.objectFieldset
+  labelClassName?: string        // forwarded from classNames.objectLegend
+}
+
+// arrayWrapper — replaces <fieldset>/<legend> around array fields
+interface ArrayWrapperProps {
+  children: React.ReactNode
+  label: string | undefined      // field label used as the heading
+  className?: string             // forwarded from classNames.arrayFieldset
+  labelClassName?: string        // forwarded from classNames.arrayLegend
 }
 
 // arrayRowLayout — buttons are pre-rendered nodes, not callbacks
@@ -96,8 +114,15 @@ Add CSS classes to structural elements without replacing the whole component:
     label: 'text-sm font-medium text-gray-700',
     error: 'text-xs text-red-600 mt-1',
     description: 'text-xs text-gray-500',
-    section: 'border border-gray-200 rounded-lg p-4',
-    sectionTitle: 'text-sm font-semibold text-gray-800 mb-3',
+    // Nested object fieldset/legend
+    objectFieldset: 'border border-indigo-200 rounded-lg p-4',
+    objectLegend: 'text-sm font-semibold text-indigo-700 px-1',
+    // Array fieldset/legend
+    arrayFieldset: 'border border-dashed border-gray-300 rounded-lg p-4',
+    arrayLegend: 'text-sm font-semibold text-gray-600 px-1',
+  }}
+  ...
+/>
   }}
   ...
 />

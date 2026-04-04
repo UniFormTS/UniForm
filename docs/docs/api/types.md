@@ -23,6 +23,8 @@ import type {
   FormWrapperProps,
   SectionWrapperProps,
   SubmitButtonProps,
+  ObjectWrapperProps,
+  ArrayWrapperProps,
   ArrayRowLayoutProps,
   ArrayFieldLayoutProps,
   ArrayButtonProps,
@@ -162,6 +164,8 @@ type LayoutSlots = {
   formWrapper?: React.ComponentType<FormWrapperProps>
   sectionWrapper?: React.ComponentType<SectionWrapperProps>
   submitButton?: React.ComponentType<SubmitButtonProps>
+  objectWrapper?: React.ComponentType<ObjectWrapperProps>
+  arrayWrapper?: React.ComponentType<ArrayWrapperProps>
   arrayRowLayout?: React.ComponentType<ArrayRowLayoutProps>
   arrayFieldLayout?: React.ComponentType<ArrayFieldLayoutProps>
   arrayButtons?: ArrayButtonSlots
@@ -210,6 +214,57 @@ Props received by the `layout.submitButton` component.
 interface SubmitButtonProps {
   isSubmitting: boolean
   label: string
+}
+```
+
+---
+
+## `ObjectWrapperProps`
+
+Props received by the `layout.objectWrapper` component. Replaces the default `<fieldset>` / `<legend>` wrapper rendered around nested object fields.
+
+```ts
+interface ObjectWrapperProps {
+  children: React.ReactNode
+  /** The field's label string, or `undefined` when no label is set. */
+  label: string | undefined
+  /** Forwarded from `classNames.objectFieldset`. */
+  className?: string
+  /** Forwarded from `classNames.objectLegend`. */
+  labelClassName?: string
+}
+```
+
+Example — replace the `<fieldset>` with a card `<div>`:
+
+```tsx
+function CardObjectWrapper({ children, label, className }: ObjectWrapperProps) {
+  return (
+    <div className={`rounded-lg border p-4 ${className ?? ''}`}>
+      {label && <p className="text-sm font-semibold mb-2">{label}</p>}
+      {children}
+    </div>
+  )
+}
+
+<AutoForm layout={{ objectWrapper: CardObjectWrapper }} ... />
+```
+
+---
+
+## `ArrayWrapperProps`
+
+Props received by the `layout.arrayWrapper` component. Replaces the default `<fieldset>` / `<legend>` wrapper rendered around array fields.
+
+```ts
+interface ArrayWrapperProps {
+  children: React.ReactNode
+  /** The field's label string, or `undefined` when no label is set. */
+  label: string | undefined
+  /** Forwarded from `classNames.arrayFieldset`. */
+  className?: string
+  /** Forwarded from `classNames.arrayLegend`. */
+  labelClassName?: string
 }
 ```
 
@@ -458,6 +513,12 @@ type FormClassNames = {
   arrayMove?: string
   arrayDuplicate?: string
   arrayCollapse?: string
+  // Object field wrapper/legend:
+  objectFieldset?: string  // class on the <fieldset> (or objectWrapper root)
+  objectLegend?: string    // class on the <legend> (or objectWrapper label)
+  // Array field wrapper/legend:
+  arrayFieldset?: string   // class on the <fieldset> (or arrayWrapper root)
+  arrayLegend?: string     // class on the <legend> (or arrayWrapper label)
 }
 ```
 
