@@ -12,13 +12,15 @@ UniForm separates field rendering from structural chrome — you can swap out th
 
 Pass a `layout` object to `<AutoForm>` (or `createAutoForm`) to override any slot:
 
-| Slot              | Default                 | Renders                                               |
-| ----------------- | ----------------------- | ----------------------------------------------------- |
-| `formWrapper`     | `DefaultFormWrapper`    | `<form>` element + children                           |
-| `sectionWrapper`  | `DefaultSectionWrapper` | `<fieldset>` + `<legend>` around grouped fields       |
-| `submitButton`    | `DefaultSubmitButton`   | `<button type="submit">`                              |
-| `arrayRowLayout`  | `DefaultArrayRowLayout` | Row with add/remove/reorder controls for array fields |
-| `loadingFallback` | `<p>Loading…</p>`       | Shown while async `defaultValues` resolves            |
+| Slot               | Default                   | Renders                                                |
+| ------------------ | ------------------------- | ------------------------------------------------------ |
+| `formWrapper`      | `DefaultFormWrapper`      | `<form>` element + children                            |
+| `sectionWrapper`   | `DefaultSectionWrapper`   | `<fieldset>` + `<legend>` around grouped fields        |
+| `submitButton`     | `DefaultSubmitButton`     | `<button type="submit">`                               |
+| `arrayRowLayout`   | `DefaultArrayRowLayout`   | Layout for a single array row (fields + action buttons)|
+| `arrayFieldLayout` | `DefaultArrayFieldLayout` | Layout for the whole array (all rows + Add button)     |
+| `arrayButtons`     | `DefaultArrayButton` × 6  | Button components for Add / Remove / Move / Duplicate  |
+| `loadingFallback`  | `<p>Loading…</p>`         | Shown while async `defaultValues` resolves             |
 
 ### Slot prop types
 
@@ -48,7 +50,39 @@ type ArrayRowLayoutProps = {
   index: number // zero-based row index
   rowCount: number // total number of rows
 }
+
+// arrayFieldLayout — controls where the Add button sits relative to the rows
+type ArrayFieldLayoutProps = {
+  rows: React.ReactNode
+  addButton: React.ReactNode
+  rowCount: number
+  canAdd: boolean // false when maxItems is reached
+}
+
+// arrayButtons — swap in your design system's button for all array actions
+type ArrayButtonSlots = {
+  base?: React.ComponentType<ArrayButtonProps>  // fallback for un-overridden slots
+  add?: React.ComponentType<ArrayButtonProps>
+  remove?: React.ComponentType<ArrayButtonProps>
+  moveUp?: React.ComponentType<ArrayButtonProps>
+  moveDown?: React.ComponentType<ArrayButtonProps>
+  duplicate?: React.ComponentType<ArrayButtonProps>
+  collapse?: React.ComponentType<ArrayCollapseButtonProps>
+}
+
+type ArrayButtonProps = {
+  onClick?: React.MouseEventHandler<HTMLButtonElement>
+  disabled?: boolean
+  type?: 'button' | 'submit' | 'reset'
+  'aria-label'?: string
+  className?: string
+  children?: React.ReactNode
+}
+
+type ArrayCollapseButtonProps = ArrayButtonProps & { isCollapsed: boolean }
 ```
+
+See the [TypeScript API](/docs/api/types) for full type details.
 
 ## `classNames`
 

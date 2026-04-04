@@ -14,8 +14,13 @@ export type {
   FieldProps,
   ComponentRegistry,
   FieldWrapperProps,
+  ArrayButtonProps,
+  ArrayCollapseButtonProps,
+  ArrayButtonSlots,
   ArrayRowLayoutProps,
+  ArrayFieldLayoutProps,
   LayoutSlots,
+  ResolvedArrayButtonSlots,
   ResolvedLayoutSlots,
   FormClassNames,
   FormLabels,
@@ -44,6 +49,10 @@ export { DefaultCheckbox } from './components/defaults/DefaultCheckbox'
 export { DefaultSelect } from './components/defaults/DefaultSelect'
 export { DefaultFieldWrapper } from './components/defaults/DefaultFieldWrapper'
 export { DefaultSubmitButton } from './components/defaults/DefaultSubmitButton'
+export { DefaultArrayButton } from './components/defaults/DefaultArrayButton'
+export { DefaultArrayCollapseButton } from './components/defaults/DefaultArrayCollapseButton'
+export { DefaultArrayFieldLayout } from './components/defaults/DefaultArrayFieldLayout'
+export { DefaultArrayRowLayout } from './components/defaults/DefaultArrayRowLayout'
 
 // Registry
 export { defaultRegistry } from './registry/defaultRegistry'

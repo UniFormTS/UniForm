@@ -21,6 +21,11 @@ import type {
   FieldProps,
   FieldWrapperProps,
   ArrayRowLayoutProps,
+  ArrayFieldLayoutProps,
+  ArrayButtonProps,
+  ArrayCollapseButtonProps,
+  ArrayButtonSlots,
+  ResolvedArrayButtonSlots,
   FormClassNames,
   ValidationMessages,
   FormLabels,
@@ -63,14 +68,10 @@ type AutoFormProps<TSchema extends z.$ZodObject> = {
 
 ## `AutoFormHandle<TSchema>`
 
-The object exposed via `React.useRef<AutoFormHandle>`. Extends the library's own `FormMethods` (not RHF's `UseFormReturn` directly).
+The object exposed via `React.useRef<AutoFormHandle>`. This is exactly [`FormMethods`](#formmethods) — no extra properties.
 
 ```ts
-type AutoFormHandle<TSchema extends z.$ZodObject> = FormMethods<
-  z.infer<TSchema>
-> & {
-  isSubmitting: boolean
-}
+type AutoFormHandle<TSchema extends z.$ZodObject> = FormMethods<z.infer<TSchema>>
 ```
 
 See [`FormMethods`](#formmethods) below for the full method list.
@@ -163,6 +164,8 @@ type LayoutSlots = {
   }>
   submitButton?: React.ComponentType<{ isSubmitting: boolean; label: string }>
   arrayRowLayout?: React.ComponentType<ArrayRowLayoutProps>
+  arrayFieldLayout?: React.ComponentType<ArrayFieldLayoutProps>
+  arrayButtons?: ArrayButtonSlots
   loadingFallback?: React.ReactNode
   /** Per-section styling / component overrides keyed by section title. */
   sections?: Record<string, SectionConfig>
@@ -212,6 +215,106 @@ type ArrayRowLayoutProps = {
   }
   index: number // zero-based row index
   rowCount: number // total number of rows
+}
+```
+
+---
+
+## `ArrayFieldLayoutProps`
+
+Props passed to a custom `arrayFieldLayout` component. Controls the layout of the entire array field — primarily where the **Add** button appears relative to the rows.
+
+```ts
+type ArrayFieldLayoutProps = {
+  rows: React.ReactNode    // all rendered rows
+  addButton: React.ReactNode
+  rowCount: number         // current number of rows
+  canAdd: boolean          // false when maxItems is reached
+}
+```
+
+Example — add button above the rows:
+
+```tsx
+const AddFirstLayout = ({ rows, addButton }: ArrayFieldLayoutProps) => (
+  <div>
+    {addButton}
+    {rows}
+  </div>
+)
+
+<AutoForm layout={{ arrayFieldLayout: AddFirstLayout }} ... />
+```
+
+---
+
+## `ArrayButtonProps`
+
+Props accepted by every array action button component (add, remove, move, duplicate).
+
+```ts
+type ArrayButtonProps = {
+  onClick?: React.MouseEventHandler<HTMLButtonElement>
+  disabled?: boolean
+  type?: 'button' | 'submit' | 'reset'
+  'aria-label'?: string
+  className?: string
+  children?: React.ReactNode
+}
+```
+
+---
+
+## `ArrayCollapseButtonProps`
+
+Props for the collapse/expand toggle button. Extends `ArrayButtonProps` with an `isCollapsed` flag.
+
+```ts
+type ArrayCollapseButtonProps = ArrayButtonProps & {
+  isCollapsed: boolean
+}
+```
+
+:::note
+If you forward these props to a DOM `<button>`, make sure to strip `isCollapsed` to avoid an unknown-prop warning.
+:::
+
+---
+
+## `ArrayButtonSlots`
+
+Grouped button component overrides. Pass this object to `layout.arrayButtons`.
+
+```ts
+type ArrayButtonSlots = {
+  /** Fallback for any slot that isn't explicitly overridden. */
+  base?: React.ComponentType<ArrayButtonProps>
+  add?: React.ComponentType<ArrayButtonProps>
+  remove?: React.ComponentType<ArrayButtonProps>
+  moveUp?: React.ComponentType<ArrayButtonProps>
+  moveDown?: React.ComponentType<ArrayButtonProps>
+  duplicate?: React.ComponentType<ArrayButtonProps>
+  collapse?: React.ComponentType<ArrayCollapseButtonProps>
+}
+```
+
+Resolution order for each slot: **specific slot → `base` → built-in default**.
+
+---
+
+## `ResolvedArrayButtonSlots`
+
+The fully-resolved version of `ArrayButtonSlots` where every slot is guaranteed to have a component. Returned from `useAutoFormContext().layout.arrayButtons`.
+
+```ts
+type ResolvedArrayButtonSlots = {
+  base: React.ComponentType<ArrayButtonProps>
+  add: React.ComponentType<ArrayButtonProps>
+  remove: React.ComponentType<ArrayButtonProps>
+  moveUp: React.ComponentType<ArrayButtonProps>
+  moveDown: React.ComponentType<ArrayButtonProps>
+  duplicate: React.ComponentType<ArrayButtonProps>
+  collapse: React.ComponentType<ArrayCollapseButtonProps>
 }
 ```
 

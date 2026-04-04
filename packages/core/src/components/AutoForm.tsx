@@ -21,6 +21,9 @@ import { DefaultSubmitButton } from './defaults/DefaultSubmitButton'
 import { DefaultFormWrapper } from './defaults/DefaultFormWrapper'
 import { DefaultSectionWrapper } from './defaults/DefaultSectionWrapper'
 import { DefaultArrayRowLayout } from './defaults/DefaultArrayRowLayout'
+import { DefaultArrayFieldLayout } from './defaults/DefaultArrayFieldLayout'
+import { DefaultArrayButton } from './defaults/DefaultArrayButton'
+import { DefaultArrayCollapseButton } from './defaults/DefaultArrayCollapseButton'
 import { AutoFormContextProvider } from '../context/AutoFormContext'
 import { FieldRenderer } from './FieldRenderer'
 import { useConditionalFields } from '../hooks/useConditionalFields'
@@ -280,11 +283,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     ],
   )
 
-  React.useImperativeHandle(
-    ref,
-    () => ({ ...formMethods, isSubmitting: formState.isSubmitting }),
-    [formMethods, formState.isSubmitting],
-  )
+  React.useImperativeHandle(ref, () => formMethods, [formMethods])
 
   // setFieldMeta: called synchronously inside UniForm onChange handlers.
   // Updates dynamicMeta state; use ctx.setValue() directly to set a field value.
@@ -345,22 +344,35 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   const visibleFields = useConditionalFields(fieldsWithDynamic, control)
   const sections = useSectionGrouping(visibleFields)
 
-  const resolvedLayout = React.useMemo(
-    (): ResolvedLayoutSlots => ({
+  const resolvedLayout = React.useMemo((): ResolvedLayoutSlots => {
+    const base = layout?.arrayButtons?.base ?? DefaultArrayButton
+    const slots = layout?.arrayButtons
+    return {
       formWrapper: layout?.formWrapper ?? DefaultFormWrapper,
       sectionWrapper: layout?.sectionWrapper ?? DefaultSectionWrapper,
       submitButton: layout?.submitButton ?? DefaultSubmitButton,
       arrayRowLayout: layout?.arrayRowLayout ?? DefaultArrayRowLayout,
+      arrayFieldLayout: layout?.arrayFieldLayout ?? DefaultArrayFieldLayout,
+      arrayButtons: {
+        base,
+        add: slots?.add ?? base,
+        remove: slots?.remove ?? base,
+        moveUp: slots?.moveUp ?? base,
+        moveDown: slots?.moveDown ?? base,
+        duplicate: slots?.duplicate ?? base,
+        collapse: slots?.collapse ?? DefaultArrayCollapseButton,
+      },
       loadingFallback: layout?.loadingFallback ?? <p>Loading…</p>,
-    }),
-    [
-      layout?.formWrapper,
-      layout?.sectionWrapper,
-      layout?.submitButton,
-      layout?.arrayRowLayout,
-      layout?.loadingFallback,
-    ],
-  )
+    }
+  }, [
+    layout?.formWrapper,
+    layout?.sectionWrapper,
+    layout?.submitButton,
+    layout?.arrayRowLayout,
+    layout?.arrayFieldLayout,
+    layout?.arrayButtons,
+    layout?.loadingFallback,
+  ])
 
   const resolvedFieldWrapper = fieldWrapper ?? DefaultFieldWrapper
 

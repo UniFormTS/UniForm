@@ -425,6 +425,52 @@ export type FieldWrapperProps = {
 // LayoutSlots
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// ArrayButtonProps
+// ---------------------------------------------------------------------------
+
+/**
+ * Props for a generic array action button. Compatible with standard design
+ * system button components — pass your own via the `arrayButton` layout slot
+ * and it will be used for all array buttons (add, remove, move, duplicate).
+ */
+export type ArrayButtonProps = {
+  onClick?: React.MouseEventHandler<HTMLButtonElement>
+  disabled?: boolean
+  /** Always `"button"` — prevents accidental form submission. */
+  type?: 'button' | 'submit' | 'reset'
+  /** Accessible label describing the specific action and target row. */
+  'aria-label'?: string
+  /** CSS class name forwarded from `classNames.arrayAdd` / `arrayRemove` / etc. */
+  className?: string
+  children?: React.ReactNode
+}
+
+/**
+ * Props for the collapse/expand toggle button on an array row.
+ * Extends `ArrayButtonProps` with collapse state so custom components
+ * can apply directional styling (e.g. rotating a chevron icon).
+ */
+export type ArrayCollapseButtonProps = ArrayButtonProps & {
+  /** Whether the row is currently collapsed. */
+  isCollapsed: boolean
+}
+
+/**
+ * Props for the component that wraps the entire array field body,
+ * controlling the relative position of the rows and the add button.
+ */
+export type ArrayFieldLayoutProps = {
+  /** The rendered list of array rows. */
+  rows: React.ReactNode
+  /** The rendered "add row" button. */
+  addButton: React.ReactNode
+  /** Total number of rows currently in the array. */
+  rowCount: number
+  /** Whether adding another row is permitted (respects `maxItems`). */
+  canAdd: boolean
+}
+
 /**
  * Props passed to the component that renders a single row inside an array field,
  * including the row's content and action buttons (move, duplicate, remove, collapse).
@@ -467,6 +513,32 @@ export type SectionConfig = {
 }
 
 /**
+ * Button component overrides for array fields. Set `base` to swap in your
+ * design system's button everywhere; use the specific keys to override
+ * individual actions on top of that. All keys fall back to `base`, which
+ * itself falls back to a plain `<button>`.
+ */
+export type ArrayButtonSlots = {
+  /** Used for every array button that has no specific override. */
+  base?: React.ComponentType<ArrayButtonProps>
+  /** Override for the add-row button only. */
+  add?: React.ComponentType<ArrayButtonProps>
+  /** Override for the remove-row button only. */
+  remove?: React.ComponentType<ArrayButtonProps>
+  /** Override for the move-up button only. */
+  moveUp?: React.ComponentType<ArrayButtonProps>
+  /** Override for the move-down button only. */
+  moveDown?: React.ComponentType<ArrayButtonProps>
+  /** Override for the duplicate-row button only. */
+  duplicate?: React.ComponentType<ArrayButtonProps>
+  /**
+   * Override for the collapse/expand toggle button only.
+   * Receives `isCollapsed` in addition to standard `ArrayButtonProps`.
+   */
+  collapse?: React.ComponentType<ArrayCollapseButtonProps>
+}
+
+/**
  * Optional layout slot overrides for top-level structural components of the
  * form. Provide only the slots you want to replace; omitted slots fall back
  * to the built-in defaults.
@@ -485,6 +557,17 @@ export type LayoutSlots = {
   /** Custom layout component for individual rows in array fields. */
   arrayRowLayout?: React.ComponentType<ArrayRowLayoutProps>
   /**
+   * Controls the layout of the entire array field body — position the rows
+   * and add button relative to each other (e.g. add button above rows).
+   */
+  arrayFieldLayout?: React.ComponentType<ArrayFieldLayoutProps>
+  /**
+   * Button component overrides for array fields. Set `base` to use your
+   * design system's button everywhere; use specific keys to override
+   * individual actions.
+   */
+  arrayButtons?: ArrayButtonSlots
+  /**
    * Content rendered while async `defaultValues` are loading.
    * Defaults to a simple `<p>Loading…</p>` when not provided.
    */
@@ -494,6 +577,19 @@ export type LayoutSlots = {
    * Forwarded to the `sectionWrapper` component as a `className` prop.
    */
   sections?: Record<string, SectionConfig>
+}
+
+/**
+ * Resolved button slots where every entry is guaranteed to be defined.
+ */
+export type ResolvedArrayButtonSlots = {
+  base: React.ComponentType<ArrayButtonProps>
+  add: React.ComponentType<ArrayButtonProps>
+  remove: React.ComponentType<ArrayButtonProps>
+  moveUp: React.ComponentType<ArrayButtonProps>
+  moveDown: React.ComponentType<ArrayButtonProps>
+  duplicate: React.ComponentType<ArrayButtonProps>
+  collapse: React.ComponentType<ArrayCollapseButtonProps>
 }
 
 /**
@@ -509,6 +605,8 @@ export type ResolvedLayoutSlots = {
   }>
   submitButton: React.ComponentType<{ isSubmitting: boolean; label: string }>
   arrayRowLayout: React.ComponentType<ArrayRowLayoutProps>
+  arrayFieldLayout: React.ComponentType<ArrayFieldLayoutProps>
+  arrayButtons: ResolvedArrayButtonSlots
   loadingFallback: React.ReactNode
 }
 
@@ -642,10 +740,7 @@ export type PersistStorage = {
  * @template TSchema - The Zod object schema that defines the form shape.
  */
 export type AutoFormHandle<TSchema extends z.$ZodObject = z.$ZodObject> =
-  FormMethods<z.infer<TSchema>> & {
-    /** `true` while an async `onSubmit` handler is in flight. */
-    isSubmitting: boolean
-  }
+  FormMethods<z.infer<TSchema>>
 
 // ---------------------------------------------------------------------------
 // AutoFormConfig (factory)
