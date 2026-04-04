@@ -337,7 +337,7 @@ export type FieldConfig = FieldConfigBase &
  * value, change/blur handlers, and all resolved UI metadata needed to render
  * a single field.
  */
-export type FieldProps = {
+export interface FieldProps {
   /** Dot-notated field path (e.g. `"address.street"`). */
   name: string
   /** The current field value. */
@@ -400,7 +400,7 @@ export type ComponentRegistry = {
  * Props passed to the field wrapper component that surrounds every rendered
  * field. Used to render the label, description, error message, and grid span.
  */
-export type FieldWrapperProps = {
+export interface FieldWrapperProps {
   /** The field input component to wrap. */
   children: React.ReactNode
   /** The fully resolved field configuration. */
@@ -434,7 +434,7 @@ export type FieldWrapperProps = {
  * system button components — pass your own via the `arrayButton` layout slot
  * and it will be used for all array buttons (add, remove, move, duplicate).
  */
-export type ArrayButtonProps = {
+export interface ArrayButtonProps {
   onClick?: React.MouseEventHandler<HTMLButtonElement>
   disabled?: boolean
   /** Always `"button"` — prevents accidental form submission. */
@@ -451,7 +451,7 @@ export type ArrayButtonProps = {
  * Extends `ArrayButtonProps` with collapse state so custom components
  * can apply directional styling (e.g. rotating a chevron icon).
  */
-export type ArrayCollapseButtonProps = ArrayButtonProps & {
+export interface ArrayCollapseButtonProps extends ArrayButtonProps {
   /** Whether the row is currently collapsed. */
   isCollapsed: boolean
 }
@@ -460,7 +460,7 @@ export type ArrayCollapseButtonProps = ArrayButtonProps & {
  * Props for the component that wraps the entire array field body,
  * controlling the relative position of the rows and the add button.
  */
-export type ArrayFieldLayoutProps = {
+export interface ArrayFieldLayoutProps {
   /** The rendered list of array rows. */
   rows: React.ReactNode
   /** The rendered "add row" button. */
@@ -475,7 +475,7 @@ export type ArrayFieldLayoutProps = {
  * Props passed to the component that renders a single row inside an array field,
  * including the row's content and action buttons (move, duplicate, remove, collapse).
  */
-export type ArrayRowLayoutProps = {
+export interface ArrayRowLayoutProps {
   /** The rendered fields for this array item. */
   children: React.ReactNode
   /** Action button nodes for the row. */
@@ -497,6 +497,28 @@ export type ArrayRowLayoutProps = {
   rowCount: number
 }
 
+// ---------------------------------------------------------------------------
+// Named props interfaces for inline layout slots
+// ---------------------------------------------------------------------------
+
+/** Props received by the `layout.formWrapper` component. */
+export interface FormWrapperProps {
+  children: React.ReactNode
+}
+
+/** Props received by the `layout.sectionWrapper` component (and per-section `SectionConfig.component`). */
+export interface SectionWrapperProps {
+  children: React.ReactNode
+  title: string
+  className?: string
+}
+
+/** Props received by the `layout.submitButton` component. */
+export interface SubmitButtonProps {
+  isSubmitting: boolean
+  label: string
+}
+
 /**
  * Per-section styling overrides forwarded to the `sectionWrapper` component.
  * Keys are section titles; values control how that section wrapper is styled.
@@ -505,11 +527,7 @@ export type SectionConfig = {
   /** CSS class name(s) applied to the section wrapper. */
   className?: string
   /** Replaces the section wrapper component entirely for this section. */
-  component?: React.ComponentType<{
-    children: React.ReactNode
-    title: string
-    className?: string
-  }>
+  component?: React.ComponentType<SectionWrapperProps>
 }
 
 /**
@@ -545,15 +563,11 @@ export type ArrayButtonSlots = {
  */
 export type LayoutSlots = {
   /** Wrapper rendered around the entire form. */
-  formWrapper?: React.ComponentType<{ children: React.ReactNode }>
+  formWrapper?: React.ComponentType<FormWrapperProps>
   /** Wrapper rendered around each named field section. */
-  sectionWrapper?: React.ComponentType<{
-    children: React.ReactNode
-    title: string
-    className?: string
-  }>
+  sectionWrapper?: React.ComponentType<SectionWrapperProps>
   /** Custom submit button component. */
-  submitButton?: React.ComponentType<{ isSubmitting: boolean; label: string }>
+  submitButton?: React.ComponentType<SubmitButtonProps>
   /** Custom layout component for individual rows in array fields. */
   arrayRowLayout?: React.ComponentType<ArrayRowLayoutProps>
   /**
@@ -597,13 +611,9 @@ export type ResolvedArrayButtonSlots = {
  * guaranteed to be defined (falling back to built-in defaults).
  */
 export type ResolvedLayoutSlots = {
-  formWrapper: React.ComponentType<{ children: React.ReactNode }>
-  sectionWrapper: React.ComponentType<{
-    children: React.ReactNode
-    title: string
-    className?: string
-  }>
-  submitButton: React.ComponentType<{ isSubmitting: boolean; label: string }>
+  formWrapper: React.ComponentType<FormWrapperProps>
+  sectionWrapper: React.ComponentType<SectionWrapperProps>
+  submitButton: React.ComponentType<SubmitButtonProps>
   arrayRowLayout: React.ComponentType<ArrayRowLayoutProps>
   arrayFieldLayout: React.ComponentType<ArrayFieldLayoutProps>
   arrayButtons: ResolvedArrayButtonSlots

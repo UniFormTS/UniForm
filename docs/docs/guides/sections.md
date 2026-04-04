@@ -107,11 +107,7 @@ type SectionConfig = {
   /** CSS class name forwarded to the section wrapper. */
   className?: string
   /** Replace the section wrapper component for this section only. */
-  component?: React.ComponentType<{
-    children: React.ReactNode
-    title: string
-    className?: string
-  }>
+  component?: React.ComponentType<SectionWrapperProps>
 }
 ```
 

@@ -20,6 +20,9 @@ import type {
   ComponentRegistry,
   FieldProps,
   FieldWrapperProps,
+  FormWrapperProps,
+  SectionWrapperProps,
+  SubmitButtonProps,
   ArrayRowLayoutProps,
   ArrayFieldLayoutProps,
   ArrayButtonProps,
@@ -156,18 +159,13 @@ Slots for replacing structural chrome components.
 
 ```ts
 type LayoutSlots = {
-  formWrapper?: React.ComponentType<{ children: React.ReactNode }>
-  sectionWrapper?: React.ComponentType<{
-    title: string
-    children: React.ReactNode
-    className?: string
-  }>
-  submitButton?: React.ComponentType<{ isSubmitting: boolean; label: string }>
+  formWrapper?: React.ComponentType<FormWrapperProps>
+  sectionWrapper?: React.ComponentType<SectionWrapperProps>
+  submitButton?: React.ComponentType<SubmitButtonProps>
   arrayRowLayout?: React.ComponentType<ArrayRowLayoutProps>
   arrayFieldLayout?: React.ComponentType<ArrayFieldLayoutProps>
   arrayButtons?: ArrayButtonSlots
   loadingFallback?: React.ReactNode
-  /** Per-section styling / component overrides keyed by section title. */
   sections?: Record<string, SectionConfig>
 }
 ```
@@ -175,6 +173,45 @@ type LayoutSlots = {
 :::note
 `formWrapper` receives only `children` — the `<form>` element and its `onSubmit` handler are managed by `<AutoForm>` itself, outside the wrapper.
 :::
+
+---
+
+## `FormWrapperProps`
+
+Props received by the `layout.formWrapper` component.
+
+```ts
+interface FormWrapperProps {
+  children: React.ReactNode
+}
+```
+
+---
+
+## `SectionWrapperProps`
+
+Props received by the `layout.sectionWrapper` component and by per-section `SectionConfig.component` overrides.
+
+```ts
+interface SectionWrapperProps {
+  children: React.ReactNode
+  title: string
+  className?: string
+}
+```
+
+---
+
+## `SubmitButtonProps`
+
+Props received by the `layout.submitButton` component.
+
+```ts
+interface SubmitButtonProps {
+  isSubmitting: boolean
+  label: string
+}
+```
 
 ---
 
@@ -187,11 +224,7 @@ type SectionConfig = {
   /** CSS class name forwarded to the section wrapper component. */
   className?: string
   /** Replace the section wrapper component for this section only. */
-  component?: React.ComponentType<{
-    children: React.ReactNode
-    title: string
-    className?: string
-  }>
+  component?: React.ComponentType<SectionWrapperProps>
 }
 ```
 
@@ -204,7 +237,7 @@ type SectionConfig = {
 Props passed to custom `arrayRowLayout` components. Buttons are provided as pre-rendered `React.ReactNode` values — render them wherever you like.
 
 ```ts
-type ArrayRowLayoutProps = {
+interface ArrayRowLayoutProps {
   children: React.ReactNode
   buttons: {
     moveUp: React.ReactNode | null // null when already first row
@@ -225,7 +258,7 @@ type ArrayRowLayoutProps = {
 Props passed to a custom `arrayFieldLayout` component. Controls the layout of the entire array field — primarily where the **Add** button appears relative to the rows.
 
 ```ts
-type ArrayFieldLayoutProps = {
+interface ArrayFieldLayoutProps {
   rows: React.ReactNode    // all rendered rows
   addButton: React.ReactNode
   rowCount: number         // current number of rows
@@ -253,7 +286,7 @@ const AddFirstLayout = ({ rows, addButton }: ArrayFieldLayoutProps) => (
 Props accepted by every array action button component (add, remove, move, duplicate).
 
 ```ts
-type ArrayButtonProps = {
+interface ArrayButtonProps {
   onClick?: React.MouseEventHandler<HTMLButtonElement>
   disabled?: boolean
   type?: 'button' | 'submit' | 'reset'
@@ -270,7 +303,7 @@ type ArrayButtonProps = {
 Props for the collapse/expand toggle button. Extends `ArrayButtonProps` with an `isCollapsed` flag.
 
 ```ts
-type ArrayCollapseButtonProps = ArrayButtonProps & {
+interface ArrayCollapseButtonProps extends ArrayButtonProps {
   isCollapsed: boolean
 }
 ```
@@ -347,7 +380,7 @@ Enum fields use the `select` key, not `enum`. The `array` and `object` keys are 
 The props passed to every custom field component. UniForm calls your component with these.
 
 ```ts
-type FieldProps = {
+interface FieldProps {
   name: string
   value: unknown
   onChange: (value: unknown) => void
@@ -371,7 +404,7 @@ type FieldProps = {
 Props passed to the `fieldWrapper` component that surrounds every rendered field.
 
 ```ts
-type FieldWrapperProps = {
+interface FieldWrapperProps {
   children: React.ReactNode
   field: FieldConfig
   error?: string

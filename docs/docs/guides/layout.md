@@ -26,19 +26,19 @@ Pass a `layout` object to `<AutoForm>` (or `createAutoForm`) to override any slo
 
 ```ts
 // formWrapper — receives only children; the <form> element is managed by AutoForm
-type FormWrapperProps = { children: React.ReactNode }
+interface FormWrapperProps { children: React.ReactNode }
 
 // sectionWrapper
-type SectionWrapperProps = { title: string; children: React.ReactNode }
+interface SectionWrapperProps { title: string; children: React.ReactNode; className?: string }
 
 // submitButton
-type SubmitButtonProps = {
+interface SubmitButtonProps {
   isSubmitting: boolean
   label: string
 }
 
 // arrayRowLayout — buttons are pre-rendered nodes, not callbacks
-type ArrayRowLayoutProps = {
+interface ArrayRowLayoutProps {
   children: React.ReactNode
   buttons: {
     moveUp: React.ReactNode | null // null when already first row
@@ -52,7 +52,7 @@ type ArrayRowLayoutProps = {
 }
 
 // arrayFieldLayout — controls where the Add button sits relative to the rows
-type ArrayFieldLayoutProps = {
+interface ArrayFieldLayoutProps {
   rows: React.ReactNode
   addButton: React.ReactNode
   rowCount: number
@@ -70,7 +70,7 @@ type ArrayButtonSlots = {
   collapse?: React.ComponentType<ArrayCollapseButtonProps>
 }
 
-type ArrayButtonProps = {
+interface ArrayButtonProps {
   onClick?: React.MouseEventHandler<HTMLButtonElement>
   disabled?: boolean
   type?: 'button' | 'submit' | 'reset'
@@ -79,7 +79,7 @@ type ArrayButtonProps = {
   children?: React.ReactNode
 }
 
-type ArrayCollapseButtonProps = ArrayButtonProps & { isCollapsed: boolean }
+interface ArrayCollapseButtonProps extends ArrayButtonProps { isCollapsed: boolean }
 ```
 
 See the [TypeScript API](/docs/api/types) for full type details.

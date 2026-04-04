@@ -247,7 +247,7 @@ type ComponentRegistry = {
 Props received by every field component:
 
 ```ts
-type FieldProps = {
+interface FieldProps {
   name: string
   value: unknown
   onChange: (value: unknown) => void
@@ -269,7 +269,7 @@ type FieldProps = {
 Props received by the field wrapper component:
 
 ```ts
-type FieldWrapperProps = {
+interface FieldWrapperProps {
   children: React.ReactNode
   field: FieldConfig
   error?: string
@@ -303,18 +303,35 @@ type FormMethods<TValues> = {
 
 ```ts
 type LayoutSlots = {
-  formWrapper?: React.ComponentType<{ children: React.ReactNode }>
-  sectionWrapper?: React.ComponentType<{
-    children: React.ReactNode
-    title: string
-    className?: string
-  }>
-  submitButton?: React.ComponentType<{ isSubmitting: boolean }>
+  formWrapper?: React.ComponentType<FormWrapperProps>
+  sectionWrapper?: React.ComponentType<SectionWrapperProps>
+  submitButton?: React.ComponentType<SubmitButtonProps>
   arrayRowLayout?: React.ComponentType<ArrayRowLayoutProps>
+  arrayFieldLayout?: React.ComponentType<ArrayFieldLayoutProps>
+  arrayButtons?: ArrayButtonSlots
   /** Shown while async `defaultValues` are resolving. Default: `<p>Loading…</p>` */
   loadingFallback?: React.ReactNode
   /** Per-section styling / component overrides keyed by section title. */
   sections?: Record<string, SectionConfig>
+}
+```
+
+#### `FormWrapperProps` / `SectionWrapperProps` / `SubmitButtonProps`
+
+Named props interfaces for the three inline layout slots:
+
+```ts
+interface FormWrapperProps { children: React.ReactNode }
+
+interface SectionWrapperProps {
+  children: React.ReactNode
+  title: string
+  className?: string
+}
+
+interface SubmitButtonProps {
+  isSubmitting: boolean
+  label: string
 }
 ```
 
@@ -325,11 +342,7 @@ type SectionConfig = {
   /** CSS class name forwarded to the section wrapper. */
   className?: string
   /** Replace the section wrapper component for this section only. */
-  component?: React.ComponentType<{
-    children: React.ReactNode
-    title: string
-    className?: string
-  }>
+  component?: React.ComponentType<SectionWrapperProps>
 }
 ```
 
@@ -338,7 +351,7 @@ type SectionConfig = {
 #### `ArrayRowLayoutProps`
 
 ```ts
-type ArrayRowLayoutProps = {
+interface ArrayRowLayoutProps {
   children: React.ReactNode // The rendered form fields for this row
   buttons: {
     moveUp: React.ReactNode | null
