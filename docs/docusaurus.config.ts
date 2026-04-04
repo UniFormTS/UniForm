@@ -46,7 +46,10 @@ const config: Config = {
     ],
   ],
 
-  plugins: ['@docusaurus/theme-live-codeblock'],
+  plugins: [
+    '@docusaurus/theme-live-codeblock',
+    ['docusaurus-markdown-source-plugin', { docsPath: '/UniForm/docs/' }],
+  ],
   themeConfig: {
     image: 'img/docusaurus-social-card.jpg',
     colorMode: {

@@ -75,53 +75,53 @@ fields={{
 Resolution order: **`fields[name].wrapper` → `layout.objectWrapper` / `layout.arrayWrapper` → built-in default**.
 :::
 
+```ts
 // arrayRowLayout — buttons are pre-rendered nodes, not callbacks
 interface ArrayRowLayoutProps {
-children: React.ReactNode
-buttons: {
-moveUp: React.ReactNode | null // null when already first row
-moveDown: React.ReactNode | null // null when already last row
-duplicate: React.ReactNode | null // null when at maxItems
-remove: React.ReactNode
-collapse: React.ReactNode | null // null when collapsible is disabled
-}
-index: number // zero-based row index
-rowCount: number // total number of rows
+  children: React.ReactNode
+  buttons: {
+    moveUp: React.ReactNode | null // null when already first row
+    moveDown: React.ReactNode | null // null when already last row
+    duplicate: React.ReactNode | null // null when at maxItems
+    remove: React.ReactNode
+    collapse: React.ReactNode | null // null when collapsible is disabled
+  }
+  index: number // zero-based row index
+  rowCount: number // total number of rows
 }
 
 // arrayFieldLayout — controls where the Add button sits relative to the rows
 interface ArrayFieldLayoutProps {
-rows: React.ReactNode
-addButton: React.ReactNode
-rowCount: number
-canAdd: boolean // false when maxItems is reached
+  rows: React.ReactNode
+  addButton: React.ReactNode
+  rowCount: number
+  canAdd: boolean // false when maxItems is reached
 }
 
 // arrayButtons — swap in your design system's button for all array actions
 type ArrayButtonSlots = {
-base?: React.ComponentType<ArrayButtonProps> // fallback for un-overridden slots
-add?: React.ComponentType<ArrayButtonProps>
-remove?: React.ComponentType<ArrayButtonProps>
-moveUp?: React.ComponentType<ArrayButtonProps>
-moveDown?: React.ComponentType<ArrayButtonProps>
-duplicate?: React.ComponentType<ArrayButtonProps>
-collapse?: React.ComponentType<ArrayCollapseButtonProps>
+  base?: React.ComponentType<ArrayButtonProps> // fallback for un-overridden slots
+  add?: React.ComponentType<ArrayButtonProps>
+  remove?: React.ComponentType<ArrayButtonProps>
+  moveUp?: React.ComponentType<ArrayButtonProps>
+  moveDown?: React.ComponentType<ArrayButtonProps>
+  duplicate?: React.ComponentType<ArrayButtonProps>
+  collapse?: React.ComponentType<ArrayCollapseButtonProps>
 }
 
 interface ArrayButtonProps {
-onClick?: React.MouseEventHandler<HTMLButtonElement>
-disabled?: boolean
-type?: 'button' | 'submit' | 'reset'
-'aria-label'?: string
-className?: string
-children?: React.ReactNode
+  onClick?: React.MouseEventHandler<HTMLButtonElement>
+  disabled?: boolean
+  type?: 'button' | 'submit' | 'reset'
+  'aria-label'?: string
+  className?: string
+  children?: React.ReactNode
 }
 
 interface ArrayCollapseButtonProps extends ArrayButtonProps {
-isCollapsed: boolean
+  isCollapsed: boolean
 }
-
-````
+```
 
 See the [TypeScript API](/docs/api/types) for full type details.
 
@@ -146,10 +146,7 @@ Add CSS classes to structural elements without replacing the whole component:
   }}
   ...
 />
-  }}
-  ...
-/>
-````
+```
 
 ## Field wrapper CSS variables
 

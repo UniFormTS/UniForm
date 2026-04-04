@@ -90,7 +90,7 @@ import { Button } from 'my-design-system'
 
 Resolution order: **specific slot → `base` → built-in default**.
 
-The collapse toggle uses [`ArrayCollapseButtonProps`](/docs/api/types#arraycollapsedbuttonprops) which adds `isCollapsed: boolean`. Strip it before forwarding to a DOM element:
+The collapse toggle uses [`ArrayCollapseButtonProps`](/docs/api/types#arraycollapsebuttonprops) which adds `isCollapsed: boolean`. Strip it before forwarding to a DOM element:
 
 ```tsx
 const MyCollapseBtn = ({ isCollapsed, ...props }: ArrayCollapseButtonProps) => (
