@@ -1,5 +1,6 @@
+import * as React from 'react'
 import type { Control } from 'react-hook-form'
-import type { FieldConfig } from '../../types'
+import type { FieldConfig, ObjectWrapperProps } from '../../types'
 import { FieldRenderer } from '../FieldRenderer'
 import { useAutoFormContext } from '../../context/AutoFormContext'
 
@@ -37,7 +38,10 @@ export function ObjectField({
     return <>{content}</>
   }
 
-  const ObjectWrapper = layout.objectWrapper
+  const ObjectWrapper =
+    (field.meta.wrapper as
+      | React.ComponentType<ObjectWrapperProps>
+      | undefined) ?? layout.objectWrapper
   return (
     <ObjectWrapper
       label={field.label}

@@ -3,6 +3,7 @@ import type { RefCallBack } from 'react-hook-form'
 import type * as z from 'zod/v4/core'
 import type { FormMethods } from './form'
 import type { SelectOption } from './shared'
+import type { ObjectWrapperProps, ArrayWrapperProps } from './layout'
 
 // ---------------------------------------------------------------------------
 // FieldType
@@ -103,9 +104,12 @@ export type FieldMetaBase = {
    * - **React component** — a `FieldProps`-compatible component passed inline,
    *   bypassing the registry entirely (e.g. `component: MyCustomInput`).
    *
-   * Note: typed as `React.ComponentType<any>` here to avoid a circular type
-   * reference through `FieldProps → FieldMeta → component → FieldProps`.
-   * The `ComponentRegistry` keeps the stricter `React.ComponentType<FieldProps>`.
+   * Uses `React.ComponentType<never>` as the type parameter rather than
+   * `React.ComponentType<FieldProps>` to avoid both a circular inference error
+   * (FieldProps → FieldMeta → component → FieldProps) and a contravariance
+   * error when components typed as `(props: FieldProps) => JSX.Element` are
+   * assigned via Zod's `.meta()`, whose return type widens `meta` to `any`.
+   * `ComponentType<never>` is the widest possible assignable supertype.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   component?: string | React.ComponentType<any>
@@ -119,6 +123,14 @@ export type FieldMetaBase = {
   duplicable?: boolean
   /** When `true`, rows in an array field can be individually collapsed. */
   collapsible?: boolean
+  /**
+   * Override the wrapper component rendered around this specific object or array field.
+   * Takes precedence over the global `layout.objectWrapper` / `layout.arrayWrapper` slots.
+   *
+   * The component receives the same `ObjectWrapperProps` / `ArrayWrapperProps` as the
+   * global slot — `children`, `label`, `className`, and `labelClassName`.
+   */
+  wrapper?: React.ComponentType<ObjectWrapperProps | ArrayWrapperProps>
 }
 
 /**

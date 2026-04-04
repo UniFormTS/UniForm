@@ -110,11 +110,7 @@ export default function Example23() {
       <p style={{ color: '#666', fontSize: '0.9rem' }}>
         Replace the default <code>&lt;fieldset&gt;</code> /{' '}
         <code>&lt;legend&gt;</code> wrappers around nested objects and array
-        fields via <code>layout.objectWrapper</code> and{' '}
-        <code>layout.arrayWrapper</code>. Use{' '}
-        <code>classNames.objectFieldset</code> /{' '}
-        <code>classNames.objectLegend</code> (and the array equivalents) to add
-        CSS classes when you only need light styling on the default wrapper.
+        fields. Three approaches, from lightest to most powerful:
       </p>
 
       <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>
@@ -147,7 +143,8 @@ export default function Example23() {
           marginBottom: '0.5rem',
         }}
       >
-        B) Full component replacement via layout slots
+        B) Global slot replacement via <code>layout.objectWrapper</code> /{' '}
+        <code>layout.arrayWrapper</code>
       </h3>
       <AutoForm
         form={contactForm}
@@ -163,6 +160,38 @@ export default function Example23() {
         layout={{
           objectWrapper: CardObjectWrapper,
           arrayWrapper: AccordionArrayWrapper,
+        }}
+        onSubmit={(values) => setData(values)}
+      />
+
+      <h3
+        style={{
+          fontSize: '1rem',
+          marginTop: '1.5rem',
+          marginBottom: '0.5rem',
+        }}
+      >
+        C) Per-field override via <code>fields[name].wrapper</code> (overrides
+        global slot for that field only)
+      </h3>
+      <p style={{ color: '#666', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+        Here the global slot uses <code>CardObjectWrapper</code> for all
+        objects, but <code>phones</code> overrides it with{' '}
+        <code>AccordionArrayWrapper</code> directly on the field.
+      </p>
+      <AutoForm
+        form={contactForm}
+        defaultValues={{
+          name: '',
+          address: { street: '', city: '' },
+          phones: [{ label: 'Mobile', number: '' }],
+        }}
+        fields={{
+          address: { label: 'Address' },
+          phones: { label: 'Phone numbers', wrapper: AccordionArrayWrapper },
+        }}
+        layout={{
+          objectWrapper: CardObjectWrapper,
         }}
         onSubmit={(values) => setData(values)}
       />

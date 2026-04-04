@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react'
+import * as React from 'react'
 import { useFieldArray, useWatch } from 'react-hook-form'
 import type { Control } from 'react-hook-form'
-import type { FieldConfig } from '../../types'
+import type { FieldConfig, ArrayWrapperProps } from '../../types'
 import { useAutoFormContext } from '../../context/AutoFormContext'
 import { FieldRenderer } from '../FieldRenderer'
 import { getDefaultValue } from './getDefaultValue'
@@ -239,7 +240,10 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
     return content
   }
 
-  const ArrayWrapper = layout.arrayWrapper
+  const ArrayWrapper =
+    (field.meta.wrapper as
+      | React.ComponentType<ArrayWrapperProps>
+      | undefined) ?? layout.arrayWrapper
   return (
     <ArrayWrapper
       label={field.label}

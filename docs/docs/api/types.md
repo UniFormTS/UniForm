@@ -148,6 +148,8 @@ type FieldOverride = {
   options?: Array<{ label: string; value: string | number }>
   condition?: (values: z.infer<TSchema>) => boolean // Inline conditional visibility
   onChange?: (value: FieldValue, form: FormMethods) => void | Promise<void>
+  // Object / array field wrapper:
+  wrapper?: React.ComponentType<ObjectWrapperProps | ArrayWrapperProps> // Per-field wrapper override
   // Array-field specific:
   movable?: boolean // Enable move-up/move-down row controls
   duplicable?: boolean // Enable duplicate row button
