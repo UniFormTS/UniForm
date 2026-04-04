@@ -76,7 +76,9 @@ type AutoFormProps<TSchema extends z.$ZodObject> = {
 The object exposed via `React.useRef<AutoFormHandle>`. This is exactly [`FormMethods`](#formmethods) — no extra properties.
 
 ```ts
-type AutoFormHandle<TSchema extends z.$ZodObject> = FormMethods<z.infer<TSchema>>
+type AutoFormHandle<TSchema extends z.$ZodObject> = FormMethods<
+  z.infer<TSchema>
+>
 ```
 
 See [`FormMethods`](#formmethods) below for the full method list.
@@ -314,10 +316,10 @@ Props passed to a custom `arrayFieldLayout` component. Controls the layout of th
 
 ```ts
 interface ArrayFieldLayoutProps {
-  rows: React.ReactNode    // all rendered rows
+  rows: React.ReactNode // all rendered rows
   addButton: React.ReactNode
-  rowCount: number         // current number of rows
-  canAdd: boolean          // false when maxItems is reached
+  rowCount: number // current number of rows
+  canAdd: boolean // false when maxItems is reached
 }
 ```
 
@@ -514,11 +516,11 @@ type FormClassNames = {
   arrayDuplicate?: string
   arrayCollapse?: string
   // Object field wrapper/legend:
-  objectFieldset?: string  // class on the <fieldset> (or objectWrapper root)
-  objectLegend?: string    // class on the <legend> (or objectWrapper label)
+  objectFieldset?: string // class on the <fieldset> (or objectWrapper root)
+  objectLegend?: string // class on the <legend> (or objectWrapper label)
   // Array field wrapper/legend:
-  arrayFieldset?: string   // class on the <fieldset> (or arrayWrapper root)
-  arrayLegend?: string     // class on the <legend> (or arrayWrapper label)
+  arrayFieldset?: string // class on the <fieldset> (or arrayWrapper root)
+  arrayLegend?: string // class on the <legend> (or arrayWrapper label)
 }
 ```
 

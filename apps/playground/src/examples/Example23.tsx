@@ -111,8 +111,8 @@ export default function Example23() {
         Replace the default <code>&lt;fieldset&gt;</code> /{' '}
         <code>&lt;legend&gt;</code> wrappers around nested objects and array
         fields via <code>layout.objectWrapper</code> and{' '}
-        <code>layout.arrayWrapper</code>.{' '}
-        Use <code>classNames.objectFieldset</code> /{' '}
+        <code>layout.arrayWrapper</code>. Use{' '}
+        <code>classNames.objectFieldset</code> /{' '}
         <code>classNames.objectLegend</code> (and the array equivalents) to add
         CSS classes when you only need light styling on the default wrapper.
       </p>
@@ -141,7 +141,11 @@ export default function Example23() {
       />
 
       <h3
-        style={{ fontSize: '1rem', marginTop: '1.5rem', marginBottom: '0.5rem' }}
+        style={{
+          fontSize: '1rem',
+          marginTop: '1.5rem',
+          marginBottom: '0.5rem',
+        }}
       >
         B) Full component replacement via layout slots
       </h3>
