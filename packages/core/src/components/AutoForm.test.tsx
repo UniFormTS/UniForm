@@ -2504,6 +2504,97 @@ describe('AutoForm', () => {
   })
 
   // =========================================================================
+  // layout.arrayButtons — custom button components (96–99)
+  // =========================================================================
+
+  it('96. layout.arrayButtons.base renders as the add button by default', () => {
+    const schema = z.object({
+      items: z.array(z.object({ value: z.string() })),
+    })
+    const CustomBtn = ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+      <button data-custom='base' {...props}>{children}</button>
+    )
+    render(
+      <AutoForm
+        form={new UniForm(schema)}
+        onSubmit={vi.fn()}
+        layout={{ arrayButtons: { base: CustomBtn } }}
+      />,
+    )
+    const addBtn = screen.getByRole('button', { name: /^add$/i })
+    expect(addBtn).toHaveAttribute('data-custom', 'base')
+  })
+
+  it('97. layout.arrayButtons.add overrides only the add button', () => {
+    const schema = z.object({
+      items: z.array(z.object({ value: z.string() })),
+    })
+    const AddBtn = ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+      <button data-custom='add-slot' {...props}>{children}</button>
+    )
+    const BaseBtn = ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+      <button data-custom='base-slot' {...props}>{children}</button>
+    )
+    render(
+      <AutoForm
+        form={new UniForm(schema)}
+        onSubmit={vi.fn()}
+        defaultValues={{ items: [{ value: 'A' }] }}
+        layout={{ arrayButtons: { base: BaseBtn, add: AddBtn } }}
+      />,
+    )
+    const addBtn = screen.getByRole('button', { name: /^add$/i })
+    expect(addBtn).toHaveAttribute('data-custom', 'add-slot')
+    // Remove button falls back to base
+    const removeBtn = screen.getByLabelText(/remove item 1/i)
+    expect(removeBtn).toHaveAttribute('data-custom', 'base-slot')
+  })
+
+  it('98. layout.arrayButtons.remove overrides only the remove button', () => {
+    const schema = z.object({
+      items: z.array(z.object({ value: z.string() })),
+    })
+    const RemoveBtn = ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+      <button data-custom='remove-slot' {...props}>{children}</button>
+    )
+    render(
+      <AutoForm
+        form={new UniForm(schema)}
+        onSubmit={vi.fn()}
+        defaultValues={{ items: [{ value: 'A' }] }}
+        layout={{ arrayButtons: { remove: RemoveBtn } }}
+      />,
+    )
+    expect(screen.getByLabelText(/remove item 1/i)).toHaveAttribute('data-custom', 'remove-slot')
+    // Add button is unaffected (still the default)
+    expect(screen.getByRole('button', { name: /^add$/i })).not.toHaveAttribute('data-custom')
+  })
+
+  it('99. layout.arrayFieldLayout can place the add button before the rows', () => {
+    const schema = z.object({
+      items: z.array(z.object({ value: z.string() })),
+    })
+    const AddFirstLayout = ({ rows, addButton }: { rows: React.ReactNode; addButton: React.ReactNode; rowCount: number; canAdd: boolean }) => (
+      <div>
+        <div data-testid='add-area'>{addButton}</div>
+        <div data-testid='rows-area'>{rows}</div>
+      </div>
+    )
+    render(
+      <AutoForm
+        form={new UniForm(schema)}
+        onSubmit={vi.fn()}
+        defaultValues={{ items: [{ value: 'A' }] }}
+        layout={{ arrayFieldLayout: AddFirstLayout }}
+      />,
+    )
+    const addArea = screen.getByTestId('add-area')
+    const rowsArea = screen.getByTestId('rows-area')
+    expect(within(addArea).getByRole('button', { name: /^add$/i })).toBeInTheDocument()
+    expect(within(rowsArea).getByLabelText(/remove item 1/i)).toBeInTheDocument()
+  })
+
+  // =========================================================================
   // Field Dependencies — UniForm.setOnChange (100–104)
   // =========================================================================
 

@@ -6,7 +6,7 @@ description: Use the ref handle to imperatively control the form from outside it
 
 # Programmatic Control
 
-Attach a `ref` to `<AutoForm>` to get an `AutoFormHandle` — a superset of [`FormMethods`](../api/types#formmethods) — that lets you read and set values, trigger submission, reset the form, and check submission state from anywhere in your component tree.
+Attach a `ref` to `<AutoForm>` to get an `AutoFormHandle` — equivalent to [`FormMethods`](../api/types#formmethods) — that lets you read and set values, trigger submission, and reset the form from anywhere in your component tree.
 
 ```tsx
 import { useRef } from 'react'
@@ -19,22 +19,21 @@ const formRef = useRef<AutoFormHandle<typeof schema>>(null)
 
 ## Available methods
 
-`AutoFormHandle` exposes all [`FormMethods`](../api/types#formmethods) plus:
+`AutoFormHandle` is exactly [`FormMethods`](../api/types#formmethods):
 
-| Member         | Type                           | Description                                      |
-| -------------- | ------------------------------ | ------------------------------------------------ |
-| `isSubmitting` | `boolean`                      | `true` while the `onSubmit` handler is executing |
-| `setValue`     | `(field, value) => void`       | Set a specific field value                       |
-| `setValues`    | `(values: Partial<T>) => void` | Set multiple field values at once                |
-| `getValues`    | `() => T`                      | Get all current values                           |
-| `watch`        | `(field?) => T[field]`         | Subscribe to a field value (or all values)       |
-| `reset`        | `(values?) => void`            | Reset the form, optionally to new default values |
-| `resetField`   | `(field) => void`              | Reset a single field to its default value        |
-| `setError`     | `(field, message) => void`     | Set a manual validation error                    |
-| `setErrors`    | `(errors) => void`             | Set errors on multiple fields at once            |
-| `clearErrors`  | `(fields?) => void`            | Clear one or all errors                          |
-| `submit`       | `() => void`                   | Programmatically trigger form submission         |
-| `focus`        | `(field) => void`              | Focus a specific field by name                   |
+| Member        | Type                           | Description                                      |
+| ------------- | ------------------------------ | ------------------------------------------------ |
+| `setValue`    | `(field, value) => void`       | Set a specific field value                       |
+| `setValues`   | `(values: Partial<T>) => void` | Set multiple field values at once                |
+| `getValues`   | `() => T`                      | Get all current values                           |
+| `watch`       | `(field?) => T[field]`         | Subscribe to a field value (or all values)       |
+| `reset`       | `(values?) => void`            | Reset the form, optionally to new default values |
+| `resetField`  | `(field) => void`              | Reset a single field to its default value        |
+| `setError`    | `(field, message) => void`     | Set a manual validation error                    |
+| `setErrors`   | `(errors) => void`             | Set errors on multiple fields at once            |
+| `clearErrors` | `(fields?) => void`            | Clear one or all errors                          |
+| `submit`      | `() => void`                   | Programmatically trigger form submission         |
+| `focus`       | `(field) => void`              | Focus a specific field by name                   |
 
 ## Live Example
 

@@ -12,7 +12,7 @@ UniForm has first-class support for async workflows at every layer — submittin
 
 ## Async `onSubmit`
 
-`onSubmit` may return a `Promise`. UniForm tracks its resolution via `formState.isSubmitting` (and the `isSubmitting` member on the `AutoFormHandle` ref), which you can use to disable the UI or show a spinner.
+`onSubmit` may return a `Promise`. UniForm tracks its resolution via `formState.isSubmitting`, which is forwarded to the `submitButton` slot so you can disable the UI or show a spinner.
 
 ```tsx
 <AutoForm

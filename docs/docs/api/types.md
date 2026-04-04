@@ -20,7 +20,17 @@ import type {
   ComponentRegistry,
   FieldProps,
   FieldWrapperProps,
+  FormWrapperProps,
+  SectionWrapperProps,
+  SubmitButtonProps,
+  ObjectWrapperProps,
+  ArrayWrapperProps,
   ArrayRowLayoutProps,
+  ArrayFieldLayoutProps,
+  ArrayButtonProps,
+  ArrayCollapseButtonProps,
+  ArrayButtonSlots,
+  ResolvedArrayButtonSlots,
   FormClassNames,
   ValidationMessages,
   FormLabels,
@@ -63,14 +73,12 @@ type AutoFormProps<TSchema extends z.$ZodObject> = {
 
 ## `AutoFormHandle<TSchema>`
 
-The object exposed via `React.useRef<AutoFormHandle>`. Extends the library's own `FormMethods` (not RHF's `UseFormReturn` directly).
+The object exposed via `React.useRef<AutoFormHandle>`. This is exactly [`FormMethods`](#formmethods) — no extra properties.
 
 ```ts
 type AutoFormHandle<TSchema extends z.$ZodObject> = FormMethods<
   z.infer<TSchema>
-> & {
-  isSubmitting: boolean
-}
+>
 ```
 
 See [`FormMethods`](#formmethods) below for the full method list.
@@ -140,6 +148,8 @@ type FieldOverride = {
   options?: Array<{ label: string; value: string | number }>
   condition?: (values: z.infer<TSchema>) => boolean // Inline conditional visibility
   onChange?: (value: FieldValue, form: FormMethods) => void | Promise<void>
+  // Object / array field wrapper:
+  wrapper?: React.ComponentType<ObjectWrapperProps | ArrayWrapperProps> // Per-field wrapper override
   // Array-field specific:
   movable?: boolean // Enable move-up/move-down row controls
   duplicable?: boolean // Enable duplicate row button
@@ -155,16 +165,15 @@ Slots for replacing structural chrome components.
 
 ```ts
 type LayoutSlots = {
-  formWrapper?: React.ComponentType<{ children: React.ReactNode }>
-  sectionWrapper?: React.ComponentType<{
-    title: string
-    children: React.ReactNode
-    className?: string
-  }>
-  submitButton?: React.ComponentType<{ isSubmitting: boolean; label: string }>
+  formWrapper?: React.ComponentType<FormWrapperProps>
+  sectionWrapper?: React.ComponentType<SectionWrapperProps>
+  submitButton?: React.ComponentType<SubmitButtonProps>
+  objectWrapper?: React.ComponentType<ObjectWrapperProps>
+  arrayWrapper?: React.ComponentType<ArrayWrapperProps>
   arrayRowLayout?: React.ComponentType<ArrayRowLayoutProps>
+  arrayFieldLayout?: React.ComponentType<ArrayFieldLayoutProps>
+  arrayButtons?: ArrayButtonSlots
   loadingFallback?: React.ReactNode
-  /** Per-section styling / component overrides keyed by section title. */
   sections?: Record<string, SectionConfig>
 }
 ```
@@ -172,6 +181,96 @@ type LayoutSlots = {
 :::note
 `formWrapper` receives only `children` — the `<form>` element and its `onSubmit` handler are managed by `<AutoForm>` itself, outside the wrapper.
 :::
+
+---
+
+## `FormWrapperProps`
+
+Props received by the `layout.formWrapper` component.
+
+```ts
+interface FormWrapperProps {
+  children: React.ReactNode
+}
+```
+
+---
+
+## `SectionWrapperProps`
+
+Props received by the `layout.sectionWrapper` component and by per-section `SectionConfig.component` overrides.
+
+```ts
+interface SectionWrapperProps {
+  children: React.ReactNode
+  title: string
+  className?: string
+}
+```
+
+---
+
+## `SubmitButtonProps`
+
+Props received by the `layout.submitButton` component.
+
+```ts
+interface SubmitButtonProps {
+  isSubmitting: boolean
+  label: string
+}
+```
+
+---
+
+## `ObjectWrapperProps`
+
+Props received by the `layout.objectWrapper` component. Replaces the default `<fieldset>` / `<legend>` wrapper rendered around nested object fields.
+
+```ts
+interface ObjectWrapperProps {
+  children: React.ReactNode
+  /** The field's label string, or `undefined` when no label is set. */
+  label: string | undefined
+  /** Forwarded from `classNames.objectFieldset`. */
+  className?: string
+  /** Forwarded from `classNames.objectLegend`. */
+  labelClassName?: string
+}
+```
+
+Example — replace the `<fieldset>` with a card `<div>`:
+
+```tsx
+function CardObjectWrapper({ children, label, className }: ObjectWrapperProps) {
+  return (
+    <div className={`rounded-lg border p-4 ${className ?? ''}`}>
+      {label && <p className="text-sm font-semibold mb-2">{label}</p>}
+      {children}
+    </div>
+  )
+}
+
+<AutoForm layout={{ objectWrapper: CardObjectWrapper }} ... />
+```
+
+---
+
+## `ArrayWrapperProps`
+
+Props received by the `layout.arrayWrapper` component. Replaces the default `<fieldset>` / `<legend>` wrapper rendered around array fields.
+
+```ts
+interface ArrayWrapperProps {
+  children: React.ReactNode
+  /** The field's label string, or `undefined` when no label is set. */
+  label: string | undefined
+  /** Forwarded from `classNames.arrayFieldset`. */
+  className?: string
+  /** Forwarded from `classNames.arrayLegend`. */
+  labelClassName?: string
+}
+```
 
 ---
 
@@ -184,11 +283,7 @@ type SectionConfig = {
   /** CSS class name forwarded to the section wrapper component. */
   className?: string
   /** Replace the section wrapper component for this section only. */
-  component?: React.ComponentType<{
-    children: React.ReactNode
-    title: string
-    className?: string
-  }>
+  component?: React.ComponentType<SectionWrapperProps>
 }
 ```
 
@@ -201,7 +296,7 @@ type SectionConfig = {
 Props passed to custom `arrayRowLayout` components. Buttons are provided as pre-rendered `React.ReactNode` values — render them wherever you like.
 
 ```ts
-type ArrayRowLayoutProps = {
+interface ArrayRowLayoutProps {
   children: React.ReactNode
   buttons: {
     moveUp: React.ReactNode | null // null when already first row
@@ -212,6 +307,106 @@ type ArrayRowLayoutProps = {
   }
   index: number // zero-based row index
   rowCount: number // total number of rows
+}
+```
+
+---
+
+## `ArrayFieldLayoutProps`
+
+Props passed to a custom `arrayFieldLayout` component. Controls the layout of the entire array field — primarily where the **Add** button appears relative to the rows.
+
+```ts
+interface ArrayFieldLayoutProps {
+  rows: React.ReactNode // all rendered rows
+  addButton: React.ReactNode
+  rowCount: number // current number of rows
+  canAdd: boolean // false when maxItems is reached
+}
+```
+
+Example — add button above the rows:
+
+```tsx
+const AddFirstLayout = ({ rows, addButton }: ArrayFieldLayoutProps) => (
+  <div>
+    {addButton}
+    {rows}
+  </div>
+)
+
+<AutoForm layout={{ arrayFieldLayout: AddFirstLayout }} ... />
+```
+
+---
+
+## `ArrayButtonProps`
+
+Props accepted by every array action button component (add, remove, move, duplicate).
+
+```ts
+interface ArrayButtonProps {
+  onClick?: React.MouseEventHandler<HTMLButtonElement>
+  disabled?: boolean
+  type?: 'button' | 'submit' | 'reset'
+  'aria-label'?: string
+  className?: string
+  children?: React.ReactNode
+}
+```
+
+---
+
+## `ArrayCollapseButtonProps`
+
+Props for the collapse/expand toggle button. Extends `ArrayButtonProps` with an `isCollapsed` flag.
+
+```ts
+interface ArrayCollapseButtonProps extends ArrayButtonProps {
+  isCollapsed: boolean
+}
+```
+
+:::note
+If you forward these props to a DOM `<button>`, make sure to strip `isCollapsed` to avoid an unknown-prop warning.
+:::
+
+---
+
+## `ArrayButtonSlots`
+
+Grouped button component overrides. Pass this object to `layout.arrayButtons`.
+
+```ts
+type ArrayButtonSlots = {
+  /** Fallback for any slot that isn't explicitly overridden. */
+  base?: React.ComponentType<ArrayButtonProps>
+  add?: React.ComponentType<ArrayButtonProps>
+  remove?: React.ComponentType<ArrayButtonProps>
+  moveUp?: React.ComponentType<ArrayButtonProps>
+  moveDown?: React.ComponentType<ArrayButtonProps>
+  duplicate?: React.ComponentType<ArrayButtonProps>
+  collapse?: React.ComponentType<ArrayCollapseButtonProps>
+}
+```
+
+Resolution order for each slot: **specific slot → `base` → built-in default**.
+
+---
+
+## `ResolvedArrayButtonSlots`
+
+The fully-resolved version of `ArrayButtonSlots` where every slot is guaranteed to have a component. Returned from `useAutoFormContext().layout.arrayButtons`.
+
+```ts
+type ResolvedArrayButtonSlots = {
+  base: React.ComponentType<ArrayButtonProps>
+  add: React.ComponentType<ArrayButtonProps>
+  remove: React.ComponentType<ArrayButtonProps>
+  moveUp: React.ComponentType<ArrayButtonProps>
+  moveDown: React.ComponentType<ArrayButtonProps>
+  duplicate: React.ComponentType<ArrayButtonProps>
+  collapse: React.ComponentType<ArrayCollapseButtonProps>
 }
 ```
 
@@ -244,7 +439,7 @@ Enum fields use the `select` key, not `enum`. The `array` and `object` keys are 
 The props passed to every custom field component. UniForm calls your component with these.
 
 ```ts
-type FieldProps = {
+interface FieldProps {
   name: string
   value: unknown
   onChange: (value: unknown) => void
@@ -268,7 +463,7 @@ type FieldProps = {
 Props passed to the `fieldWrapper` component that surrounds every rendered field.
 
 ```ts
-type FieldWrapperProps = {
+interface FieldWrapperProps {
   children: React.ReactNode
   field: FieldConfig
   error?: string
@@ -322,6 +517,12 @@ type FormClassNames = {
   arrayMove?: string
   arrayDuplicate?: string
   arrayCollapse?: string
+  // Object field wrapper/legend:
+  objectFieldset?: string // class on the <fieldset> (or objectWrapper root)
+  objectLegend?: string // class on the <legend> (or objectWrapper label)
+  // Array field wrapper/legend:
+  arrayFieldset?: string // class on the <fieldset> (or arrayWrapper root)
+  arrayLegend?: string // class on the <legend> (or arrayWrapper label)
 }
 ```
 

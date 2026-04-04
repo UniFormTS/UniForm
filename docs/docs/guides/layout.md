@@ -12,31 +12,72 @@ UniForm separates field rendering from structural chrome — you can swap out th
 
 Pass a `layout` object to `<AutoForm>` (or `createAutoForm`) to override any slot:
 
-| Slot              | Default                 | Renders                                               |
-| ----------------- | ----------------------- | ----------------------------------------------------- |
-| `formWrapper`     | `DefaultFormWrapper`    | `<form>` element + children                           |
-| `sectionWrapper`  | `DefaultSectionWrapper` | `<fieldset>` + `<legend>` around grouped fields       |
-| `submitButton`    | `DefaultSubmitButton`   | `<button type="submit">`                              |
-| `arrayRowLayout`  | `DefaultArrayRowLayout` | Row with add/remove/reorder controls for array fields |
-| `loadingFallback` | `<p>Loading…</p>`       | Shown while async `defaultValues` resolves            |
+| Slot               | Default                   | Renders                                                 |
+| ------------------ | ------------------------- | ------------------------------------------------------- |
+| `formWrapper`      | `DefaultFormWrapper`      | `<form>` element + children                             |
+| `sectionWrapper`   | `DefaultSectionWrapper`   | `<fieldset>` + `<legend>` around grouped fields         |
+| `submitButton`     | `DefaultSubmitButton`     | `<button type="submit">`                                |
+| `objectWrapper`    | `DefaultObjectWrapper`    | `<fieldset>` + `<legend>` around nested object fields   |
+| `arrayWrapper`     | `DefaultArrayWrapper`     | `<fieldset>` + `<legend>` around array fields           |
+| `arrayRowLayout`   | `DefaultArrayRowLayout`   | Layout for a single array row (fields + action buttons) |
+| `arrayFieldLayout` | `DefaultArrayFieldLayout` | Layout for the whole array (all rows + Add button)      |
+| `arrayButtons`     | `DefaultArrayButton` × 6  | Button components for Add / Remove / Move / Duplicate   |
+| `loadingFallback`  | `<p>Loading…</p>`         | Shown while async `defaultValues` resolves              |
 
 ### Slot prop types
 
 ```ts
 // formWrapper — receives only children; the <form> element is managed by AutoForm
-type FormWrapperProps = { children: React.ReactNode }
+interface FormWrapperProps {
+  children: React.ReactNode
+}
 
 // sectionWrapper
-type SectionWrapperProps = { title: string; children: React.ReactNode }
+interface SectionWrapperProps {
+  title: string
+  children: React.ReactNode
+  className?: string
+}
 
 // submitButton
-type SubmitButtonProps = {
+interface SubmitButtonProps {
   isSubmitting: boolean
   label: string
 }
 
+// objectWrapper — replaces <fieldset>/<legend> around nested object fields
+interface ObjectWrapperProps {
+  children: React.ReactNode
+  label: string | undefined // field label used as the heading
+  className?: string // forwarded from classNames.objectFieldset
+  labelClassName?: string // forwarded from classNames.objectLegend
+}
+
+// arrayWrapper — replaces <fieldset>/<legend> around array fields
+interface ArrayWrapperProps {
+  children: React.ReactNode
+  label: string | undefined // field label used as the heading
+  className?: string // forwarded from classNames.arrayFieldset
+  labelClassName?: string // forwarded from classNames.arrayLegend
+}
+```
+
+:::tip Per-field override
+You can override the wrapper for a **single field** without affecting all others by passing `wrapper` in the `fields` prop. It takes precedence over the global slot:
+
+```tsx
+fields={{
+  address: { wrapper: CardObjectWrapper },  // only this object gets the card
+  phones:  { wrapper: AccordionArrayWrapper }, // only this array gets the accordion
+}}
+```
+
+Resolution order: **`fields[name].wrapper` → `layout.objectWrapper` / `layout.arrayWrapper` → built-in default**.
+:::
+
+```ts
 // arrayRowLayout — buttons are pre-rendered nodes, not callbacks
-type ArrayRowLayoutProps = {
+interface ArrayRowLayoutProps {
   children: React.ReactNode
   buttons: {
     moveUp: React.ReactNode | null // null when already first row
@@ -48,7 +89,41 @@ type ArrayRowLayoutProps = {
   index: number // zero-based row index
   rowCount: number // total number of rows
 }
+
+// arrayFieldLayout — controls where the Add button sits relative to the rows
+interface ArrayFieldLayoutProps {
+  rows: React.ReactNode
+  addButton: React.ReactNode
+  rowCount: number
+  canAdd: boolean // false when maxItems is reached
+}
+
+// arrayButtons — swap in your design system's button for all array actions
+type ArrayButtonSlots = {
+  base?: React.ComponentType<ArrayButtonProps> // fallback for un-overridden slots
+  add?: React.ComponentType<ArrayButtonProps>
+  remove?: React.ComponentType<ArrayButtonProps>
+  moveUp?: React.ComponentType<ArrayButtonProps>
+  moveDown?: React.ComponentType<ArrayButtonProps>
+  duplicate?: React.ComponentType<ArrayButtonProps>
+  collapse?: React.ComponentType<ArrayCollapseButtonProps>
+}
+
+interface ArrayButtonProps {
+  onClick?: React.MouseEventHandler<HTMLButtonElement>
+  disabled?: boolean
+  type?: 'button' | 'submit' | 'reset'
+  'aria-label'?: string
+  className?: string
+  children?: React.ReactNode
+}
+
+interface ArrayCollapseButtonProps extends ArrayButtonProps {
+  isCollapsed: boolean
+}
 ```
+
+See the [TypeScript API](/docs/api/types) for full type details.
 
 ## `classNames`
 
@@ -62,8 +137,12 @@ Add CSS classes to structural elements without replacing the whole component:
     label: 'text-sm font-medium text-gray-700',
     error: 'text-xs text-red-600 mt-1',
     description: 'text-xs text-gray-500',
-    section: 'border border-gray-200 rounded-lg p-4',
-    sectionTitle: 'text-sm font-semibold text-gray-800 mb-3',
+    // Nested object fieldset/legend
+    objectFieldset: 'border border-indigo-200 rounded-lg p-4',
+    objectLegend: 'text-sm font-semibold text-indigo-700 px-1',
+    // Array fieldset/legend
+    arrayFieldset: 'border border-dashed border-gray-300 rounded-lg p-4',
+    arrayLegend: 'text-sm font-semibold text-gray-600 px-1',
   }}
   ...
 />
@@ -73,11 +152,11 @@ Add CSS classes to structural elements without replacing the whole component:
 
 The default field wrapper sets three CSS custom properties on each field's container element. Use these in your `fieldWrapper` class to build grid or stacked layouts without a custom wrapper component.
 
-| Variable | Value | Description |
-|---|---|---|
-| `--field-span` | `1`–`12` | Column span from `meta.span` (or `fields[name].span`), falling back to `1` |
-| `--field-index` | `0`, `1`, `2`, … | Zero-based render index of the field within its section |
-| `--field-depth` | `0`, `1`, `2`, … | Nesting depth (`0` = top-level, `1` = inside an array row, etc.) |
+| Variable        | Value            | Description                                                                |
+| --------------- | ---------------- | -------------------------------------------------------------------------- |
+| `--field-span`  | `1`–`12`         | Column span from `meta.span` (or `fields[name].span`), falling back to `1` |
+| `--field-index` | `0`, `1`, `2`, … | Zero-based render index of the field within its section                    |
+| `--field-depth` | `0`, `1`, `2`, … | Nesting depth (`0` = top-level, `1` = inside an array row, etc.)           |
 
 Example — 12-column grid driven entirely by CSS:
 
@@ -95,14 +174,14 @@ Example — 12-column grid driven entirely by CSS:
 
 The default field wrapper also sets `data-*` attributes on the container element. These are useful for CSS selectors and for testing.
 
-| Attribute | Present when |
-|---|---|
-| `data-field-name` | Always — value is the field's dot-notated name |
-| `data-field-type` | Always — value is the resolved type key (`"string"`, `"number"`, `"boolean"`, `"date"`, `"select"`) |
-| `data-required` | Field is required (not optional/nullable in the schema) |
-| `data-disabled` | Field is disabled (via `meta.disabled`, `fields[name].disabled`, or the global `disabled` prop) |
-| `data-has-error` | A validation error is currently shown on this field |
-| `data-has-description` | The field has a `description` set |
+| Attribute              | Present when                                                                                        |
+| ---------------------- | --------------------------------------------------------------------------------------------------- |
+| `data-field-name`      | Always — value is the field's dot-notated name                                                      |
+| `data-field-type`      | Always — value is the resolved type key (`"string"`, `"number"`, `"boolean"`, `"date"`, `"select"`) |
+| `data-required`        | Field is required (not optional/nullable in the schema)                                             |
+| `data-disabled`        | Field is disabled (via `meta.disabled`, `fields[name].disabled`, or the global `disabled` prop)     |
+| `data-has-error`       | A validation error is currently shown on this field                                                 |
+| `data-has-description` | The field has a `description` set                                                                   |
 
 Example — style required fields and error states with plain CSS:
 

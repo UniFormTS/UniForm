@@ -10,23 +10,24 @@ The `fields` prop on `<AutoForm>` accepts a map of field paths to `FieldOverride
 
 ## `FieldOverride` reference
 
-| Property      | Type                                                | Description                                                                 |
-| ------------- | --------------------------------------------------- | --------------------------------------------------------------------------- |
-| `label`       | `string`                                            | Override auto-derived label                                                 |
-| `description` | `string`                                            | Help text shown below the field                                             |
-| `placeholder` | `string`                                            | Placeholder for text inputs                                                 |
-| `order`       | `number`                                            | Render order (lower = first)                                                |
-| `span`        | `number`                                            | Column span (1–12) in a 12-column grid                                      |
-| `section`     | `string`                                            | Group field into a named section                                            |
-| `hidden`      | `boolean`                                           | Hard-hide (never renders, never validates)                                  |
-| `disabled`    | `boolean`                                           | Disable just this field                                                     |
-| `component`   | `string \| React.ComponentType<FieldProps>`         | Registry key (`"textarea"`, `"rating"`, …) **or** an inline React component |
-| `options`     | `Array<{ label: string; value: string \| number }>` | Override select options for enum fields                                     |
-| `condition`   | `(values) => boolean`                               | Show (`true`) / hide (`false`) based on current form values                 |
-| `onChange`    | `(value, form: FormMethods) => void \| Promise`     | Called when this field changes; access all form methods via `form`          |
-| `movable`     | `boolean`                                           | _(array fields)_ Enable move-up/move-down row controls                      |
-| `duplicable`  | `boolean`                                           | _(array fields)_ Enable a duplicate row button                              |
-| `collapsible` | `boolean`                                           | _(array fields)_ Enable collapse/expand per row                             |
+| Property      | Type                                                           | Description                                                                                                                 |
+| ------------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `label`       | `string`                                                       | Override auto-derived label                                                                                                 |
+| `description` | `string`                                                       | Help text shown below the field                                                                                             |
+| `placeholder` | `string`                                                       | Placeholder for text inputs                                                                                                 |
+| `order`       | `number`                                                       | Render order (lower = first)                                                                                                |
+| `span`        | `number`                                                       | Column span (1–12) in a 12-column grid                                                                                      |
+| `section`     | `string`                                                       | Group field into a named section                                                                                            |
+| `hidden`      | `boolean`                                                      | Hard-hide (never renders, never validates)                                                                                  |
+| `disabled`    | `boolean`                                                      | Disable just this field                                                                                                     |
+| `component`   | `string \| React.ComponentType<FieldProps>`                    | Registry key (`"textarea"`, `"rating"`, …) **or** an inline React component                                                 |
+| `options`     | `Array<{ label: string; value: string \| number }>`            | Override select options for enum fields                                                                                     |
+| `condition`   | `(values) => boolean`                                          | Show (`true`) / hide (`false`) based on current form values                                                                 |
+| `onChange`    | `(value, form: FormMethods) => void \| Promise`                | Called when this field changes; access all form methods via `form`                                                          |
+| `movable`     | `boolean`                                                      | _(array fields)_ Enable move-up/move-down row controls                                                                      |
+| `duplicable`  | `boolean`                                                      | _(array fields)_ Enable a duplicate row button                                                                              |
+| `collapsible` | `boolean`                                                      | _(array fields)_ Enable collapse/expand per row                                                                             |
+| `wrapper`     | `React.ComponentType<ObjectWrapperProps \| ArrayWrapperProps>` | _(object / array fields)_ Per-field wrapper override — takes precedence over `layout.objectWrapper` / `layout.arrayWrapper` |
 
 ## Inline `condition`
 

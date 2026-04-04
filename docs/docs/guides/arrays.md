@@ -63,6 +63,60 @@ const MyRowLayout = ({ children, buttons, index }) => (
 
 See [`ArrayRowLayoutProps`](/docs/api/types#arrayrowlayoutprops) for the full type.
 
+## Button components
+
+Swap the button components for all array actions in one shot by passing `layout.arrayButtons`. Set `base` as the fallback for every slot, then override individual actions as needed.
+
+```tsx
+import { Button } from 'my-design-system'
+
+// Use your DS button for every array action
+<AutoForm
+  layout={{ arrayButtons: { base: Button } }}
+  ...
+/>
+
+// Or override slots individually
+<AutoForm
+  layout={{
+    arrayButtons: {
+      base: Button,
+      remove: DangerButton, // only the Remove button uses DangerButton
+    },
+  }}
+  ...
+/>
+```
+
+Resolution order: **specific slot → `base` → built-in default**.
+
+The collapse toggle uses [`ArrayCollapseButtonProps`](/docs/api/types#arraycollapsebuttonprops) which adds `isCollapsed: boolean`. Strip it before forwarding to a DOM element:
+
+```tsx
+const MyCollapseBtn = ({ isCollapsed, ...props }: ArrayCollapseButtonProps) => (
+  <Button variant={isCollapsed ? 'outline' : 'ghost'} {...props} />
+)
+
+<AutoForm layout={{ arrayButtons: { collapse: MyCollapseBtn } }} ... />
+```
+
+## Add button position
+
+By default the Add button appears below the rows. Override `layout.arrayFieldLayout` to change this:
+
+```tsx
+const AddFirstLayout = ({ rows, addButton }: ArrayFieldLayoutProps) => (
+  <div>
+    {addButton}
+    {rows}
+  </div>
+)
+
+<AutoForm layout={{ arrayFieldLayout: AddFirstLayout }} ... />
+```
+
+See [`ArrayFieldLayoutProps`](/docs/api/types#arrayfieldlayoutprops) for the full type.
+
 ## Labels
 
 Override the Add / Remove button labels via the `labels` prop for i18n:
