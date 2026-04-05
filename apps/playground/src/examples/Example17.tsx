@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import * as z from 'zod/v4'
 import { AutoForm, createAutoForm, createForm } from '@uniform-ts/core'
+import { es } from '@uniform-ts/core/locales/es'
 import { SubmittedData } from './shared'
 
 // ---------------------------------------------------------------------------
@@ -76,8 +77,11 @@ function SubExampleB() {
         B — Custom labels (i18n simulation: Spanish)
       </h3>
       <p style={{ color: '#666', fontSize: '0.875rem', marginBottom: '1rem' }}>
-        All hard-coded button and submit text is replaced via the{' '}
-        <code>labels</code> prop — no layout slots required.
+        All hard-coded button, submit, and aria text is replaced by importing
+        the <code>es</code> locale pack from{' '}
+        <code>@uniform-ts/core/locales/es</code> and passing it to the{' '}
+        <code>labels</code> prop. Only the imported locale is included in the
+        bundle.
       </p>
       <AutoForm
         form={hobbiesForm}
@@ -90,16 +94,7 @@ function SubExampleB() {
             collapsible: true,
           },
         }}
-        labels={{
-          submit: 'Enviar',
-          arrayAdd: 'Agregar fila',
-          arrayRemove: 'Eliminar',
-          arrayMoveUp: '⬆ Subir',
-          arrayMoveDown: '⬇ Bajar',
-          arrayDuplicate: 'Duplicar',
-          arrayCollapse: '▼ Ocultar',
-          arrayExpand: '▶ Mostrar',
-        }}
+        labels={es}
       />
       <SubmittedData data={data} />
     </div>

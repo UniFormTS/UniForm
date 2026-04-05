@@ -548,20 +548,52 @@ See [Validation & Error Messages](../guides/validation) for usage examples.
 
 ## `FormLabels`
 
-Override hard-coded UI strings.
+Override hard-coded UI strings, including accessible aria labels.
 
 ```ts
 type FormLabels = {
-  submit?: string
-  arrayAdd?: string // "Add" button label
-  arrayRemove?: string // "Remove" button label
-  arrayMoveUp?: string // "↑" button label
-  arrayMoveDown?: string // "↓" button label
-  arrayDuplicate?: string // "Duplicate" button label
-  arrayCollapse?: string // collapse toggle label (when expanded)
-  arrayExpand?: string // expand toggle label (when collapsed)
+  // Visible button text
+  submit?: string             // default: "Submit"
+  arrayAdd?: string           // default: "Add"
+  arrayRemove?: string        // default: "Remove"
+  arrayMoveUp?: string        // default: "↑"
+  arrayMoveDown?: string      // default: "↓"
+  arrayDuplicate?: string     // default: "Duplicate"
+  arrayCollapse?: string      // collapse toggle (when expanded) — default: "▼"
+  arrayExpand?: string        // expand toggle (when collapsed) — default: "▶"
+
+  // Dynamic aria labels and row summary (receive the 0-based row index)
+  arrayItemSummary?: (index: number) => string    // collapsed row fallback — default: "Item {n}"
+  arrayAriaExpand?: (index: number) => string     // default: "Expand item {n}"
+  arrayAriaCollapse?: (index: number) => string   // default: "Collapse item {n}"
+  arrayAriaMoveUp?: (index: number) => string     // default: "Move item {n} up"
+  arrayAriaMoveDown?: (index: number) => string   // default: "Move item {n} down"
+  arrayAriaDuplicate?: (index: number) => string  // default: "Duplicate item {n}"
+  arrayAriaRemove?: (index: number) => string     // default: "Remove item {n}"
 }
 ```
+
+UniForm ships ready-made locale packs as separate subpath exports so only the locale you import is included in your bundle:
+
+```ts
+import { en } from '@uniform-ts/core/locales/en'
+import { he } from '@uniform-ts/core/locales/he'
+import { es } from '@uniform-ts/core/locales/es'
+```
+
+Pass a locale directly, or spread it and override individual keys:
+
+```tsx
+import { es } from '@uniform-ts/core/locales/es'
+
+// Full locale
+<AutoForm labels={es} ... />
+
+// Locale with one override
+<AutoForm labels={{ ...es, submit: 'Guardar' }} ... />
+```
+
+See the [Localization guide](../guides/localization) for details.
 
 ---
 

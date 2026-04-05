@@ -28,6 +28,7 @@ function getRowSummary(
   row: Record<string, unknown>,
   itemConfig: FieldConfig,
   index: number,
+  itemSummary?: (index: number) => string,
 ): string {
   // Try to find the first string or number value from children
   if (itemConfig.type === 'object') {
@@ -43,7 +44,7 @@ function getRowSummary(
       }
     }
   }
-  return `Item ${index + 1}`
+  return itemSummary?.(index) ?? `Item ${index + 1}`
 }
 
 export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
@@ -115,8 +116,9 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
         onClick={() => toggleCollapse(index)}
         aria-label={
           isCollapsed
-            ? `Expand item ${index + 1}`
-            : `Collapse item ${index + 1}`
+            ? (labels.arrayAriaExpand?.(index) ?? `Expand item ${index + 1}`)
+            : (labels.arrayAriaCollapse?.(index) ??
+              `Collapse item ${index + 1}`)
         }
         isCollapsed={isCollapsed}
       >
@@ -140,7 +142,9 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
           className={classNames.arrayMove}
           onClick={() => move(index, index - 1)}
           disabled={index === 0}
-          aria-label={`Move item ${index + 1} up`}
+          aria-label={
+            labels.arrayAriaMoveUp?.(index) ?? `Move item ${index + 1} up`
+          }
         >
           {labels.arrayMoveUp ?? '↑'}
         </MoveUpBtn>
@@ -153,7 +157,9 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
           className={classNames.arrayMove}
           onClick={() => move(index, index + 1)}
           disabled={index === rows.length - 1}
-          aria-label={`Move item ${index + 1} down`}
+          aria-label={
+            labels.arrayAriaMoveDown?.(index) ?? `Move item ${index + 1} down`
+          }
         >
           {labels.arrayMoveDown ?? '↓'}
         </MoveDownBtn>
@@ -170,7 +176,9 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
             )
             insert(index + 1, values as Record<string, unknown>)
           }}
-          aria-label={`Duplicate item ${index + 1}`}
+          aria-label={
+            labels.arrayAriaDuplicate?.(index) ?? `Duplicate item ${index + 1}`
+          }
         >
           {labels.arrayDuplicate ?? 'Duplicate'}
         </DuplicateBtn>
@@ -182,7 +190,9 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
         className={classNames.arrayRemove}
         onClick={() => remove(index)}
         disabled={atMin}
-        aria-label={`Remove item ${index + 1}`}
+        aria-label={
+          labels.arrayAriaRemove?.(index) ?? `Remove item ${index + 1}`
+        }
       >
         {labels.arrayRemove ?? 'Remove'}
       </RemoveBtn>
@@ -269,15 +279,25 @@ function CollapseSummary({
   itemConfig: FieldConfig
   isCollapsed: boolean
 }) {
+  const { labels } = useAutoFormContext()
+  const fallback = labels.arrayItemSummary?.(index) ?? `Item ${index + 1}`
+
   const rowValues = useWatch({ control, name: `${effectiveName}.${index}` }) as
     | Record<string, unknown>
     | undefined
 
   const summary = useMemo(() => {
-    if (!isCollapsed) return `Item ${index + 1}`
-    if (!rowValues) return `Item ${index + 1}`
-    return getRowSummary(rowValues, itemConfig, index)
-  }, [isCollapsed, rowValues, itemConfig, index])
+    if (!isCollapsed) return fallback
+    if (!rowValues) return fallback
+    return getRowSummary(rowValues, itemConfig, index, labels.arrayItemSummary)
+  }, [
+    isCollapsed,
+    rowValues,
+    itemConfig,
+    index,
+    fallback,
+    labels.arrayItemSummary,
+  ])
 
-  return <>{isCollapsed ? summary : `Item ${index + 1}`}</>
+  return <>{isCollapsed ? summary : fallback}</>
 }

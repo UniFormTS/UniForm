@@ -1,6 +1,6 @@
 {
   "name": "@uniform-ts/core",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "private": false,
   "description": "UniForm – auto-render forms from Zod schemas",
   "license": "MIT",
@@ -27,6 +27,21 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
+    },
+    "./locales/en": {
+      "types": "./dist/locales/en.d.ts",
+      "import": "./dist/locales/en.mjs",
+      "require": "./dist/locales/en.js"
+    },
+    "./locales/he": {
+      "types": "./dist/locales/he.d.ts",
+      "import": "./dist/locales/he.mjs",
+      "require": "./dist/locales/he.js"
+    },
+    "./locales/es": {
+      "types": "./dist/locales/es.d.ts",
+      "import": "./dist/locales/es.mjs",
+      "require": "./dist/locales/es.js"
     }
   },
   "files": [
@@ -53,14 +68,13 @@
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19",
-    "@typescript-eslint/eslint-plugin": "^8.57.0",
-    "@typescript-eslint/parser": "^8.57.0",
-    "eslint": "^8.57.0",
-    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-react-hooks": "^7.0.0",
+    "typescript-eslint": "^8.58.0",
     "jsdom": "^28.1.0",
     "tsup": "^8.0.0",
     "typescript": "^5.4.0",
-    "vitest": "^1.6.0",
+    "vitest": "^4.0.0",
     "zod": "^3.25.0"
   }
 }

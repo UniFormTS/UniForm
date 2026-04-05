@@ -34,7 +34,7 @@ Then in any feature:
 | `disabled`     | `boolean`                                | When `true`, all fields in every form instance are disabled by default                            |
 | `messages`     | `ValidationMessages`                     | Default validation messages                                                                       |
 | `coercions`    | `CoercionMap`                            | Default per-field coercions                                                                       |
-| `labels`       | `FormLabels`                             | Default UI labels (submit, arrayAdd, arrayRemove, …)                                              |
+| `labels`       | `FormLabels`                             | Default UI labels (submit, array buttons, aria labels). Import a locale pack from `@uniform-ts/core/locales/{en,he,es}` to set all strings at once |
 
 ### Merge behaviour
 
