@@ -1,0 +1,8 @@
+{
+  "vitest.projects": [
+    {
+      "root": "${workspaceFolder}/packages/core",
+      "config": "${workspaceFolder}/packages/core/vitest.config.ts"
+    }
+  ]
+}
