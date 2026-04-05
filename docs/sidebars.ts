@@ -26,6 +26,7 @@ const sidebars: SidebarsConfig = {
         'guides/sections',
         'guides/conditional-fields',
         'guides/arrays',
+        'guides/localization',
         'guides/validation',
         'guides/persistence',
         'guides/programmatic-control',

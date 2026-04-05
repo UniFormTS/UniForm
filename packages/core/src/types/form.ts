@@ -67,6 +67,20 @@ export type FormLabels = {
   arrayCollapse?: string
   /** Array row toggle shown when the row is collapsed (clicking expands it) — default: "▶" */
   arrayExpand?: string
+  /** Collapsed row summary fallback — default: (i) => `Item ${i + 1}` */
+  arrayItemSummary?: (index: number) => string
+  /** Aria label for the expand toggle — default: (i) => `Expand item ${i + 1}` */
+  arrayAriaExpand?: (index: number) => string
+  /** Aria label for the collapse toggle — default: (i) => `Collapse item ${i + 1}` */
+  arrayAriaCollapse?: (index: number) => string
+  /** Aria label for the move-up button — default: (i) => `Move item ${i + 1} up` */
+  arrayAriaMoveUp?: (index: number) => string
+  /** Aria label for the move-down button — default: (i) => `Move item ${i + 1} down` */
+  arrayAriaMoveDown?: (index: number) => string
+  /** Aria label for the duplicate button — default: (i) => `Duplicate item ${i + 1}` */
+  arrayAriaDuplicate?: (index: number) => string
+  /** Aria label for the remove button — default: (i) => `Remove item ${i + 1}` */
+  arrayAriaRemove?: (index: number) => string
 }
 
 // ---------------------------------------------------------------------------

@@ -119,11 +119,22 @@ See [`ArrayFieldLayoutProps`](/docs/api/types#arrayfieldlayoutprops) for the ful
 
 ## Labels
 
-Override the Add / Remove button labels via the `labels` prop for i18n:
+Override individual button labels via the `labels` prop, or import a ready-made locale pack that covers all strings at once — including accessible aria labels:
 
 ```tsx
+// Individual overrides
 <AutoForm labels={{ arrayAdd: '+ Add member', arrayRemove: 'Remove' }} ... />
+
+// Full locale pack (only the imported locale is included in your bundle)
+import { es } from '@uniform-ts/core/locales/es'
+
+<AutoForm labels={es} ... />
+
+// Locale with per-instance overrides
+<AutoForm labels={{ ...es, arrayAdd: '+ Nueva fila' }} ... />
 ```
+
+See the [Localization guide](./localization) for the full list of available keys and all bundled locales.
 
 ## Minimum / maximum items
 

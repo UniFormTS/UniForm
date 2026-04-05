@@ -35,7 +35,7 @@ const myForm = createForm(schema)
 | `persistDebounce` | `number`                                                                  | No       | Debounce interval in ms for persistence writes. Defaults to `300`                                              |
 | `persistStorage`  | `PersistStorage`                                                          | No       | Custom storage adapter (must implement `getItem`/`setItem`/`removeItem`). Defaults to `sessionStorage`         |
 | `onValuesChange`  | `(values: z.infer<TSchema>) => void`                                      | No       | Called on every field change with the full current form values                                                 |
-| `labels`          | `FormLabels`                                                              | No       | Override hard-coded UI text (submit button, array buttons) for i18n. Defaults to `{}`                          |
+| `labels`          | `FormLabels`                                                              | No       | Override hard-coded UI text (submit, array buttons, aria labels). Import a locale pack from `@uniform-ts/core/locales/{en,he,es}` or pass individual keys. Defaults to `{}` |
 
 ## Live Example
 

@@ -27,6 +27,21 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
+    },
+    "./locales/en": {
+      "types": "./dist/locales/en.d.ts",
+      "import": "./dist/locales/en.mjs",
+      "require": "./dist/locales/en.js"
+    },
+    "./locales/he": {
+      "types": "./dist/locales/he.d.ts",
+      "import": "./dist/locales/he.mjs",
+      "require": "./dist/locales/he.js"
+    },
+    "./locales/es": {
+      "types": "./dist/locales/es.d.ts",
+      "import": "./dist/locales/es.mjs",
+      "require": "./dist/locales/es.js"
     }
   },
   "files": [
