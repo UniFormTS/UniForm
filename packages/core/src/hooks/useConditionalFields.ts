@@ -16,13 +16,19 @@ import type { FieldConfig } from '../types'
  *
  * @param fields - The full list of field configs to filter and sort.
  * @param control - The RHF `control` object from the parent form.
+ * @param scopeName - When provided, conditions receive only the values at this
+ *   path (e.g. `"tasks.0"` for an array row) rather than the full form values.
+ *   This enables row-local sibling conditions inside arrays.
  * @returns The filtered and ordered subset of `fields`.
  */
 export function useConditionalFields(
   fields: FieldConfig[],
   control: Control,
+  scopeName?: string,
 ): FieldConfig[] {
-  const values = useWatch({ control })
+  const allValues = useWatch({ control })
+  const scopedValues = useWatch({ control, name: scopeName as string })
+  const values = scopeName ? scopedValues : allValues
 
   return useMemo(() => {
     return fields

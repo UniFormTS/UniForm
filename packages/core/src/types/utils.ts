@@ -53,3 +53,30 @@ export type DeepFieldValue<T, K extends string> = K extends keyof T
         : DeepFieldValue<NonNullable<T[Head]>, Tail>
       : unknown
     : unknown
+
+/**
+ * Resolves the values type that a `setCondition` predicate receives for a
+ * given field key `K` within form values type `TValues`.
+ *
+ * - **Array item fields** (e.g. `"tasks.note"`): the predicate receives the
+ *   array item type (`{ title, priority, note }`), enabling row-local sibling
+ *   conditions like `(row) => row.priority === 'high'`.
+ * - **All other fields**: the predicate receives the full form values type.
+ *
+ * @example
+ * // ConditionValues<{ name: string; tasks: { priority: string; note: string }[] }, 'tasks.note'>
+ * // → { priority: string; note: string }
+ *
+ * // ConditionValues<{ name: string; address: { street: string } }, 'address.street'>
+ * // → { name: string; address: { street: string } }   (full form — not an array)
+ */
+export type ConditionValues<
+  TValues,
+  K extends string,
+> = K extends `${infer Head}.${string}`
+  ? Head extends keyof TValues
+    ? TValues[Head] extends readonly (infer Item)[]
+      ? Item
+      : TValues
+    : TValues
+  : TValues

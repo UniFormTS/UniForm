@@ -4,7 +4,7 @@
 // 'packages/core/src/types' (this barrel); never from the sub-modules directly.
 // ---------------------------------------------------------------------------
 
-export type { DeepKeys, DeepFieldValue } from './utils'
+export type { DeepKeys, DeepFieldValue, ConditionValues } from './utils'
 
 export type { SelectOption } from './shared'
 
