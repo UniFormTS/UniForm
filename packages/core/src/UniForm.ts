@@ -2,6 +2,7 @@ import type * as z from 'zod/v4/core'
 import type {
   DeepKeys,
   DeepFieldValue,
+  ConditionValues,
   FormMethods,
   FieldDependencyResult,
 } from './types'
@@ -32,9 +33,7 @@ type Handler<TSchema extends z.$ZodObject, TValue> = (
   ctx: UniFormContext<TSchema>,
 ) => void | Promise<void>
 
-type Condition<TSchema extends z.$ZodObject> = (
-  values: z.infer<TSchema>,
-) => boolean
+type Condition = (values: unknown) => boolean
 
 /**
  * A type-safe form definition that lives outside React components.
@@ -65,7 +64,7 @@ export class UniForm<
 > {
   readonly schema: TSchema
   private readonly _handlers: Map<string, Handler<TSchema, unknown>>
-  private readonly _conditions: Map<string, Condition<TSchema>>
+  private readonly _conditions: Map<string, Condition>
 
   constructor(schema: TSchema) {
     this.schema = schema
@@ -96,9 +95,9 @@ export class UniForm<
    */
   setCondition<K extends DeepKeys<z.infer<TSchema>>>(
     field: K,
-    predicate: Condition<TSchema>,
+    predicate: (values: ConditionValues<z.infer<TSchema>, K>) => boolean,
   ): this {
-    this._conditions.set(field, predicate)
+    this._conditions.set(field, predicate as Condition)
     return this
   }
 
@@ -117,7 +116,7 @@ export class UniForm<
   }
 
   /** @internal Returns a copy of the conditions map for AutoForm to inject into field meta. */
-  _getConditions(): Map<string, Condition<TSchema>> {
+  _getConditions(): Map<string, Condition> {
     return new Map(this._conditions)
   }
 }

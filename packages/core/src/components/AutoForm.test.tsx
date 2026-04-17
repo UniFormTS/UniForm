@@ -2511,8 +2511,13 @@ describe('AutoForm', () => {
     const schema = z.object({
       items: z.array(z.object({ value: z.string() })),
     })
-    const CustomBtn = ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-      <button data-custom='base' {...props}>{children}</button>
+    const CustomBtn = ({
+      children,
+      ...props
+    }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+      <button data-custom='base' {...props}>
+        {children}
+      </button>
     )
     render(
       <AutoForm
@@ -2529,11 +2534,21 @@ describe('AutoForm', () => {
     const schema = z.object({
       items: z.array(z.object({ value: z.string() })),
     })
-    const AddBtn = ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-      <button data-custom='add-slot' {...props}>{children}</button>
+    const AddBtn = ({
+      children,
+      ...props
+    }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+      <button data-custom='add-slot' {...props}>
+        {children}
+      </button>
     )
-    const BaseBtn = ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-      <button data-custom='base-slot' {...props}>{children}</button>
+    const BaseBtn = ({
+      children,
+      ...props
+    }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+      <button data-custom='base-slot' {...props}>
+        {children}
+      </button>
     )
     render(
       <AutoForm
@@ -2554,8 +2569,13 @@ describe('AutoForm', () => {
     const schema = z.object({
       items: z.array(z.object({ value: z.string() })),
     })
-    const RemoveBtn = ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-      <button data-custom='remove-slot' {...props}>{children}</button>
+    const RemoveBtn = ({
+      children,
+      ...props
+    }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+      <button data-custom='remove-slot' {...props}>
+        {children}
+      </button>
     )
     render(
       <AutoForm
@@ -2565,16 +2585,29 @@ describe('AutoForm', () => {
         layout={{ arrayButtons: { remove: RemoveBtn } }}
       />,
     )
-    expect(screen.getByLabelText(/remove item 1/i)).toHaveAttribute('data-custom', 'remove-slot')
+    expect(screen.getByLabelText(/remove item 1/i)).toHaveAttribute(
+      'data-custom',
+      'remove-slot',
+    )
     // Add button is unaffected (still the default)
-    expect(screen.getByRole('button', { name: /^add$/i })).not.toHaveAttribute('data-custom')
+    expect(screen.getByRole('button', { name: /^add$/i })).not.toHaveAttribute(
+      'data-custom',
+    )
   })
 
   it('99. layout.arrayFieldLayout can place the add button before the rows', () => {
     const schema = z.object({
       items: z.array(z.object({ value: z.string() })),
     })
-    const AddFirstLayout = ({ rows, addButton }: { rows: React.ReactNode; addButton: React.ReactNode; rowCount: number; canAdd: boolean }) => (
+    const AddFirstLayout = ({
+      rows,
+      addButton,
+    }: {
+      rows: React.ReactNode
+      addButton: React.ReactNode
+      rowCount: number
+      canAdd: boolean
+    }) => (
       <div>
         <div data-testid='add-area'>{addButton}</div>
         <div data-testid='rows-area'>{rows}</div>
@@ -2590,8 +2623,12 @@ describe('AutoForm', () => {
     )
     const addArea = screen.getByTestId('add-area')
     const rowsArea = screen.getByTestId('rows-area')
-    expect(within(addArea).getByRole('button', { name: /^add$/i })).toBeInTheDocument()
-    expect(within(rowsArea).getByLabelText(/remove item 1/i)).toBeInTheDocument()
+    expect(
+      within(addArea).getByRole('button', { name: /^add$/i }),
+    ).toBeInTheDocument()
+    expect(
+      within(rowsArea).getByLabelText(/remove item 1/i),
+    ).toBeInTheDocument()
   })
 
   // =========================================================================
@@ -3376,6 +3413,201 @@ describe('layout.sections per-section styling', () => {
     )
     expect(personalFieldset).toHaveClass('factory-class')
     expect(addressFieldset).toHaveClass('instance-class')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Array field — hidden and condition inside rows
+// ---------------------------------------------------------------------------
+
+describe('Array field — hidden and condition inside rows', () => {
+  // 131. hidden: true on an array item field hides it in every row
+  it('131. does not render a hidden array item field in any row', () => {
+    const schema = z.object({
+      tasks: z.array(
+        z.object({
+          title: z.string(),
+          internal: z.string(),
+        }),
+      ),
+    })
+    render(
+      <AutoForm
+        form={new UniForm(schema)}
+        onSubmit={vi.fn()}
+        defaultValues={{ tasks: [{ title: '', internal: '' }] }}
+        fields={{ 'tasks.internal': { hidden: true } }}
+      />,
+    )
+    expect(screen.getByLabelText(/title/i)).toBeInTheDocument()
+    expect(screen.queryByLabelText(/internal/i)).not.toBeInTheDocument()
+  })
+
+  // 132. hidden array item field is excluded from submitted data when not in defaultValues
+  it('132. hidden array item field is absent from submitted data', async () => {
+    const schema = z.object({
+      tasks: z.array(
+        z.object({
+          title: z.string().min(1),
+          internal: z.string().optional(),
+        }),
+      ),
+    })
+    const onSubmit = vi.fn()
+    const { user } = setup(
+      <AutoForm
+        form={new UniForm(schema)}
+        onSubmit={onSubmit}
+        // `internal` intentionally omitted from defaultValues — hidden fields
+        // that are never registered should not appear in submitted data
+        defaultValues={{ tasks: [{ title: '' }] }}
+        fields={{ 'tasks.internal': { hidden: true } }}
+      />,
+    )
+    await user.type(screen.getByLabelText(/title/i), 'My Task')
+    await user.click(screen.getByRole('button', { name: /submit/i }))
+    await waitFor(() => {
+      const row = (
+        onSubmit.mock.calls[0] as [{ tasks: Record<string, unknown>[] }]
+      )[0].tasks[0]
+      expect(row).not.toHaveProperty('internal')
+    })
+  })
+
+  // 133. inline condition on an array item field (via fields prop)
+  // The condition receives the current row's values, not the full form.
+  it('133. inline condition on array item field shows/hides based on row sibling value', async () => {
+    const schema = z.object({
+      items: z.array(
+        z.object({
+          type: z.enum(['simple', 'advanced']),
+          extra: z.string().optional(),
+        }),
+      ),
+    })
+    const { user } = setup(
+      <AutoForm
+        form={new UniForm(schema)}
+        onSubmit={vi.fn()}
+        defaultValues={{ items: [{ type: 'simple' }] }}
+        fields={{
+          'items.extra': {
+            condition: (row: Record<string, unknown>) =>
+              row['type'] === 'advanced',
+          },
+        }}
+      />,
+    )
+    // hidden initially (type = 'simple')
+    expect(screen.queryByLabelText(/extra/i)).not.toBeInTheDocument()
+
+    // switch to 'advanced' — field should appear
+    await user.selectOptions(screen.getByRole('combobox'), 'advanced')
+    await waitFor(() => {
+      expect(screen.getByLabelText(/extra/i)).toBeInTheDocument()
+    })
+  })
+
+  // 134. setCondition on an array item field — predicate receives row-local values
+  it('134. setCondition on array item field receives row values and toggles visibility', async () => {
+    const schema = z.object({
+      tasks: z.array(
+        z.object({
+          priority: z.enum(['low', 'high']),
+          note: z.string().optional(),
+        }),
+      ),
+    })
+    const taskForm = createForm(schema)
+    taskForm.setCondition('tasks.note', (row) => row.priority === 'high')
+
+    const { user } = setup(
+      <AutoForm
+        form={taskForm}
+        onSubmit={vi.fn()}
+        defaultValues={{ tasks: [{ priority: 'low' }] }}
+      />,
+    )
+
+    // note hidden when priority is 'low'
+    expect(screen.queryByLabelText(/note/i)).not.toBeInTheDocument()
+
+    // change to 'high' — note should appear
+    await user.selectOptions(screen.getByRole('combobox'), 'high')
+    await waitFor(() => {
+      expect(screen.getByLabelText(/note/i)).toBeInTheDocument()
+    })
+
+    // change back to 'low' — note should disappear
+    await user.selectOptions(screen.getByRole('combobox'), 'low')
+    await waitFor(() => {
+      expect(screen.queryByLabelText(/note/i)).not.toBeInTheDocument()
+    })
+  })
+
+  // 135. row conditions are independent — each row evaluates against its own values
+  it('135. row conditions are evaluated independently per row', async () => {
+    const schema = z.object({
+      tasks: z.array(
+        z.object({
+          priority: z.enum(['low', 'high']),
+          note: z.string().optional(),
+        }),
+      ),
+    })
+    const taskForm = createForm(schema)
+    taskForm.setCondition('tasks.note', (row) => row.priority === 'high')
+
+    const { user } = setup(
+      <AutoForm
+        form={taskForm}
+        onSubmit={vi.fn()}
+        defaultValues={{ tasks: [{ priority: 'low' }, { priority: 'high' }] }}
+      />,
+    )
+
+    // row 0: low → note hidden; row 1: high → note visible → 1 note field total
+    await waitFor(() => {
+      expect(screen.getAllByLabelText(/note/i)).toHaveLength(1)
+    })
+
+    // set row 0 to 'high' → both rows show note → 2 note fields
+    const selects = screen.getAllByRole('combobox')
+    await user.selectOptions(selects[0], 'high')
+    await waitFor(() => {
+      expect(screen.getAllByLabelText(/note/i)).toHaveLength(2)
+    })
+  })
+
+  // 136. conditional array item field is absent from submitted data when condition is false
+  it('136. conditional array item field is absent from submitted data when hidden', async () => {
+    const schema = z.object({
+      tasks: z.array(
+        z.object({
+          priority: z.enum(['low', 'high']),
+          note: z.string().optional(),
+        }),
+      ),
+    })
+    const taskForm = createForm(schema)
+    taskForm.setCondition('tasks.note', (row) => row.priority === 'high')
+
+    const onSubmit = vi.fn()
+    const { user } = setup(
+      <AutoForm
+        form={taskForm}
+        onSubmit={onSubmit}
+        defaultValues={{ tasks: [{ priority: 'low' }] }}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /submit/i }))
+    await waitFor(() => {
+      const row = (
+        onSubmit.mock.calls[0] as [{ tasks: Record<string, unknown>[] }]
+      )[0].tasks[0]
+      expect(row).not.toHaveProperty('note')
+    })
   })
 })
 

@@ -3,6 +3,7 @@ import type { Control } from 'react-hook-form'
 import type { FieldConfig, ObjectWrapperProps } from '../../types'
 import { FieldRenderer } from '../FieldRenderer'
 import { useAutoFormContext } from '../../context/AutoFormContext'
+import { useConditionalFields } from '../../hooks/useConditionalFields'
 
 type ObjectFieldProps = {
   field: Extract<FieldConfig, { type: 'object' }>
@@ -20,7 +21,7 @@ export function ObjectField({
   shouldUnregister,
 }: ObjectFieldProps) {
   const { classNames, layout } = useAutoFormContext()
-  const children = field.children
+  const children = useConditionalFields(field.children, control, namePrefix)
 
   const content = children.map((child, idx) => (
     <FieldRenderer

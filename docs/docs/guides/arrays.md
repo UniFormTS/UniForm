@@ -148,6 +148,31 @@ z.array(memberSchema)
 
 The **Add** button is hidden when the max is reached.
 
+## Conditional fields inside rows
+
+Fields within each row support the same `hidden` and `condition` options as
+top-level fields. Use `setCondition` with an `"arrayField.fieldName"` key — the
+predicate receives the current **row's values**, making sibling conditions
+straightforward:
+
+```ts
+const taskForm = createForm(schema)
+
+taskForm.setCondition(
+  'tasks.note',
+  (row) => row.priority === 'high', // `row` is typed as the item shape
+)
+```
+
+Each row evaluates its own condition independently. You can also set `hidden:
+true` via the `fields` prop to permanently suppress a field across all rows:
+
+```tsx
+<AutoForm fields={{ 'tasks.internal': { hidden: true } }} ... />
+```
+
+See the [Conditional Fields guide](./conditional-fields#conditions-inside-array-rows) for more detail.
+
 ## Live Example
 
 ```jsx live noInline
