@@ -55,6 +55,36 @@ myForm.setCondition(
 )
 ```
 
+## Conditions inside array rows
+
+`setCondition` works inside array fields too. When the target key points into an
+array (e.g. `"tasks.note"`), the predicate receives the **current row's values**
+instead of the full form — so you can write natural sibling conditions without
+knowing the row index:
+
+```ts
+const taskForm = createForm(schema)
+
+// `row` is typed as the array item — { priority, note, ... }
+taskForm.setCondition('tasks.note', (row) => row.priority === 'high')
+```
+
+Each row evaluates its condition independently, so different rows can show or
+hide the same field at the same time based on their own values.
+
+:::tip Hidden fields inside arrays
+`hidden: true` in the `fields` prop also works for array item fields and is
+evaluated per-row:
+
+```tsx
+<AutoForm
+  fields={{ 'tasks.internal': { hidden: true } }}
+  ...
+/>
+```
+
+:::
+
 ## Live Example
 
 ```jsx live noInline

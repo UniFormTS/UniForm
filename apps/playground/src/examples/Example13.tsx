@@ -10,6 +10,7 @@ const rowLayoutSchema = z.object({
       z.object({
         title: z.string().min(1, 'Title required'),
         priority: z.enum(['low', 'medium', 'high']),
+        note: z.string().optional(),
       }),
     )
     .min(1)
@@ -18,6 +19,8 @@ const rowLayoutSchema = z.object({
 })
 
 const rowLayoutForm = createForm(rowLayoutSchema)
+
+rowLayoutForm.setCondition('tasks.note', (row) => row.priority === 'high')
 
 function CustomRowLayout({
   children,
