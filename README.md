@@ -45,7 +45,7 @@ UniForm introspects the schema, renders appropriate inputs, validates with Zod, 
 
 **`createAutoForm(defaults)`** — factory that bakes in your design system defaults (components, classNames, fieldWrapper) once, so you don't repeat them on every form.
 
-**`components`** — a registry mapping Zod types (`string`, `number`, `boolean`, etc.) to your own input components. Pass a component directly on a field via `fields` for one-off overrides.
+**`components`** — a registry mapping Zod types (`string`, `number`, `boolean`, etc.) to your own input components. Pass a component directly on a field via `fields` for one-off overrides. For custom components, type field values precisely with `FieldProps<Value>` (for example, `FieldProps<number>` for a rating widget).
 
 **`fields`** — per-field overrides using dot-notated paths. Control labels, descriptions, ordering, sections, conditions, and custom components without touching the schema.
 

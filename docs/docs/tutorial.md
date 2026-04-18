@@ -154,7 +154,7 @@ function MyTextInput({
   placeholder,
   error,
   disabled,
-}: FieldProps) {
+}: FieldProps<string>) {
   return (
     <input
       ref={ref}

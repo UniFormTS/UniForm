@@ -18,13 +18,14 @@ You can render a `z.string()` field as a select by setting `meta.component: 'sel
 
 ```ts
 const schema = z.object({
-  role: z
-    .string()
-    .meta({ component: 'select', options: [
+  role: z.string().meta({
+    component: 'select',
+    options: [
       { label: 'User', value: 'user' },
       { label: 'Admin', value: 'admin' },
       { label: 'Editor', value: 'editor' },
-    ] }),
+    ],
+  }),
 })
 ```
 
@@ -39,7 +40,7 @@ Every field component receives [`FieldProps`](/docs/api/types#fieldprops):
 ```tsx
 import type { FieldProps } from '@uniform-ts/core'
 
-export function StarRating({ value, onChange, error }: FieldProps) {
+export function StarRating({ value, onChange, error }: FieldProps<number>) {
   return (
     <div>
       {[1, 2, 3, 4, 5].map((star) => (
