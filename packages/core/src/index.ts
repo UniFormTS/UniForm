@@ -81,6 +81,7 @@ export { useConditionalFields } from './hooks/useConditionalFields'
 export { useSectionGrouping } from './hooks/useSectionGrouping'
 export type { SectionGroup } from './hooks/useSectionGrouping'
 export { useFormPersistence } from './hooks/useFormPersistence'
+export { useArrayField } from './hooks/useArrayField'
 
 // Context
 export { useAutoFormContext } from './context/AutoFormContext'

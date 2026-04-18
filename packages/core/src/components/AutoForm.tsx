@@ -389,6 +389,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   const contextValue = React.useMemo(
     () => ({
       registry,
+      fieldConfigs: mergedFields,
       fieldOverrides: fieldOverridesProp,
       fieldWrapper: resolvedFieldWrapper,
       layout: resolvedLayout,
@@ -398,9 +399,11 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       messages,
       labels,
       formMethods: formMethods as unknown as FormMethods,
+      control,
     }),
     [
       registry,
+      mergedFields,
       fieldOverridesProp,
       resolvedFieldWrapper,
       resolvedLayout,
@@ -410,6 +413,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       messages,
       labels,
       formMethods,
+      control,
     ],
   )
 
