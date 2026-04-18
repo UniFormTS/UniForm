@@ -45,7 +45,9 @@ UniForm introspects the schema, renders appropriate inputs, validates with Zod, 
 
 **`createAutoForm(defaults)`** — factory that bakes in your design system defaults (components, classNames, fieldWrapper) once, so you don't repeat them on every form.
 
-**`components`** — a registry mapping Zod types (`string`, `number`, `boolean`, etc.) to your own input components. Pass a component directly on a field via `fields` for one-off overrides.
+**`useArrayField(fieldName)`** — a React hook for external array controls (toolbars, section headers, sticky footers) inside the `<AutoForm>` tree. It returns `append/remove/move/...` from `useFieldArray` plus `rowCount`, `canAdd`, and `atMin` derived from the array's `minItems`/`maxItems`.
+
+**`components`** — a registry mapping Zod types (`string`, `number`, `boolean`, etc.) to your own input components. Pass a component directly on a field via `fields` for one-off overrides. For custom components, type field values precisely with `FieldProps<Value>` (for example, `FieldProps<number>` for a rating widget).
 
 **`fields`** — per-field overrides using dot-notated paths. Control labels, descriptions, ordering, sections, conditions, and custom components without touching the schema.
 
@@ -85,6 +87,7 @@ UniForm introspects the schema, renders appropriate inputs, validates with Zod, 
 - **Section grouping** — group fields into named sections via `meta.section`
 - **Conditional fields** — show/hide fields based on form values; `hidden` and row-local sibling conditions work inside array rows too
 - **Array fields** — movable, duplicable, collapsible rows; `minItems`/`maxItems` from Zod schema; per-row conditional fields
+- **External array controls** — use `useArrayField('path.to.array')` to place Add/Remove controls outside the default array block while staying in sync with schema limits
 - **Programmatic control** — `reset()`, `submit()`, `setValues()`, `getValues()`, `setErrors()`, `focus()` via ref
 - **Form persistence** — auto-save to `localStorage` (or custom storage) with configurable debounce
 - **Pluggable coercion** — automatic `string → number`, `string → Date` with customizable coercion map

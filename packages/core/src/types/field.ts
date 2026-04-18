@@ -222,13 +222,13 @@ export type FieldConfig = FieldConfigBase &
  * value, change/blur handlers, and all resolved UI metadata needed to render
  * a single field.
  */
-export interface FieldProps {
+export interface FieldProps<Value = unknown> {
   /** Dot-notated field path (e.g. `"address.street"`). */
   name: string
   /** The current field value. */
-  value: unknown
+  value: Value
   /** Callback to update the field value. */
-  onChange: (value: unknown) => void
+  onChange: (value: Value) => void
   /** Callback fired when the field loses focus. */
   onBlur: () => void
   /** Ref callback for registering the DOM element with `react-hook-form`. */

@@ -11,7 +11,7 @@ Zod lets you express a field that accepts more than one type via `z.union([...])
 ```ts
 const schema = z.object({
   amount: z.number().or(z.literal('')),
-  value:  z.union([z.string(), z.number()]),
+  value: z.union([z.string(), z.number()]),
 })
 ```
 
@@ -19,10 +19,10 @@ const schema = z.object({
 
 UniForm cannot reliably render an arbitrary union as a single input (the valid values might be completely unrelated types). Instead it **collapses the union to its first variant** at introspection time:
 
-| Schema | Rendered as |
-|---|---|
-| `z.number().or(z.literal(''))` | `number` field |
-| `z.union([z.string(), z.number()])` | `string` field |
+| Schema                                             | Rendered as    |
+| -------------------------------------------------- | -------------- |
+| `z.number().or(z.literal(''))`                     | `number` field |
+| `z.union([z.string(), z.number()])`                | `string` field |
 | `z.union([z.enum(['a','b']), z.literal('other')])` | `select` field |
 
 This means the form always renders something meaningful for the dominant type, while still accepting the full union during validation.
@@ -41,17 +41,30 @@ Use this when the default rendering is not what you want:
 import type { FieldProps } from '@uniform-ts/core'
 import * as z from 'zod/v4/core'
 
-function FlexibleInput({ field, value, onChange, ...props }: FieldProps) {
-  const def = field.schema._zod.def
+function FlexibleInput({ schema, value, onChange, ...props }: FieldProps) {
+  const def = schema._zod.def
 
   // Detect plain union at runtime
   if (def.type === 'union') {
     const variants = (def as z.$ZodUnionDef).options
     // Build a toggle, type-switcher, multi-type input, etc.
-    return <MyUnionInput variants={variants} value={value} onChange={onChange} {...props} />
+    return (
+      <MyUnionInput
+        variants={variants}
+        value={value}
+        onChange={onChange}
+        {...props}
+      />
+    )
   }
 
-  return <input value={value as string} onChange={(e) => onChange(e.target.value)} {...props} />
+  return (
+    <input
+      value={value as string}
+      onChange={(e) => onChange(e.target.value)}
+      {...props}
+    />
+  )
 }
 ```
 

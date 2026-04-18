@@ -1,7 +1,9 @@
 import * as React from 'react'
+import type { Control } from 'react-hook-form'
 import type {
   CoercionMap,
   ComponentRegistry,
+  FieldConfig,
   FieldWrapperProps,
   ResolvedLayoutSlots,
   FormClassNames,
@@ -12,6 +14,7 @@ import type {
 
 export type AutoFormContextValue = {
   registry: ComponentRegistry
+  fieldConfigs: FieldConfig[]
   fieldOverrides: Record<string, unknown>
   fieldWrapper: React.ComponentType<FieldWrapperProps>
   layout: ResolvedLayoutSlots
@@ -21,6 +24,7 @@ export type AutoFormContextValue = {
   messages?: ValidationMessages
   labels: FormLabels
   formMethods: FormMethods
+  control: Control
 }
 
 const AutoFormContext = React.createContext<AutoFormContextValue | null>(null)

@@ -13,6 +13,7 @@ const sidebars: SidebarsConfig = {
         'api/auto-form',
         'api/create-form',
         'api/create-auto-form',
+        'api/use-array-field',
         'api/types',
       ],
     },

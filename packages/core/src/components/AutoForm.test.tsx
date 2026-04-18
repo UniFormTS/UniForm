@@ -3658,3 +3658,94 @@ describe('z.string() rendered as select via meta', () => {
     })
   })
 })
+
+// ---------------------------------------------------------------------------
+// useArrayField hook
+// ---------------------------------------------------------------------------
+
+import { useArrayField } from '../hooks/useArrayField'
+
+describe('useArrayField', () => {
+  const schema = z.object({
+    items: z
+      .array(z.object({ name: z.string() }))
+      .min(1)
+      .max(3),
+  })
+  const form = createForm(schema)
+
+  function Harness({
+    onState,
+  }: {
+    onState: (s: { rowCount: number; canAdd: boolean; atMin: boolean }) => void
+  }) {
+    const { append, remove, rowCount, canAdd, atMin } = useArrayField('items')
+    // Report state to the test on every render
+    onState({ rowCount, canAdd, atMin })
+    return (
+      <div>
+        <button onClick={() => append({ name: '' })}>add</button>
+        <button onClick={() => remove(0)}>remove</button>
+      </div>
+    )
+  }
+
+  function renderForm(
+    onState: (s: { rowCount: number; canAdd: boolean; atMin: boolean }) => void,
+  ) {
+    return setup(
+      <AutoForm
+        form={form}
+        defaultValues={{ items: [{ name: 'first' }] }}
+        layout={{
+          formWrapper: ({ children }) => (
+            <>
+              <Harness onState={onState} />
+              {children}
+            </>
+          ),
+        }}
+        onSubmit={vi.fn()}
+      />,
+    )
+  }
+
+  it('returns the current rowCount', () => {
+    const states: { rowCount: number; canAdd: boolean; atMin: boolean }[] = []
+    renderForm((s) => states.push(s))
+    expect(states[states.length - 1]?.rowCount).toBe(1)
+  })
+
+  it('append() increments rowCount', async () => {
+    const states: { rowCount: number; canAdd: boolean; atMin: boolean }[] = []
+    const { user } = renderForm((s) => states.push(s))
+    await user.click(screen.getByRole('button', { name: 'add' }))
+    await waitFor(() => expect(states[states.length - 1]?.rowCount).toBe(2))
+  })
+
+  it('remove() decrements rowCount', async () => {
+    const states: { rowCount: number; canAdd: boolean; atMin: boolean }[] = []
+    const { user } = renderForm((s) => states.push(s))
+    // Add a row first so we can safely remove one (min is 1)
+    await user.click(screen.getByRole('button', { name: 'add' }))
+    await waitFor(() => expect(states[states.length - 1]?.rowCount).toBe(2))
+    await user.click(screen.getByRole('button', { name: 'remove' }))
+    await waitFor(() => expect(states[states.length - 1]?.rowCount).toBe(1))
+  })
+
+  it('canAdd becomes false when maxItems is reached', async () => {
+    const states: { rowCount: number; canAdd: boolean; atMin: boolean }[] = []
+    const { user } = renderForm((s) => states.push(s))
+    await user.click(screen.getByRole('button', { name: 'add' }))
+    await user.click(screen.getByRole('button', { name: 'add' }))
+    await waitFor(() => expect(states[states.length - 1]?.rowCount).toBe(3))
+    expect(states[states.length - 1]?.canAdd).toBe(false)
+  })
+
+  it('atMin is true when rowCount equals minItems', () => {
+    const states: { rowCount: number; canAdd: boolean; atMin: boolean }[] = []
+    renderForm((s) => states.push(s))
+    // defaultValues has 1 row, minItems is 1
+    expect(states[states.length - 1]?.atMin).toBe(true)
+  })
+})

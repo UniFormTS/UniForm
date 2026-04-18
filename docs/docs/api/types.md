@@ -439,10 +439,10 @@ Enum fields use the `select` key, not `enum`. The `array` and `object` keys are 
 The props passed to every custom field component. UniForm calls your component with these.
 
 ```ts
-interface FieldProps {
+interface FieldProps<Value = unknown> {
   name: string
-  value: unknown
-  onChange: (value: unknown) => void
+  value: Value
+  onChange: (value: Value) => void
   onBlur: () => void
   ref: RefCallBack
   label: string
@@ -453,6 +453,16 @@ interface FieldProps {
   disabled?: boolean
   options?: SelectOption[]
   meta: FieldMeta // full field metadata, including any custom keys
+  schema: z.$ZodType // original unwrapped field schema
+}
+```
+
+Use the generic type parameter to strongly type custom field values:
+
+```ts
+const StarRating = ({ value, onChange }: FieldProps<number>) => {
+  // value is number
+  return <button onClick={() => onChange(value + 1)}>+1</button>
 }
 ```
 
@@ -553,23 +563,23 @@ Override hard-coded UI strings, including accessible aria labels.
 ```ts
 type FormLabels = {
   // Visible button text
-  submit?: string             // default: "Submit"
-  arrayAdd?: string           // default: "Add"
-  arrayRemove?: string        // default: "Remove"
-  arrayMoveUp?: string        // default: "↑"
-  arrayMoveDown?: string      // default: "↓"
-  arrayDuplicate?: string     // default: "Duplicate"
-  arrayCollapse?: string      // collapse toggle (when expanded) — default: "▼"
-  arrayExpand?: string        // expand toggle (when collapsed) — default: "▶"
+  submit?: string // default: "Submit"
+  arrayAdd?: string // default: "Add"
+  arrayRemove?: string // default: "Remove"
+  arrayMoveUp?: string // default: "↑"
+  arrayMoveDown?: string // default: "↓"
+  arrayDuplicate?: string // default: "Duplicate"
+  arrayCollapse?: string // collapse toggle (when expanded) — default: "▼"
+  arrayExpand?: string // expand toggle (when collapsed) — default: "▶"
 
   // Dynamic aria labels and row summary (receive the 0-based row index)
-  arrayItemSummary?: (index: number) => string    // collapsed row fallback — default: "Item {n}"
-  arrayAriaExpand?: (index: number) => string     // default: "Expand item {n}"
-  arrayAriaCollapse?: (index: number) => string   // default: "Collapse item {n}"
-  arrayAriaMoveUp?: (index: number) => string     // default: "Move item {n} up"
-  arrayAriaMoveDown?: (index: number) => string   // default: "Move item {n} down"
-  arrayAriaDuplicate?: (index: number) => string  // default: "Duplicate item {n}"
-  arrayAriaRemove?: (index: number) => string     // default: "Remove item {n}"
+  arrayItemSummary?: (index: number) => string // collapsed row fallback — default: "Item {n}"
+  arrayAriaExpand?: (index: number) => string // default: "Expand item {n}"
+  arrayAriaCollapse?: (index: number) => string // default: "Collapse item {n}"
+  arrayAriaMoveUp?: (index: number) => string // default: "Move item {n} up"
+  arrayAriaMoveDown?: (index: number) => string // default: "Move item {n} down"
+  arrayAriaDuplicate?: (index: number) => string // default: "Duplicate item {n}"
+  arrayAriaRemove?: (index: number) => string // default: "Remove item {n}"
 }
 ```
 

@@ -8,6 +8,8 @@ description: Use the ref handle to imperatively control the form from outside it
 
 Attach a `ref` to `<AutoForm>` to get an `AutoFormHandle` — equivalent to [`FormMethods`](../api/types#formmethods) — that lets you read and set values, trigger submission, and reset the form from anywhere in your component tree.
 
+For array-specific actions from inside the `<AutoForm>` tree (for example, external Add/Remove controls), use [`useArrayField()`](../api/use-array-field) instead of `ref` methods.
+
 ```tsx
 import { useRef } from 'react'
 import type { AutoFormHandle } from '@uniform-ts/core'

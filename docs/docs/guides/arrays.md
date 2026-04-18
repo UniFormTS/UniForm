@@ -117,6 +117,59 @@ const AddFirstLayout = ({ rows, addButton }: ArrayFieldLayoutProps) => (
 
 See [`ArrayFieldLayoutProps`](/docs/api/types#arrayfieldlayoutprops) for the full type.
 
+## External controls with `useArrayField`
+
+When you need array actions outside the array field block (for example in a toolbar above the form), use `useArrayField(fieldName)` inside any component rendered under `<AutoForm>`.
+
+The hook returns all `useFieldArray` actions (`append`, `remove`, `move`, `swap`, `replace`, etc.) plus:
+
+- `rowCount` — current number of rows
+- `canAdd` — `false` when the array reached Zod `.max(...)`
+- `atMin` — `true` when row count is at or below Zod `.min(...)`
+
+```tsx
+import { AutoForm, createForm, useArrayField } from '@uniform-ts/core'
+
+const schema = z.object({
+  lineItems: z.array(z.object({ name: z.string() })).min(1).max(5),
+})
+
+const form = createForm(schema)
+
+function Toolbar() {
+  const { append, canAdd, rowCount } = useArrayField('lineItems')
+  return (
+    <button
+      type='button'
+      disabled={!canAdd}
+      onClick={() => append({ name: '' })}
+    >
+      Add item ({rowCount}/5)
+    </button>
+  )
+}
+
+const FormWithToolbar = ({ children }: FormWrapperProps) => (
+  <>
+    <Toolbar />
+    {children}
+  </>
+)
+
+const RowsOnly = ({ rows }: ArrayFieldLayoutProps) => <>{rows}</>
+
+<AutoForm
+  form={form}
+  defaultValues={{ lineItems: [{ name: '' }] }}
+  layout={{ formWrapper: FormWithToolbar, arrayFieldLayout: RowsOnly }}
+  onSubmit={console.log}
+/>
+```
+
+Use dot paths for nested arrays too (for example `"profile.contacts"`).
+
+See [`useArrayField()` API](/docs/api/use-array-field) for the full contract.
+
 ## Labels
 
 Override individual button labels via the `labels` prop, or import a ready-made locale pack that covers all strings at once — including accessible aria labels:
