@@ -66,19 +66,19 @@ UniForm introspects the schema, renders appropriate inputs, validates with Zod, 
 
 ## Core Props
 
-| Prop            | Type                                     | Description                                                                                                       |
-| --------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `form`          | `UniForm<TSchema>`                       | Schema + onChange handlers from `createForm()`                                                                    |
-| `onSubmit`      | `(values) => void \| Promise<void>`      | Called with typed values after successful validation                                                              |
-| `defaultValues` | `Partial<...>` or `() => Promise<...>`   | Initial values; async function shows `loadingFallback`                                                            |
-| `components`    | `ComponentRegistry`                      | Map Zod types to your input components                                                                            |
-| `fields`        | `Record<string, FieldOverride>`          | Per-field label, description, order, section, condition                                                           |
-| `fieldWrapper`  | `React.ComponentType<FieldWrapperProps>` | Custom wrapper around every scalar field                                                                          |
-| `layout`        | `LayoutSlots`                            | Replace form/section/object/array wrappers, submit button, array rows                                             |
-| `classNames`    | `FormClassNames`                         | CSS classes for form, fields, labels, errors, fieldset/legend wrappers                                            |
-| `ref`           | `React.Ref<AutoFormHandle>`              | Imperative `reset`, `submit`, `setValues`, `getValues`                                                            |
-| `persistKey`    | `string`                                 | Auto-save form state to `localStorage` under this key                                                             |
-| `labels`        | `FormLabels`                             | Override built-in UI strings for i18n; import a ready-made locale pack from `@uniform-ts/core/locales/{en,he,es}` |
+| Prop            | Type                                     | Description                                                                                                                              |
+| --------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `form`          | `UniForm<TSchema>`                       | Schema + onChange handlers from `createForm()`                                                                                           |
+| `onSubmit`      | `(values) => void \| Promise<void>`      | Called with typed values after successful validation                                                                                     |
+| `defaultValues` | `Partial<...>` or `() => Promise<...>`   | Initial values; async function shows `loadingFallback`                                                                                   |
+| `components`    | `ComponentRegistry`                      | Map Zod types to your input components                                                                                                   |
+| `fields`        | `Record<string, FieldOverride>`          | Per-field label, description, order, section, condition                                                                                  |
+| `fieldWrapper`  | `React.ComponentType<FieldWrapperProps>` | Custom wrapper around every scalar field                                                                                                 |
+| `layout`        | `LayoutSlots`                            | Replace form/section/object/array wrappers, submit button, array rows. Set `null` on omittable slots (submit/array buttons) to hide them |
+| `classNames`    | `FormClassNames`                         | CSS classes for form, fields, labels, errors, fieldset/legend wrappers                                                                   |
+| `ref`           | `React.Ref<AutoFormHandle>`              | Imperative `reset`, `submit`, `setValues`, `getValues`                                                                                   |
+| `persistKey`    | `string`                                 | Auto-save form state to `localStorage` under this key                                                                                    |
+| `labels`        | `FormLabels`                             | Override built-in UI strings for i18n; import a ready-made locale pack from `@uniform-ts/core/locales/{en,he,es}`                        |
 
 ## Features
 

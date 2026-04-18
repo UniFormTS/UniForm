@@ -577,6 +577,44 @@ describe('AutoForm', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('26b. layout.submitButton=null omits submit button rendering', () => {
+    const schema = z.object({ name: z.string() })
+
+    render(
+      <AutoForm
+        form={new UniForm(schema)}
+        onSubmit={vi.fn()}
+        layout={{ submitButton: null }}
+      />,
+    )
+
+    expect(
+      screen.queryByRole('button', { name: /submit/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('26c. createAutoForm instance submitButton overrides factory null', () => {
+    const schema = z.object({ name: z.string() })
+    const ConfiguredForm = createAutoForm({
+      layout: { submitButton: null },
+    })
+    const CustomSubmit = ({ isSubmitting }: { isSubmitting: boolean }) => (
+      <button type='submit' disabled={isSubmitting}>
+        Save
+      </button>
+    )
+
+    render(
+      <ConfiguredForm
+        form={new UniForm(schema)}
+        onSubmit={vi.fn()}
+        layout={{ submitButton: CustomSubmit }}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument()
+  })
+
   // ---------------------------------------------------------------------------
   // 27. Custom fieldWrapper replaces the default wrapper
   // ---------------------------------------------------------------------------
@@ -2629,6 +2667,70 @@ describe('AutoForm', () => {
     expect(
       within(rowsArea).getByLabelText(/remove item 1/i),
     ).toBeInTheDocument()
+  })
+
+  it('99b. layout.arrayButtons.remove=null omits remove buttons', () => {
+    const schema = z.object({
+      items: z.array(z.object({ value: z.string() })),
+    })
+
+    render(
+      <AutoForm
+        form={new UniForm(schema)}
+        onSubmit={vi.fn()}
+        defaultValues={{ items: [{ value: 'A' }] }}
+        layout={{ arrayButtons: { remove: null } }}
+      />,
+    )
+
+    expect(screen.queryByLabelText(/remove item 1/i)).not.toBeInTheDocument()
+  })
+
+  it('99c. layout.arrayButtons.base=null omits unspecified array buttons', () => {
+    const schema = z.object({
+      items: z.array(z.object({ value: z.string() })),
+    })
+
+    render(
+      <AutoForm
+        form={new UniForm(schema)}
+        onSubmit={vi.fn()}
+        defaultValues={{ items: [{ value: 'A' }] }}
+        layout={{ arrayButtons: { base: null } }}
+      />,
+    )
+
+    expect(
+      screen.queryByRole('button', { name: /^add$/i }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/remove item 1/i)).not.toBeInTheDocument()
+  })
+
+  it('99d. layout.arrayButtons.base=null allows per-slot re-enable', () => {
+    const schema = z.object({
+      items: z.array(z.object({ value: z.string() })),
+    })
+    const AddBtn = ({
+      children,
+      ...props
+    }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+      <button data-custom='add-slot' {...props}>
+        {children}
+      </button>
+    )
+
+    render(
+      <AutoForm
+        form={new UniForm(schema)}
+        onSubmit={vi.fn()}
+        defaultValues={{ items: [{ value: 'A' }] }}
+        layout={{ arrayButtons: { base: null, add: AddBtn } }}
+      />,
+    )
+
+    const addBtn = screen.getByRole('button', { name: /^add$/i })
+    expect(addBtn).toHaveAttribute('data-custom', 'add-slot')
+    expect(screen.queryByLabelText(/remove item 1/i)).not.toBeInTheDocument()
   })
 
   // =========================================================================

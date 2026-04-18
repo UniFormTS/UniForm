@@ -167,7 +167,7 @@ Slots for replacing structural chrome components.
 type LayoutSlots = {
   formWrapper?: React.ComponentType<FormWrapperProps>
   sectionWrapper?: React.ComponentType<SectionWrapperProps>
-  submitButton?: React.ComponentType<SubmitButtonProps>
+  submitButton?: React.ComponentType<SubmitButtonProps> | null
   objectWrapper?: React.ComponentType<ObjectWrapperProps>
   arrayWrapper?: React.ComponentType<ArrayWrapperProps>
   arrayRowLayout?: React.ComponentType<ArrayRowLayoutProps>
@@ -177,6 +177,8 @@ type LayoutSlots = {
   sections?: Record<string, SectionConfig>
 }
 ```
+
+For omittable slots, `undefined` uses the built-in default while `null` omits rendering.
 
 :::note
 `formWrapper` receives only `children` — the `<form>` element and its `onSubmit` handler are managed by `<AutoForm>` itself, outside the wrapper.
@@ -302,7 +304,7 @@ interface ArrayRowLayoutProps {
     moveUp: React.ReactNode | null // null when already first row
     moveDown: React.ReactNode | null // null when already last row
     duplicate: React.ReactNode | null // null when at maxItems
-    remove: React.ReactNode
+    remove: React.ReactNode | null // null when remove button slot is omitted
     collapse: React.ReactNode | null // null when collapsible is disabled
   }
   index: number // zero-based row index
@@ -380,33 +382,33 @@ Grouped button component overrides. Pass this object to `layout.arrayButtons`.
 ```ts
 type ArrayButtonSlots = {
   /** Fallback for any slot that isn't explicitly overridden. */
-  base?: React.ComponentType<ArrayButtonProps>
-  add?: React.ComponentType<ArrayButtonProps>
-  remove?: React.ComponentType<ArrayButtonProps>
-  moveUp?: React.ComponentType<ArrayButtonProps>
-  moveDown?: React.ComponentType<ArrayButtonProps>
-  duplicate?: React.ComponentType<ArrayButtonProps>
-  collapse?: React.ComponentType<ArrayCollapseButtonProps>
+  base?: React.ComponentType<ArrayButtonProps> | null
+  add?: React.ComponentType<ArrayButtonProps> | null
+  remove?: React.ComponentType<ArrayButtonProps> | null
+  moveUp?: React.ComponentType<ArrayButtonProps> | null
+  moveDown?: React.ComponentType<ArrayButtonProps> | null
+  duplicate?: React.ComponentType<ArrayButtonProps> | null
+  collapse?: React.ComponentType<ArrayCollapseButtonProps> | null
 }
 ```
 
-Resolution order for each slot: **specific slot → `base` → built-in default**.
+Resolution order for each slot: **specific slot → `base` → built-in default**. Set a slot to `null` to omit it.
 
 ---
 
 ## `ResolvedArrayButtonSlots`
 
-The fully-resolved version of `ArrayButtonSlots` where every slot is guaranteed to have a component. Returned from `useAutoFormContext().layout.arrayButtons`.
+The resolved version of `ArrayButtonSlots` where every slot is either a component or `null` (when omitted). Returned from `useAutoFormContext().layout.arrayButtons`.
 
 ```ts
 type ResolvedArrayButtonSlots = {
-  base: React.ComponentType<ArrayButtonProps>
-  add: React.ComponentType<ArrayButtonProps>
-  remove: React.ComponentType<ArrayButtonProps>
-  moveUp: React.ComponentType<ArrayButtonProps>
-  moveDown: React.ComponentType<ArrayButtonProps>
-  duplicate: React.ComponentType<ArrayButtonProps>
-  collapse: React.ComponentType<ArrayCollapseButtonProps>
+  base: React.ComponentType<ArrayButtonProps> | null
+  add: React.ComponentType<ArrayButtonProps> | null
+  remove: React.ComponentType<ArrayButtonProps> | null
+  moveUp: React.ComponentType<ArrayButtonProps> | null
+  moveDown: React.ComponentType<ArrayButtonProps> | null
+  duplicate: React.ComponentType<ArrayButtonProps> | null
+  collapse: React.ComponentType<ArrayCollapseButtonProps> | null
 }
 ```
 

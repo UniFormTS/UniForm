@@ -25,16 +25,16 @@ Then in any feature:
 
 ## `AutoFormConfig` options
 
-| Option         | Type                                     | Description                                                                                       |
-| -------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `components`   | `ComponentRegistry`                      | Base component registry (merged with `defaultRegistry`)                                           |
-| `fieldWrapper` | `React.ComponentType<FieldWrapperProps>` | Default field wrapper component                                                                   |
-| `layout`       | `LayoutSlots`                            | Default layout slots (formWrapper, sectionWrapper, submitButton, arrayRowLayout, loadingFallback) |
-| `classNames`   | `FormClassNames`                         | Default CSS class names                                                                           |
-| `disabled`     | `boolean`                                | When `true`, all fields in every form instance are disabled by default                            |
-| `messages`     | `ValidationMessages`                     | Default validation messages                                                                       |
-| `coercions`    | `CoercionMap`                            | Default per-field coercions                                                                       |
-| `labels`       | `FormLabels`                             | Default UI labels (submit, array buttons, aria labels). Import a locale pack from `@uniform-ts/core/locales/{en,he,es}` to set all strings at once |
+| Option         | Type                                     | Description                                                                                                                                               |
+| -------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `components`   | `ComponentRegistry`                      | Base component registry (merged with `defaultRegistry`)                                                                                                   |
+| `fieldWrapper` | `React.ComponentType<FieldWrapperProps>` | Default field wrapper component                                                                                                                           |
+| `layout`       | `LayoutSlots`                            | Default layout slots (formWrapper, sectionWrapper, submitButton, arrayRowLayout, loadingFallback). Use `null` for omittable slots (submit/array buttons). |
+| `classNames`   | `FormClassNames`                         | Default CSS class names                                                                                                                                   |
+| `disabled`     | `boolean`                                | When `true`, all fields in every form instance are disabled by default                                                                                    |
+| `messages`     | `ValidationMessages`                     | Default validation messages                                                                                                                               |
+| `coercions`    | `CoercionMap`                            | Default per-field coercions                                                                                                                               |
+| `labels`       | `FormLabels`                             | Default UI labels (submit, array buttons, aria labels). Import a locale pack from `@uniform-ts/core/locales/{en,he,es}` to set all strings at once        |
 
 ### Merge behaviour
 

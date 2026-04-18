@@ -39,6 +39,7 @@ import {
   applyDynamicMeta,
   buildDefaults,
 } from '../utils/fieldPipeline'
+import { resolveNullableSlot } from '../utils/resolveNullableSlot'
 
 /**
  * The core auto-form component. Introspects the provided Zod `schema`,
@@ -347,24 +348,33 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   const sections = useSectionGrouping(visibleFields)
 
   const resolvedLayout = React.useMemo((): ResolvedLayoutSlots => {
-    const base = layout?.arrayButtons?.base ?? DefaultArrayButton
+    const base = resolveNullableSlot(
+      layout?.arrayButtons?.base,
+      DefaultArrayButton,
+    )
     const slots = layout?.arrayButtons
     return {
       formWrapper: layout?.formWrapper ?? DefaultFormWrapper,
       sectionWrapper: layout?.sectionWrapper ?? DefaultSectionWrapper,
-      submitButton: layout?.submitButton ?? DefaultSubmitButton,
+      submitButton: resolveNullableSlot(
+        layout?.submitButton,
+        DefaultSubmitButton,
+      ),
       arrayRowLayout: layout?.arrayRowLayout ?? DefaultArrayRowLayout,
       arrayFieldLayout: layout?.arrayFieldLayout ?? DefaultArrayFieldLayout,
       objectWrapper: layout?.objectWrapper ?? DefaultObjectWrapper,
       arrayWrapper: layout?.arrayWrapper ?? DefaultArrayWrapper,
       arrayButtons: {
         base,
-        add: slots?.add ?? base,
-        remove: slots?.remove ?? base,
-        moveUp: slots?.moveUp ?? base,
-        moveDown: slots?.moveDown ?? base,
-        duplicate: slots?.duplicate ?? base,
-        collapse: slots?.collapse ?? DefaultArrayCollapseButton,
+        add: resolveNullableSlot(slots?.add, base),
+        remove: resolveNullableSlot(slots?.remove, base),
+        moveUp: resolveNullableSlot(slots?.moveUp, base),
+        moveDown: resolveNullableSlot(slots?.moveDown, base),
+        duplicate: resolveNullableSlot(slots?.duplicate, base),
+        collapse: resolveNullableSlot(
+          slots?.collapse,
+          DefaultArrayCollapseButton,
+        ),
       },
       loadingFallback: layout?.loadingFallback ?? <p>Loading…</p>,
     }
@@ -467,10 +477,12 @@ export function AutoForm<TSchema extends z.$ZodObject>(
               </PerSectionWrapper>
             )
           })}
-          <SubmitButton
-            isSubmitting={formState.isSubmitting}
-            label={labels.submit ?? 'Submit'}
-          />
+          {SubmitButton ? (
+            <SubmitButton
+              isSubmitting={formState.isSubmitting}
+              label={labels.submit ?? 'Submit'}
+            />
+          ) : null}
         </FormWrapper>
       </form>
     </AutoFormContextProvider>
