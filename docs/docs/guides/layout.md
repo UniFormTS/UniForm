@@ -24,6 +24,8 @@ Pass a `layout` object to `<AutoForm>` (or `createAutoForm`) to override any slo
 | `arrayButtons`     | `DefaultArrayButton` × 6  | Button components for Add / Remove / Move / Duplicate   |
 | `loadingFallback`  | `<p>Loading…</p>`         | Shown while async `defaultValues` resolves              |
 
+For omittable slots, `undefined` uses the built-in default while `null` omits rendering.
+
 ### Slot prop types
 
 ```ts
@@ -83,7 +85,7 @@ interface ArrayRowLayoutProps {
     moveUp: React.ReactNode | null // null when already first row
     moveDown: React.ReactNode | null // null when already last row
     duplicate: React.ReactNode | null // null when at maxItems
-    remove: React.ReactNode
+    remove: React.ReactNode | null // null when remove slot is omitted
     collapse: React.ReactNode | null // null when collapsible is disabled
   }
   index: number // zero-based row index
@@ -100,13 +102,13 @@ interface ArrayFieldLayoutProps {
 
 // arrayButtons — swap in your design system's button for all array actions
 type ArrayButtonSlots = {
-  base?: React.ComponentType<ArrayButtonProps> // fallback for un-overridden slots
-  add?: React.ComponentType<ArrayButtonProps>
-  remove?: React.ComponentType<ArrayButtonProps>
-  moveUp?: React.ComponentType<ArrayButtonProps>
-  moveDown?: React.ComponentType<ArrayButtonProps>
-  duplicate?: React.ComponentType<ArrayButtonProps>
-  collapse?: React.ComponentType<ArrayCollapseButtonProps>
+  base?: React.ComponentType<ArrayButtonProps> | null // fallback for un-overridden slots
+  add?: React.ComponentType<ArrayButtonProps> | null
+  remove?: React.ComponentType<ArrayButtonProps> | null
+  moveUp?: React.ComponentType<ArrayButtonProps> | null
+  moveDown?: React.ComponentType<ArrayButtonProps> | null
+  duplicate?: React.ComponentType<ArrayButtonProps> | null
+  collapse?: React.ComponentType<ArrayCollapseButtonProps> | null
 }
 
 interface ArrayButtonProps {
@@ -124,6 +126,12 @@ interface ArrayCollapseButtonProps extends ArrayButtonProps {
 ```
 
 See the [TypeScript API](/docs/api/types) for full type details.
+
+To omit the submit button entirely:
+
+```tsx
+<AutoForm layout={{ submitButton: null }} ... />
+```
 
 ## `classNames`
 

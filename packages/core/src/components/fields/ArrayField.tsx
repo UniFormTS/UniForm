@@ -109,34 +109,35 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
   const renderedRows = rows.map((row, index) => {
     const isCollapsed = showCollapse && collapsed.has(index)
 
-    const collapseButton = showCollapse ? (
-      <CollapseBtn
-        type='button'
-        className={classNames.arrayCollapse}
-        onClick={() => toggleCollapse(index)}
-        aria-label={
-          isCollapsed
-            ? (labels.arrayAriaExpand?.(index) ?? `Expand item ${index + 1}`)
-            : (labels.arrayAriaCollapse?.(index) ??
-              `Collapse item ${index + 1}`)
-        }
-        isCollapsed={isCollapsed}
-      >
-        {isCollapsed
-          ? (labels.arrayExpand ?? '▼')
-          : (labels.arrayCollapse ?? '▶')}{' '}
-        <CollapseSummary
-          control={control}
-          effectiveName={effectiveName}
-          index={index}
-          itemConfig={itemConfig}
+    const collapseButton =
+      showCollapse && CollapseBtn ? (
+        <CollapseBtn
+          type='button'
+          className={classNames.arrayCollapse}
+          onClick={() => toggleCollapse(index)}
+          aria-label={
+            isCollapsed
+              ? (labels.arrayAriaExpand?.(index) ?? `Expand item ${index + 1}`)
+              : (labels.arrayAriaCollapse?.(index) ??
+                `Collapse item ${index + 1}`)
+          }
           isCollapsed={isCollapsed}
-        />
-      </CollapseBtn>
-    ) : null
+        >
+          {isCollapsed
+            ? (labels.arrayExpand ?? '▼')
+            : (labels.arrayCollapse ?? '▶')}{' '}
+          <CollapseSummary
+            control={control}
+            effectiveName={effectiveName}
+            index={index}
+            itemConfig={itemConfig}
+            isCollapsed={isCollapsed}
+          />
+        </CollapseBtn>
+      ) : null
 
     const moveUpButton =
-      showMove && rows.length > 1 ? (
+      showMove && rows.length > 1 && MoveUpBtn ? (
         <MoveUpBtn
           type='button'
           className={classNames.arrayMove}
@@ -151,7 +152,7 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
       ) : null
 
     const moveDownButton =
-      showMove && rows.length > 1 ? (
+      showMove && rows.length > 1 && MoveDownBtn ? (
         <MoveDownBtn
           type='button'
           className={classNames.arrayMove}
@@ -166,7 +167,7 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
       ) : null
 
     const duplicateButton =
-      showDuplicate && !atMax ? (
+      showDuplicate && !atMax && DuplicateBtn ? (
         <DuplicateBtn
           type='button'
           className={classNames.arrayDuplicate}
@@ -184,7 +185,7 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
         </DuplicateBtn>
       ) : null
 
-    const removeButton = (
+    const removeButton = RemoveBtn ? (
       <RemoveBtn
         type='button'
         className={classNames.arrayRemove}
@@ -196,7 +197,7 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
       >
         {labels.arrayRemove ?? 'Remove'}
       </RemoveBtn>
-    )
+    ) : null
 
     const fieldContent = !isCollapsed ? (
       <FieldRenderer
@@ -224,7 +225,7 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
     )
   })
 
-  const addButton = (
+  const addButton = AddBtn ? (
     <AddBtn
       type='button'
       className={classNames.arrayAdd}
@@ -235,7 +236,7 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
     >
       {labels.arrayAdd ?? 'Add'}
     </AddBtn>
-  )
+  ) : null
 
   const content = (
     <ArrayFieldLayout

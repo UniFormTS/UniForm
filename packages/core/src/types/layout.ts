@@ -65,8 +65,8 @@ export interface ArrayRowLayoutProps {
     moveDown: React.ReactNode | null
     /** Button to duplicate the row, or `null` if at max items. */
     duplicate: React.ReactNode | null
-    /** Button to remove the row. */
-    remove: React.ReactNode
+    /** Button to remove the row, or `null` when omitted via layout slot. */
+    remove: React.ReactNode | null
     /** Button to collapse/expand the row, or `null` if collapsing is disabled. */
     collapse: React.ReactNode | null
   }
@@ -130,6 +130,8 @@ export interface SubmitButtonProps {
   label: string
 }
 
+type OptionalSlotComponent<TProps> = React.ComponentType<TProps> | null
+
 // ---------------------------------------------------------------------------
 // SectionConfig
 // ---------------------------------------------------------------------------
@@ -156,36 +158,36 @@ export type SectionConfig = {
  * itself falls back to a plain `<button>`.
  */
 export type ArrayButtonSlots = {
-  /** Used for every array button that has no specific override. */
-  base?: React.ComponentType<ArrayButtonProps>
-  /** Override for the add-row button only. */
-  add?: React.ComponentType<ArrayButtonProps>
-  /** Override for the remove-row button only. */
-  remove?: React.ComponentType<ArrayButtonProps>
-  /** Override for the move-up button only. */
-  moveUp?: React.ComponentType<ArrayButtonProps>
-  /** Override for the move-down button only. */
-  moveDown?: React.ComponentType<ArrayButtonProps>
-  /** Override for the duplicate-row button only. */
-  duplicate?: React.ComponentType<ArrayButtonProps>
+  /** Used for every array button that has no specific override. Set to `null` to omit all unspecified buttons. */
+  base?: OptionalSlotComponent<ArrayButtonProps>
+  /** Override for the add-row button only. Set to `null` to omit. */
+  add?: OptionalSlotComponent<ArrayButtonProps>
+  /** Override for the remove-row button only. Set to `null` to omit. */
+  remove?: OptionalSlotComponent<ArrayButtonProps>
+  /** Override for the move-up button only. Set to `null` to omit. */
+  moveUp?: OptionalSlotComponent<ArrayButtonProps>
+  /** Override for the move-down button only. Set to `null` to omit. */
+  moveDown?: OptionalSlotComponent<ArrayButtonProps>
+  /** Override for the duplicate-row button only. Set to `null` to omit. */
+  duplicate?: OptionalSlotComponent<ArrayButtonProps>
   /**
    * Override for the collapse/expand toggle button only.
    * Receives `isCollapsed` in addition to standard `ArrayButtonProps`.
    */
-  collapse?: React.ComponentType<ArrayCollapseButtonProps>
+  collapse?: OptionalSlotComponent<ArrayCollapseButtonProps>
 }
 
 /**
  * Resolved button slots where every entry is guaranteed to be defined.
  */
 export type ResolvedArrayButtonSlots = {
-  base: React.ComponentType<ArrayButtonProps>
-  add: React.ComponentType<ArrayButtonProps>
-  remove: React.ComponentType<ArrayButtonProps>
-  moveUp: React.ComponentType<ArrayButtonProps>
-  moveDown: React.ComponentType<ArrayButtonProps>
-  duplicate: React.ComponentType<ArrayButtonProps>
-  collapse: React.ComponentType<ArrayCollapseButtonProps>
+  base: OptionalSlotComponent<ArrayButtonProps>
+  add: OptionalSlotComponent<ArrayButtonProps>
+  remove: OptionalSlotComponent<ArrayButtonProps>
+  moveUp: OptionalSlotComponent<ArrayButtonProps>
+  moveDown: OptionalSlotComponent<ArrayButtonProps>
+  duplicate: OptionalSlotComponent<ArrayButtonProps>
+  collapse: OptionalSlotComponent<ArrayCollapseButtonProps>
 }
 
 // ---------------------------------------------------------------------------
@@ -202,8 +204,8 @@ export type LayoutSlots = {
   formWrapper?: React.ComponentType<FormWrapperProps>
   /** Wrapper rendered around each named field section. */
   sectionWrapper?: React.ComponentType<SectionWrapperProps>
-  /** Custom submit button component. */
-  submitButton?: React.ComponentType<SubmitButtonProps>
+  /** Custom submit button component. Set to `null` to omit rendering it. */
+  submitButton?: OptionalSlotComponent<SubmitButtonProps>
   /** Custom layout component for individual rows in array fields. */
   arrayRowLayout?: React.ComponentType<ArrayRowLayoutProps>
   /**
@@ -246,7 +248,7 @@ export type LayoutSlots = {
 export type ResolvedLayoutSlots = {
   formWrapper: React.ComponentType<FormWrapperProps>
   sectionWrapper: React.ComponentType<SectionWrapperProps>
-  submitButton: React.ComponentType<SubmitButtonProps>
+  submitButton: OptionalSlotComponent<SubmitButtonProps>
   arrayRowLayout: React.ComponentType<ArrayRowLayoutProps>
   arrayFieldLayout: React.ComponentType<ArrayFieldLayoutProps>
   objectWrapper: React.ComponentType<ObjectWrapperProps>

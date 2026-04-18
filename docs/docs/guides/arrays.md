@@ -90,6 +90,16 @@ import { Button } from 'my-design-system'
 
 Resolution order: **specific slot → `base` → built-in default**.
 
+For array button slots, `undefined` means "use fallback/default" and `null` means "omit this button".
+
+```tsx
+// Omit all unspecified array action buttons
+<AutoForm layout={{ arrayButtons: { base: null } }} ... />
+
+// Omit just Remove
+<AutoForm layout={{ arrayButtons: { remove: null } }} ... />
+```
+
 The collapse toggle uses [`ArrayCollapseButtonProps`](/docs/api/types#arraycollapsebuttonprops) which adds `isCollapsed: boolean`. Strip it before forwarding to a DOM element:
 
 ```tsx
