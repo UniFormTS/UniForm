@@ -58,6 +58,24 @@ fields={{
 }}
 ```
 
+:::note Row-scoped meta in arrays
+When using `createForm().setOnChange()` for array item fields, `setFieldMeta` is **row-aware**. If the handler fires for a field in row N, any `setFieldMeta` call targeting a sibling field is automatically scoped to row N only — other rows are unaffected.
+
+```ts
+const form = createForm(schema)
+
+// "items.type" is an array item field
+form.setOnChange('items.type', (value, ctx) => {
+  // Scoped to the current row automatically
+  ctx.setFieldMeta('items.description', { placeholder: 'Row-specific…' })
+})
+```
+
+Inside the handler, `ctx.getValues()` returns the current row's values (not the full form), making it easy to inspect sibling fields. Non-sibling field names still apply globally.
+
+See [Per-row `setFieldMeta` in array onChange handlers](./conditional-fields#per-row-setfieldmeta-in-array-onchange-handlers) for a full walkthrough.
+:::
+
 ## Inline component
 
 `component` accepts either a registry key string or a React component directly:

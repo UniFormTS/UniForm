@@ -1,6 +1,7 @@
 import type * as z from 'zod/v4/core'
 import type {
   DeepKeys,
+  DeepKeysIndexed,
   DeepFieldValue,
   ConditionValues,
   FormMethods,
@@ -77,9 +78,15 @@ export class UniForm<
    * Replaces any previously registered handler for that field — only one
    * handler per field is kept. This prevents accidental handler accumulation
    * when called inside a React render cycle.
+   *
+   * Supports both generic array paths (`"tasks.priority"` — fires for all rows)
+   * and indexed paths (`"tasks.0.priority"` — fires only for row 0).
+   *
    * Returns `this` for fluent chaining.
    */
-  setOnChange<K extends Exclude<DeepKeys<z.infer<TSchema>>, TRegistered>>(
+  setOnChange<
+    K extends Exclude<DeepKeysIndexed<z.infer<TSchema>>, TRegistered>,
+  >(
     field: K,
     handler: Handler<TSchema, DeepFieldValue<z.infer<TSchema>, K>>,
   ): UniForm<TSchema, TRegistered | K> {

@@ -4,6 +4,7 @@ import type {
   CoercionMap,
   ComponentRegistry,
   FieldConfig,
+  FieldDependencyResult,
   FieldWrapperProps,
   ResolvedLayoutSlots,
   FormClassNames,
@@ -25,6 +26,9 @@ export type AutoFormContextValue = {
   labels: FormLabels
   formMethods: FormMethods
   control: Control
+  setDynamicMeta: React.Dispatch<
+    React.SetStateAction<Record<string, Partial<FieldDependencyResult>>>
+  >
 }
 
 const AutoFormContext = React.createContext<AutoFormContextValue | null>(null)
