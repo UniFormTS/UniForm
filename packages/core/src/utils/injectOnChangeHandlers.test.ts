@@ -117,7 +117,9 @@ describe('injectOnChangeHandlers - row context', () => {
       })
       const uniForm = new UniForm(schema)
       uniForm.setOnChange('items.type' as any, (value, ctx) => {
-        ctx.setFieldMeta('note' as any, { placeholder: `${value}-placeholder` })
+        ctx.setFieldMeta('items.note' as any, {
+          placeholder: `${value}-placeholder`,
+        })
       })
 
       const { ctx } = createMockContext()
@@ -236,7 +238,7 @@ describe('injectOnChangeHandlers - row context', () => {
       })
       const uniForm = new UniForm(schema)
       uniForm.setOnChange('items.type' as any, (value, ctx) => {
-        ctx.setFieldMeta('note' as any, { placeholder: `${value}-ph` })
+        ctx.setFieldMeta('items.note' as any, { placeholder: `${value}-ph` })
       })
 
       const { ctx, setFieldMetaCalls } = createMockContext()
@@ -272,7 +274,7 @@ describe('injectOnChangeHandlers - row context', () => {
       })
       const uniForm = new UniForm(schema)
       uniForm.setOnChange('items.type' as any, (value, ctx) => {
-        ctx.setFieldMeta('note' as any, { hidden: true })
+        ctx.setFieldMeta('items.note' as any, { hidden: true })
       })
 
       const { ctx, setFieldMetaCalls } = createMockContext()

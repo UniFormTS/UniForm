@@ -42,7 +42,7 @@ describe('Integration: row mutation + meta consistency', () => {
       const form = createForm(schema).setOnChange(
         'items.type',
         (value, ctx) => {
-          ctx.setFieldMeta('note', {
+          ctx.setFieldMeta('items.note', {
             placeholder: `note-for-${String(value)}`,
           })
         },
@@ -101,7 +101,9 @@ describe('Integration: row mutation + meta consistency', () => {
       const form = createForm(schema).setOnChange(
         'items.type',
         (value, ctx) => {
-          ctx.setFieldMeta('note', { placeholder: `${String(value)}-ph` })
+          ctx.setFieldMeta('items.note', {
+            placeholder: `${String(value)}-ph`,
+          })
         },
       )
 
@@ -160,7 +162,7 @@ describe('Integration: row mutation + meta consistency', () => {
       const form = createForm(schema).setOnChange(
         'items.type',
         (value, ctx) => {
-          ctx.setFieldMeta('note', {
+          ctx.setFieldMeta('items.note', {
             placeholder: `${String(value)}-placeholder`,
           })
         },
@@ -224,7 +226,9 @@ describe('Integration: row mutation + meta consistency', () => {
       const form = createForm(schema).setOnChange(
         'items.type',
         (value, ctx) => {
-          ctx.setFieldMeta('note', { placeholder: `${String(value)}-val` })
+          ctx.setFieldMeta('items.note', {
+            placeholder: `${String(value)}-val`,
+          })
         },
       )
 
@@ -282,7 +286,7 @@ describe('Integration: row mutation + meta consistency', () => {
       const form = createForm(schema).setOnChange(
         'items.type',
         (value, ctx) => {
-          ctx.setFieldMeta('note', {
+          ctx.setFieldMeta('items.note', {
             placeholder: `${String(value)}-meta`,
           })
         },
@@ -341,7 +345,9 @@ describe('Integration: row mutation + meta consistency', () => {
       const form = createForm(schema).setOnChange(
         'items.type',
         (value, ctx) => {
-          ctx.setFieldMeta('note', { placeholder: `${String(value)}-pos` })
+          ctx.setFieldMeta('items.note', {
+            placeholder: `${String(value)}-pos`,
+          })
         },
       )
 
@@ -393,7 +399,9 @@ describe('Integration: row mutation + meta consistency', () => {
       const form = createForm(schema).setOnChange(
         'items.type',
         (value, ctx) => {
-          ctx.setFieldMeta('note', { placeholder: `${String(value)}-m` })
+          ctx.setFieldMeta('items.note', {
+            placeholder: `${String(value)}-m`,
+          })
         },
       )
 

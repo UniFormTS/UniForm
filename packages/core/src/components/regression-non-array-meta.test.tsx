@@ -264,7 +264,7 @@ describe('Regression: setCondition per-row scoping', () => {
     form.setCondition('items.extra', (row) => row.type === 'advanced')
     // setOnChange controls placeholder of 'detail' per-row
     form.setOnChange('items.type', (value, ctx) => {
-      ctx.setFieldMeta('detail', {
+      ctx.setFieldMeta('items.detail', {
         placeholder: `${String(value)} detail`,
       })
     })

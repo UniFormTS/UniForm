@@ -41,7 +41,7 @@ describe('Integration: full array form with per-row meta', () => {
       const form = createForm(schema).setOnChange(
         'items.category',
         (value, ctx) => {
-          ctx.setFieldMeta('description', {
+          ctx.setFieldMeta('items.description', {
             placeholder: `Describe your ${String(value)} item`,
           })
         },
@@ -97,7 +97,9 @@ describe('Integration: full array form with per-row meta', () => {
       const form = createForm(schema).setOnChange(
         'entries.status',
         (value, ctx) => {
-          ctx.setFieldMeta('title', { disabled: value === 'archived' })
+          ctx.setFieldMeta('entries.title', {
+            disabled: value === 'archived',
+          })
         },
       )
 
@@ -143,7 +145,7 @@ describe('Integration: full array form with per-row meta', () => {
       const form = createForm(schema).setOnChange(
         'items.mode',
         (value, ctx) => {
-          ctx.setFieldMeta('notes', { hidden: value === 'simple' })
+          ctx.setFieldMeta('items.notes', { hidden: value === 'simple' })
         },
       )
 
@@ -193,7 +195,7 @@ describe('Integration: full array form with per-row meta', () => {
       const form = createForm(schema).setOnChange(
         'items.visibility',
         (value, ctx) => {
-          ctx.setFieldMeta('extra', { hidden: value === 'hide' })
+          ctx.setFieldMeta('items.extra', { hidden: value === 'hide' })
         },
       )
 
@@ -244,7 +246,7 @@ describe('Integration: full array form with per-row meta', () => {
       const form = createForm(schema).setOnChange(
         'items.type',
         (value, ctx) => {
-          ctx.setFieldMeta('value', {
+          ctx.setFieldMeta('items.value', {
             label: `Enter ${String(value)}`,
             placeholder: `Your ${String(value)} here`,
           })
@@ -301,7 +303,7 @@ describe('Integration: full array form with per-row meta', () => {
       const form = createForm(schema).setOnChange(
         'items.priority',
         (value, ctx) => {
-          ctx.setFieldMeta('comment', {
+          ctx.setFieldMeta('items.comment', {
             placeholder: `${String(value)} priority comment`,
             disabled: value === 'high',
           })
@@ -371,7 +373,7 @@ describe('Integration: full array form with per-row meta', () => {
       const form = createForm(schema).setOnChange(
         'items.category',
         (value, ctx) => {
-          ctx.setFieldMeta('item', {
+          ctx.setFieldMeta('items.item', {
             options:
               value === 'fruit'
                 ? [
