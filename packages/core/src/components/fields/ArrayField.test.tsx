@@ -39,7 +39,7 @@ describe('ArrayField row-aware behavior', () => {
       const form = createForm(schema).setOnChange(
         'items.type',
         (value, ctx) => {
-          ctx.setFieldMeta('note', {
+          ctx.setFieldMeta('items.note', {
             placeholder: `${String(value)}-placeholder`,
           })
         },
@@ -86,7 +86,7 @@ describe('ArrayField row-aware behavior', () => {
       const form = createForm(schema).setOnChange(
         'items.type',
         (value, ctx) => {
-          ctx.setFieldMeta('note', { disabled: value === 'business' })
+          ctx.setFieldMeta('items.note', { disabled: value === 'business' })
         },
       )
 
@@ -124,7 +124,7 @@ describe('ArrayField row-aware behavior', () => {
       const form = createForm(schema).setOnChange(
         'items.type',
         (value, ctx) => {
-          ctx.setFieldMeta('note', {
+          ctx.setFieldMeta('items.note', {
             placeholder: `${String(value)}-ph`,
           })
         },
@@ -172,7 +172,7 @@ describe('ArrayField row-aware behavior', () => {
       const form = createForm(schema).setOnChange(
         'items.type',
         (value, ctx) => {
-          ctx.setFieldMeta('detail', { hidden: value === 'simple' })
+          ctx.setFieldMeta('items.detail', { hidden: value === 'simple' })
         },
       )
 
@@ -211,7 +211,7 @@ describe('ArrayField row-aware behavior', () => {
       const form = createForm(schema).setOnChange(
         'items.unit',
         (value, ctx) => {
-          ctx.setFieldMeta('quantity', {
+          ctx.setFieldMeta('items.quantity', {
             label: `Quantity (${String(value)})`,
           })
         },
@@ -256,7 +256,7 @@ describe('ArrayField row-aware behavior', () => {
       const form = createForm(schema).setOnChange(
         'items.type',
         (value, ctx) => {
-          ctx.setFieldMeta('note', {
+          ctx.setFieldMeta('items.note', {
             placeholder: `${String(value)}-note`,
           })
         },
@@ -310,7 +310,7 @@ describe('ArrayField row-aware behavior', () => {
       const form = createForm(schema).setOnChange(
         'items.type',
         (value, ctx) => {
-          ctx.setFieldMeta('note', { placeholder: `${String(value)}-ph` })
+          ctx.setFieldMeta('items.note', { placeholder: `${String(value)}-ph` })
         },
       )
 
@@ -363,7 +363,7 @@ describe('ArrayField row-aware behavior', () => {
       const form = createForm(schema).setOnChange(
         'items.type',
         (value, ctx) => {
-          ctx.setFieldMeta('note', {
+          ctx.setFieldMeta('items.note', {
             placeholder: `${String(value)}-dup`,
           })
         },
@@ -412,7 +412,9 @@ describe('ArrayField row-aware behavior', () => {
       const form = createForm(schema).setOnChange(
         'items.type',
         (value, ctx) => {
-          ctx.setFieldMeta('note', { placeholder: `${String(value)}-val` })
+          ctx.setFieldMeta('items.note', {
+            placeholder: `${String(value)}-val`,
+          })
         },
       )
 
