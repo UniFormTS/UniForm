@@ -85,6 +85,95 @@ evaluated per-row:
 
 :::
 
+## Per-row `setFieldMeta` in array onChange handlers
+
+When you register a `setOnChange` handler for an array item field, `setFieldMeta` is automatically scoped to the row where the change occurred. This means you can dynamically override labels, placeholders, options, or visibility for a specific row without affecting other rows.
+
+```ts
+const schema = z.object({
+  items: z.array(
+    z.object({
+      type: z.enum(['product', 'service']),
+      description: z.string(),
+      quantity: z.number().optional(),
+    }),
+  ),
+})
+
+const orderForm = createForm(schema)
+
+// When "type" changes in any row, update that row's description placeholder
+orderForm.setOnChange('items.type', (value, ctx) => {
+  if (value === 'product') {
+    ctx.setFieldMeta('items.description', {
+      placeholder: 'Describe the product…',
+    })
+    ctx.setFieldMeta('items.quantity', { hidden: false })
+  } else {
+    ctx.setFieldMeta('items.description', {
+      placeholder: 'Describe the service…',
+    })
+    ctx.setFieldMeta('items.quantity', { hidden: true })
+  }
+})
+```
+
+In this example, changing `type` in row 2 only updates the placeholder and visibility for row 2. Rows 0 and 1 keep their own independent state.
+
+### How it works
+
+- The handler fires once per row when that row's field changes.
+- `ctx.getValues()` returns the **current row's values** (not the full form), so you can inspect sibling fields directly.
+- `ctx.setFieldMeta('items.description', ...)` targets the sibling field `description` in the same row. Under the hood, the key is stored as `"items.2.description"` (for row 2).
+- Each row maintains its own set of overrides — they never bleed across rows.
+
+### Non-sibling fields apply globally
+
+If you call `setFieldMeta` with a field name that is **not** a sibling of the array item, the override applies globally as usual:
+
+```ts
+orderForm.setOnChange('items.type', (value, ctx) => {
+  // "items.description" is a sibling → scoped to this row
+  ctx.setFieldMeta('items.description', { placeholder: 'Row-specific…' })
+
+  // "notes" is a top-level field → applies globally
+  ctx.setFieldMeta('notes', { label: 'Order Notes (updated)' })
+})
+```
+
+:::tip Row mutations
+When rows are added, removed, moved, or duplicated, per-row meta overrides are automatically re-indexed to stay associated with the correct row data.
+:::
+
+### Row-specific onChange handlers
+
+You can also register a handler for a specific row index using `"arrayName.index.field"` syntax. This is useful when a particular row (e.g. the first row) needs special behavior:
+
+```ts
+const form = createForm(schema)
+
+// Generic — fires for ALL rows when "role" changes
+form.setOnChange('contacts.role', (value, ctx) => {
+  ctx.setFieldMeta('contacts.email', {
+    placeholder:
+      value === 'billing' ? 'billing@company.com' : 'email@example.com',
+  })
+})
+
+// Row-specific — fires ONLY for row 0
+form.setOnChange('contacts.0.role', (value, ctx) => {
+  ctx.setFieldMeta('contacts.name', {
+    label: value === 'owner' ? 'Owner Name (required)' : 'Full Name',
+  })
+})
+```
+
+When row 0's `role` changes, both handlers fire. When any other row's `role` changes, only the generic handler fires.
+
+:::note
+Row-specific handlers use static indices. If the user reorders rows, the handler stays bound to the index position (not the logical row). Use this for cases where a fixed position has special meaning (e.g. "the first contact is always the primary").
+:::
+
 ## Live Example
 
 ```jsx live noInline

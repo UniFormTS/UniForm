@@ -7,6 +7,8 @@ import type {
   FieldDependencyResult,
 } from '../types'
 import type { UniForm, UniFormContext } from '../UniForm'
+import { createRowScopedContext } from './createRowScopedContext'
+import type { RowAwareOnChange } from './createRowScopedContext'
 
 /**
  * Recursively merges `overrides` (keyed by field name) into the `fields` tree,
@@ -96,10 +98,95 @@ export function injectOnChangeHandlers<TSchema extends z.$ZodObject>(
     } else if (updated.type === 'array') {
       const prefix = field.name + '.'
       const itemKeys = new Set<string>()
+      // Collect row-specific indexed keys (e.g. "0.priority" from "tasks.0.priority")
+      const indexedKeys = new Set<string>()
       for (const key of handlerKeys) {
-        if (key.startsWith(prefix)) itemKeys.add(key.slice(prefix.length))
+        if (key.startsWith(prefix)) {
+          const remainder = key.slice(prefix.length)
+          // Check if it's an indexed path like "0.priority"
+          const indexMatch = remainder.match(/^(\d+)\.(.+)$/)
+          if (indexMatch) {
+            indexedKeys.add(remainder)
+            // Also ensure the child field gets a handler injected
+            itemKeys.add(indexMatch[2])
+          } else {
+            itemKeys.add(remainder)
+          }
+        }
       }
-      if (itemKeys.size) {
+      if (itemKeys.size && updated.itemConfig.type === 'object') {
+        // Derive sibling field names from the array's itemConfig
+        const itemFieldNames = new Set<string>(
+          updated.itemConfig.children.map((c) => c.name),
+        )
+        const arrayName = field.name
+
+        // Inject row-aware onChange handlers into item children
+        const newChildren = updated.itemConfig.children.map((child) => {
+          if (!itemKeys.has(child.name)) return child
+
+          const existingOnChange = child.meta.onChange
+          const rowAwareHandler: RowAwareOnChange = (
+            value: unknown,
+            formMethods: FormMethods,
+            rowIndex: number,
+          ) => {
+            void existingOnChange?.(value, formMethods)
+            // Create a row-scoped context for this specific row
+            const rowCtx = createRowScopedContext(
+              ctx,
+              arrayName,
+              rowIndex,
+              itemFieldNames,
+              () => {
+                const allValues = ctx.getValues()
+                const arrayValues = (allValues as Record<string, unknown>)?.[
+                  arrayName
+                ]
+                if (Array.isArray(arrayValues)) {
+                  return (
+                    (arrayValues[rowIndex] as Record<string, unknown>) ?? {}
+                  )
+                }
+                return {}
+              },
+            )
+            // Fire the generic handler (e.g. "tasks.priority") if registered
+            void uniForm._fireHandler(
+              `${arrayName}.${child.name}`,
+              value,
+              rowCtx,
+            )
+            // Fire the row-specific handler (e.g. "tasks.0.priority") if registered
+            const indexedKey = `${rowIndex}.${child.name}`
+            if (indexedKeys.has(indexedKey)) {
+              void uniForm._fireHandler(
+                `${arrayName}.${indexedKey}`,
+                value,
+                rowCtx,
+              )
+            }
+          }
+          return {
+            ...child,
+            meta: {
+              ...child.meta,
+              // Cast to FieldMeta onChange type — ArrayField's bindRowIndexToItemConfig
+              // will call this with the rowIndex third argument at render time.
+              onChange:
+                rowAwareHandler as unknown as typeof child.meta.onChange,
+            },
+          }
+        })
+
+        const newItemConfig = {
+          ...updated.itemConfig,
+          children: newChildren,
+        }
+        if (newItemConfig !== updated.itemConfig)
+          updated = { ...updated, itemConfig: newItemConfig }
+      } else if (itemKeys.size) {
+        // Non-object array items: fall back to the original remapped approach
         const remappedUniForm = {
           _getWatchedFields: () => Array.from(itemKeys),
           _fireHandlers: (
@@ -164,9 +251,34 @@ export function injectConditions(
   })
 }
 
+// ---------------------------------------------------------------------------
+// Internal type for array fields carrying per-row dynamic meta (not public API)
+// ---------------------------------------------------------------------------
+
+/**
+ * Internal extension of the array FieldConfig that carries per-row dynamic meta
+ * overrides as a transient property. Consumed by ArrayField at render time.
+ */
+export type ArrayFieldConfigWithRowMeta = Extract<
+  FieldConfig,
+  { type: 'array' }
+> & {
+  _rowDynamicMeta?: Record<
+    number,
+    Record<string, Partial<FieldDependencyResult>>
+  >
+}
+
+/** Regex to match row-indexed keys: "{arrayName}.{digit(s)}.{childField}" */
+const ROW_KEY_PATTERN = /^(.+?)\.(\d+)\.(.+)$/
+
 /**
  * Merges event-driven `dynamicMeta` overrides into the field configs.
  * Only fields with entries in `overrides` are cloned.
+ *
+ * For array fields, overrides matching the pattern "{arrayName}.{index}.{childField}"
+ * are grouped by row index into a `_rowDynamicMeta` transient property on the array
+ * field config. Non-row-indexed overrides continue to apply to the array field as before.
  */
 export function applyDynamicMeta(
   fields: FieldConfig[],
@@ -174,15 +286,51 @@ export function applyDynamicMeta(
 ): FieldConfig[] {
   if (!Object.keys(overrides).length) return fields
   return fields.map((field) => {
+    // Apply top-level (non-row-indexed) override for this field
     const override = overrides[field.name]
-    if (!override) return field
-    const { options, label, ...metaOverrides } = override
-    return {
-      ...field,
-      ...(label !== undefined ? { label } : {}),
-      ...(options !== undefined ? { options } : {}),
-      meta: { ...field.meta, ...metaOverrides },
+    let updated: FieldConfig = field
+
+    if (override) {
+      const { options, label, ...metaOverrides } = override
+      updated = {
+        ...field,
+        ...(label !== undefined ? { label } : {}),
+        ...(options !== undefined ? { options } : {}),
+        meta: { ...field.meta, ...metaOverrides },
+      }
     }
+
+    // For array fields, extract row-indexed overrides and attach as _rowDynamicMeta
+    if (updated.type === 'array') {
+      const prefix = `${updated.name}.`
+      let rowDynamicMeta:
+        | Record<number, Record<string, Partial<FieldDependencyResult>>>
+        | undefined
+
+      for (const [key, value] of Object.entries(overrides)) {
+        if (!key.startsWith(prefix)) continue
+
+        const match = ROW_KEY_PATTERN.exec(key)
+        if (!match) continue
+
+        const [, matchedArrayName, indexStr, childField] = match
+        if (matchedArrayName !== updated.name) continue
+
+        const rowIndex = Number(indexStr)
+        if (!rowDynamicMeta) rowDynamicMeta = {}
+        if (!rowDynamicMeta[rowIndex]) rowDynamicMeta[rowIndex] = {}
+        rowDynamicMeta[rowIndex][childField] = value
+      }
+
+      if (rowDynamicMeta) {
+        updated = {
+          ...updated,
+          _rowDynamicMeta: rowDynamicMeta,
+        } as ArrayFieldConfigWithRowMeta
+      }
+    }
+
+    return updated
   })
 }
 
