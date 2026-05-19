@@ -410,6 +410,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       labels,
       formMethods: formMethods as unknown as FormMethods,
       control,
+      setDynamicMeta,
     }),
     [
       registry,
@@ -424,6 +425,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       labels,
       formMethods,
       control,
+      setDynamicMeta,
     ],
   )
 

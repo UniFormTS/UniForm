@@ -38,18 +38,46 @@ export type DeepKeys<T> = T extends object
   : never
 
 /**
+ * Extends `DeepKeys` with index-based array paths like `"items.0.name"`.
+ * Used by `setOnChange` to allow registering handlers for specific rows.
+ *
+ * @example
+ * // Given { tasks: { priority: string; notes: string }[] }
+ * // DeepKeysIndexed adds: "tasks.0.priority" | "tasks.0.notes" | "tasks.1.priority" | ...
+ * // (represented as template literal `tasks.${number}.priority`)
+ */
+export type DeepKeysIndexed<T> = T extends object
+  ? {
+      [K in keyof T & string]: T[K] extends unknown[]
+        ? ArrayItem<T[K]> extends object
+          ?
+              | K
+              | `${K}.${DeepKeys<ArrayItem<T[K]>>}`
+              | `${K}.${number}.${DeepKeys<ArrayItem<T[K]>>}`
+          : K
+        : T[K] extends object
+          ? K | `${K}.${DeepKeysIndexed<T[K]>}`
+          : K
+    }[keyof T & string]
+  : never
+
+/**
  * Resolves the value type at a dot-notated path within a type `T`.
  * Array fields use the unprefixed child path (matching `DeepKeys` convention).
+ * Also supports indexed paths like `"items.0.qty"` — the numeric segment is skipped.
  *
  * @example
  * // DeepFieldValue<{ name: string; items: { qty: number }[] }, 'items.qty'> → number
+ * // DeepFieldValue<{ items: { qty: number }[] }, 'items.0.qty'> → number
  */
 export type DeepFieldValue<T, K extends string> = K extends keyof T
   ? T[K]
   : K extends `${infer Head}.${infer Tail}`
     ? Head extends keyof T
       ? T[Head] extends (infer Item)[]
-        ? DeepFieldValue<NonNullable<Item>, Tail>
+        ? Tail extends `${number}.${infer Rest}`
+          ? DeepFieldValue<NonNullable<Item>, Rest>
+          : DeepFieldValue<NonNullable<Item>, Tail>
         : DeepFieldValue<NonNullable<T[Head]>, Tail>
       : unknown
     : unknown
