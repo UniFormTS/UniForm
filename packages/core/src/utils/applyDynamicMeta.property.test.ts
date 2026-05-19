@@ -1,6 +1,7 @@
 // Feature: per-row-field-meta, Property 2: applyDynamicMeta row isolation
 import { describe, it, expect } from 'vitest'
 import * as fc from 'fast-check'
+import type * as z from 'zod/v4/core'
 import { applyDynamicMeta } from './fieldPipeline'
 import type { ArrayFieldConfigWithRowMeta } from './fieldPipeline'
 import type { FieldConfig, FieldDependencyResult } from '../types'
@@ -47,22 +48,25 @@ const arbFieldDependencyResult: fc.Arbitrary<Partial<FieldDependencyResult>> =
 
 /** Creates a minimal array FieldConfig for testing */
 function createArrayFieldConfig(arrayName: string): FieldConfig {
+  const itemConfig: FieldConfig = {
+    name: 'item',
+    label: 'Item',
+    required: false,
+    meta: {},
+    type: 'object',
+    children: [],
+    schema: {} as unknown as z.$ZodType,
+  }
+
   return {
     name: arrayName,
     label: arrayName,
     required: false,
     meta: {},
     type: 'array',
-    itemConfig: {
-      name: 'item',
-      label: 'Item',
-      required: false,
-      meta: {},
-      type: 'object',
-      children: [],
-    } as FieldConfig,
-    schema: {} as any,
-  } as FieldConfig
+    itemConfig,
+    schema: {} as unknown as z.$ZodType,
+  }
 }
 
 describe('Property 2: applyDynamicMeta row isolation', () => {
