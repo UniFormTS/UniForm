@@ -1,0 +1,11 @@
+{
+  "$schema": "https://skills.sh/schemas/skills.sh.schema.json",
+  "notGrouped": "bottom",
+  "groupings": [
+    {
+      "title": "UniForm",
+      "description": "Build idiomatic, schema-first React forms with UniForm (@uniform-ts/core).",
+      "skills": ["uniform-best-practices"]
+    }
+  ]
+}

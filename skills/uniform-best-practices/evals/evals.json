@@ -1,0 +1,60 @@
+{
+  "skill_name": "uniform-best-practices",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I'm building a signup form in React for our app. I need fields for full name, work email, a role dropdown (member / admin / billing), and a checkbox to accept terms. We use @uniform-ts/core already. Can you wire it up so it validates and gives me typed values on submit?",
+      "expected_output": "A React component that defines a single Zod V4 schema (z.object with z.string name, z.email, z.enum role, z.boolean terms), wraps it with createForm, and renders <AutoForm form={...} onSubmit={...}>. Validation messages live in the schema; onSubmit receives typed values. No manual register() calls or hand-wired inputs.",
+      "files": [],
+      "expectations": [
+        "Defines one Zod schema as the source of truth using z.object",
+        "Imports z from 'zod/v4' and createForm/AutoForm from '@uniform-ts/core'",
+        "Uses createForm(schema) to wrap the schema",
+        "Renders <AutoForm> with form and onSubmit props",
+        "Uses z.enum for the role dropdown rather than hand-building a select",
+        "Validation messages are placed in the schema (e.g. .min(1, '...') or z.email('...'))",
+        "Does not call react-hook-form register() or build raw <input> elements manually"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Using UniForm, I have an order form where the user picks an account type (personal vs business). When they pick business, I want to reveal VAT number and company name fields, and hide them again for personal. There's also a repeating list of line items (description + quantity), minimum 1, maximum 5 rows. How do I set this up?",
+      "expected_output": "A schema with accountType enum, optional business fields, and a z.array(z.object(...)).min(1).max(5) for line items. Conditional fields use setCondition (or inline condition in the fields prop) so hidden fields are unregistered. The array renders as repeating rows with min/max read from the schema.",
+      "files": [],
+      "expectations": [
+        "Models line items as z.array(z.object(...)) with .min(1) and .max(5) on the array",
+        "Uses setCondition or the inline condition field-override to show/hide business fields",
+        "Conditional fields depend on the accountType value via a predicate over form values",
+        "Explains or relies on UniForm hiding/unregistering fields rather than conditionally rendering JSX manually",
+        "Does not manually enforce the 1-5 row limit in UI code instead of the schema"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "We want all our @uniform-ts/core forms to use our design system text input and toggle, plus a custom star-rating widget for a 1-5 score field. I don't want to repeat the component config on every form. What's the idiomatic way to do this?",
+      "expected_output": "Use createAutoForm once to bake in design-system defaults (components for string/boolean, etc.), returning a reusable AutoForm component. Register a custom 'rating' component typed with FieldProps<number> and point the score field at it via fields={{ score: { component: 'rating' } }}.",
+      "files": [],
+      "expectations": [
+        "Uses createAutoForm to bake design-system defaults once instead of repeating per form",
+        "Maps string/boolean Zod types to the design-system components via the components registry",
+        "Defines a custom rating component typed with FieldProps<number>",
+        "Points the score field at the custom component via the fields prop (component key)",
+        "Distinguishes createAutoForm (design-system defaults) from createForm (per-schema definition)"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "We're building a fairly large multi-step onboarding form in React with @uniform-ts/core: personal details, an employment section that only appears for 'employed' status, and a repeating list of references (1-3). I want this done cleanly with a clear separation between the data model and the UI, and I'd like the final result reviewed for any non-idiomatic UniForm usage before we ship. How should we approach this?",
+      "expected_output": "A response that decomposes the work across the skill's specialized agents: the Schema Architect designs the Zod schema (status enum, optional/conditional employment fields or discriminated union, references array with .min(1).max(3)); the Form Builder renders it (createForm/AutoForm, setCondition for employment, fields/sections, schema-driven array bounds); and the Form Reviewer audits the result for hallucinated APIs and schema-vs-fields violations. The data model stays separate from presentation throughout.",
+      "files": [],
+      "expectations": [
+        "Recognizes the work should be split across the bundled specialized agents rather than done in one undifferentiated pass",
+        "Assigns the Zod schema design (status enum, conditional employment fields, references array with .min(1)/.max(3)) to the Schema Architect role",
+        "Assigns the render layer (createForm/AutoForm, setCondition, fields/sections, schema-driven array bounds) to the Form Builder role",
+        "Assigns a read-only idiomatic audit (hallucinated APIs, schema-vs-fields boundary) to the Form Reviewer role",
+        "Keeps the data model (schema + validation) separate from presentation (fields/components) per the skill's core boundary",
+        "Does not invent UniForm APIs (no useForm/Form/Field/register, no createForm second-arg options, no defineRegistry/overrides)"
+      ]
+    }
+  ]
+}
