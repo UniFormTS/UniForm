@@ -1,5 +1,7 @@
 # UniForm
 
+[![skills.sh](https://skills.sh/b/UniFormTS/UniForm)](https://skills.sh/UniFormTS/UniForm)
+
 > Headless React + Zod V4 form library. Zero styles — bring your own components.
 
 UniForm takes a Zod schema and automatically renders a fully customizable form. It handles field introspection, validation, coercion, and layout — you provide the components and styling.
