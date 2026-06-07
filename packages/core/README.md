@@ -96,44 +96,6 @@ UniForm introspects the schema, renders appropriate inputs, validates with Zod, 
 - **i18n** — override every hard-coded UI string (including aria labels) via `labels` prop; import a ready-made locale pack and optionally spread-override individual keys
 - **Tree-shakeable** — ESM + CJS builds via tsup
 
-## Per-Row Field Meta in Arrays
-
-When using `setOnChange` for array item fields, `setFieldMeta` is automatically scoped to the row where the change occurred:
-
-```ts
-const schema = z.object({
-  tasks: z.array(
-    z.object({
-      priority: z.enum(['low', 'medium', 'high']),
-      notes: z.string().optional(),
-    }),
-  ),
-})
-
-const form = createForm(schema)
-
-form.setOnChange('tasks.priority', (value, ctx) => {
-  // Only affects the "notes" field in the row that changed
-  ctx.setFieldMeta('tasks.notes', {
-    placeholder: value === 'high' ? 'Explain urgency' : 'Optional',
-    label: value === 'high' ? 'Notes (recommended)' : 'Notes',
-  })
-})
-```
-
-Each row maintains independent overrides — changing priority in row 0 doesn't affect row 1. Inside the handler, `ctx.getValues()` returns the current row's values, and row mutations (add/remove/move/duplicate) automatically re-index meta overrides.
-
-You can also target a specific row index:
-
-```ts
-// Only fires when row 0's priority changes
-form.setOnChange('tasks.0.priority', (value, ctx) => {
-  ctx.setFieldMeta('tasks.notes', { label: 'Primary task notes' })
-})
-```
-
-Both the generic handler (`"tasks.priority"`) and the row-specific handler (`"tasks.0.priority"`) fire when row 0 changes. Other rows only trigger the generic handler.
-
 ## Documentation
 
 Full API reference, guides, and examples: **[uniformts.github.io/UniForm](https://uniformts.github.io/UniForm/)**
