@@ -18,6 +18,12 @@
       "sourceType": "github",
       "skillPath": "skills/skill-creator/SKILL.md",
       "computedHash": "7e3c9cd74e9e2b4828527a857170e86310f2dab5ea8030a9043df2c7e6c88857"
+    },
+    "uniform-best-practices": {
+      "source": "UniFormTS/UniForm",
+      "sourceType": "github",
+      "skillPath": "skills/uniform-best-practices/SKILL.md",
+      "computedHash": "ee40aa5416514de3d740c574f7881e083c2ff8a2e44f4d618a9af8dc69afb42b"
     }
   }
 }
