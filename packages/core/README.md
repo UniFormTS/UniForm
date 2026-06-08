@@ -12,6 +12,16 @@ UniForm takes a Zod schema and automatically renders a fully customizable form. 
 npm install @uniform-ts/core react react-hook-form zod
 ```
 
+## AI Agent Skill
+
+Using an AI coding assistant (Copilot, Claude, etc.)? Install the UniForm skill so it builds forms the idiomatic way — schema-first, with the right `createForm` / `AutoForm` patterns:
+
+```bash
+npx skills add https://github.com/UniFormTS/UniForm --skill uniform-best-practices
+```
+
+Discover it on [skills.sh](https://skills.sh/UniFormTS/UniForm).
+
 ## Quick Start
 
 ```tsx
