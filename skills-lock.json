@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "documentation-writer": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "skillPath": "skills/documentation-writer/SKILL.md",
+      "computedHash": "ee53d65b163cd7eb953a930c95841cfe398cc2c0bd24c06508bbaa07c432be35"
+    },
     "find-skills": {
       "source": "vercel-labs/skills",
       "sourceType": "github",
@@ -18,6 +24,12 @@
       "sourceType": "github",
       "skillPath": "skills/skill-creator/SKILL.md",
       "computedHash": "7e3c9cd74e9e2b4828527a857170e86310f2dab5ea8030a9043df2c7e6c88857"
+    },
+    "uniform-best-practices": {
+      "source": "UniFormTS/UniForm",
+      "sourceType": "github",
+      "skillPath": "skills/uniform-best-practices/SKILL.md",
+      "computedHash": "ee40aa5416514de3d740c574f7881e083c2ff8a2e44f4d618a9af8dc69afb42b"
     }
   }
 }

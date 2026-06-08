@@ -24,7 +24,7 @@ UniForm requires the Zod V4 API. How you import it depends on which version of t
   ```ts
   import { z } from 'zod'
   ```
-:::
+  :::
 
 ## Imports
 
@@ -56,3 +56,13 @@ UniForm requires TypeScript with `strict` mode and `moduleResolution: bundler` (
 | `react`           | `^19.0.0`          |
 | `react-hook-form` | `^7.0.0`           |
 | `zod`             | `^3.25.0` (Zod V4) |
+
+## AI Agent Skill
+
+If you build forms with an AI coding assistant (Copilot, Claude, etc.), install the UniForm skill so it follows the idiomatic, schema-first patterns:
+
+```bash
+npx skills add https://github.com/UniFormTS/UniForm --skill uniform-best-practices
+```
+
+The skill is also discoverable on [skills.sh](https://skills.sh/UniFormTS/UniForm).
