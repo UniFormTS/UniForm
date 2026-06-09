@@ -68,11 +68,20 @@ export type FieldDependencyResult = {
 // ---------------------------------------------------------------------------
 
 /**
- * The base set of per-field UI metadata that can be provided via the `fields`
- * prop or through Zod schema extensions (`.meta()`).
+ * The base set of per-field UI metadata recognised by UniForm. Merged into
+ * Zod's `GlobalMeta` interface via the declaration in `zod-augmentation.d.ts`,
+ * so these properties are available on every Zod schema's `.meta()` call.
  *
- * `FieldMeta` extends this type with an index signature to allow arbitrary
- * extra keys for custom component use-cases.
+ * To add custom typed meta fields that flow through to `FieldMeta` /
+ * `FieldProps.meta`, augment `GlobalMeta` in your own project:
+ *
+ * ```ts
+ * declare module 'zod/v4/core' {
+ *   interface GlobalMeta {
+ *     inputMode?: 'numeric' | 'decimal' | 'tel'
+ *   }
+ * }
+ * ```
  */
 export type FieldMetaBase = {
   /** Human-readable label rendered above the field. Falls back to a derived label from the field name. */
@@ -134,13 +143,15 @@ export type FieldMetaBase = {
 }
 
 /**
- * Per-field UI metadata with an open index signature, allowing arbitrary
- * extra keys for custom component use-cases. Extends `FieldMetaBase` with
- * all the standard metadata properties.
+ * Per-field UI metadata. Equals Zod's `GlobalMeta` interface so that any
+ * project-level augmentation of `GlobalMeta` (via `declare module 'zod/v4/core'`)
+ * is automatically reflected here — custom fields become fully typed on
+ * `FieldConfig.meta`, `FieldProps.meta`, and everywhere else `FieldMeta` appears.
+ *
+ * The open index signature (`[k: string]: unknown`) is inherited from Zod's
+ * `JSONSchemaMeta`, so untyped custom keys continue to work as before.
  */
-export type FieldMeta = FieldMetaBase & {
-  [key: string]: unknown
-}
+export type FieldMeta = z.GlobalMeta
 
 // ---------------------------------------------------------------------------
 // FieldConfig

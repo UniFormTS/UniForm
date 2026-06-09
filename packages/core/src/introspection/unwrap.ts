@@ -14,7 +14,7 @@ import type { FieldMeta } from '../types'
  * @param schema - The Zod schema to read metadata from.
  */
 export function extractMeta(schema: z.$ZodType): FieldMeta {
-  return (z.globalRegistry.get(schema) as FieldMeta | undefined) ?? {}
+  return (z.globalRegistry.get(schema) ?? {}) as FieldMeta
 }
 
 // ---------------------------------------------------------------------------
