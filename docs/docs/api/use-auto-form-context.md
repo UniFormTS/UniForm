@@ -95,7 +95,7 @@ export function MySubmitButton({ isSubmitting }: { isSubmitting: boolean }) {
 
 ### Calling `formMethods` from a layout component
 
-`formMethods` exposes the same imperative API as the handle returned by `createForm` (or via `ref` on `<AutoForm>`). Use it to read or mutate form state from inside any component in the subtree.
+`formMethods` exposes the same imperative API as the handle exposed via `ref` on `<AutoForm>`. Use it to read or mutate form state from inside any component in the subtree.
 
 ```tsx
 import { useAutoFormContext } from '@uniform-ts/core'
