@@ -60,8 +60,8 @@ type Condition = (values: unknown) => boolean
  * <AutoForm form={addressForm} onSubmit={handleSubmit} />
  */
 export class UniForm<
-  TSchema extends z.$ZodObject,
-  TRegistered extends string = never,
+  in out TSchema extends z.$ZodObject,
+  in out TRegistered extends string = never,
 > {
   readonly schema: TSchema
   private readonly _handlers: Map<string, Handler<TSchema, unknown>>

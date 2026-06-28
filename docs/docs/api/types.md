@@ -495,18 +495,18 @@ All programmatic form control methods, available on both `AutoFormHandle` (ref) 
 
 ```ts
 type FormMethods<TValues> = {
-  setValue: (name: FieldPath<TValues>, value: FieldPathValue<TValues, ...>) => void
+  setValue: (name: DeepKeysIndexed<TValues>, value: DeepFieldValue<TValues, ...>) => void
   setValues: (values: Partial<TValues>) => void
   getValues: () => TValues
-  resetField: (name: FieldPath<TValues>) => void
+  resetField: (name: DeepKeysIndexed<TValues>) => void
   reset: (values?: Partial<TValues>) => void
-  setError: (name: FieldPath<TValues>, message: string) => void
-  setErrors: (errors: Partial<Record<FieldPath<TValues>, string>>) => void
-  clearErrors: (names?: FieldPath<TValues> | FieldPath<TValues>[]) => void
+  setError: (name: DeepKeysIndexed<TValues>, message: string) => void
+  setErrors: (errors: Partial<Record<DeepKeysIndexed<TValues>, string>>) => void
+  clearErrors: (names?: DeepKeysIndexed<TValues> | DeepKeysIndexed<TValues>[]) => void
   submit: () => void
-  focus: (fieldName: FieldPath<TValues>) => void
+  focus: (fieldName: DeepKeysIndexed<TValues>) => void
   watch: (() => TValues) &
-    (<K extends FieldPath<TValues>>(name: K) => FieldPathValue<TValues, K>)
+    (<K extends DeepKeysIndexed<TValues>>(name: K) => DeepFieldValue<TValues, K>)
 }
 ```
 

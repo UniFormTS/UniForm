@@ -1,6 +1,6 @@
-import type { FieldPath, FieldPathValue, FieldValues } from 'react-hook-form'
+import type { FieldValues } from 'react-hook-form'
 import type * as z from 'zod/v4/core'
-import type { DeepKeys, DeepFieldValue } from './utils'
+import type { DeepKeys, DeepKeysIndexed, DeepFieldValue } from './utils'
 import type { FieldOverride } from './field'
 import type { ComponentRegistry, FieldWrapperProps } from './registry'
 import type { LayoutSlots, FormClassNames } from './layout'
@@ -17,32 +17,36 @@ import type { LayoutSlots, FormClassNames } from './layout'
  */
 export type FormMethods<TValues extends FieldValues = FieldValues> = {
   /** Set a single field value programmatically */
-  setValue: <K extends FieldPath<TValues>>(
+  setValue: <K extends DeepKeysIndexed<TValues>>(
     name: K,
-    value: FieldPathValue<TValues, K>,
+    value: DeepFieldValue<TValues, K>,
   ) => void
   /** Set multiple field values at once */
   setValues: (values: Partial<TValues>) => void
   /** Get the current form values */
   getValues: () => TValues
   /** Reset a single field to its default value */
-  resetField: (name: FieldPath<TValues>) => void
+  resetField: (name: DeepKeysIndexed<TValues>) => void
   /** Reset the entire form, optionally to new values */
   reset: (values?: Partial<TValues>) => void
   /** Set a validation error on a specific field */
-  setError: (name: FieldPath<TValues>, message: string) => void
+  setError: (name: DeepKeysIndexed<TValues>, message: string) => void
   /** Set validation errors on multiple fields at once */
-  setErrors: (errors: Partial<Record<FieldPath<TValues>, string>>) => void
+  setErrors: (
+    errors: Partial<Record<DeepKeysIndexed<TValues>, string>>,
+  ) => void
   /** Clear validation errors (all fields, or specific ones) */
-  clearErrors: (names?: FieldPath<TValues> | FieldPath<TValues>[]) => void
+  clearErrors: (
+    names?: DeepKeysIndexed<TValues> | DeepKeysIndexed<TValues>[],
+  ) => void
   /** Programmatically trigger form submission */
   submit: () => void
   /** Focus a specific field by name (dot-notated for nested fields) */
-  focus: (fieldName: FieldPath<TValues>) => void
+  focus: (fieldName: DeepKeysIndexed<TValues>) => void
   /** Watch field values reactively */
   watch: {
     (): TValues
-    <K extends FieldPath<TValues>>(name: K): FieldPathValue<TValues, K>
+    <K extends DeepKeysIndexed<TValues>>(name: K): DeepFieldValue<TValues, K>
   }
 }
 
