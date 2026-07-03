@@ -4,12 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks'
 
 export default defineConfig(
   {
-    ignores: [
-      'dist/',
-      'vitest.config.ts',
-      'tsup.config.ts',
-      'eslint.config.mjs',
-    ],
+    ignores: ['dist/', 'vite.config.ts', 'eslint.config.mjs'],
   },
   tseslint.configs.recommendedTypeChecked,
   {

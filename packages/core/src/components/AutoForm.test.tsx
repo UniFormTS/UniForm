@@ -3851,3 +3851,111 @@ describe('useArrayField', () => {
     expect(states[states.length - 1]?.atMin).toBe(true)
   })
 })
+
+// ---------------------------------------------------------------------------
+// object/array collapsed into a single field via meta.component
+// ---------------------------------------------------------------------------
+
+describe('object/array rendered as a single field via component override', () => {
+  type OptionValue = { value: string; label: string }
+
+  const options: OptionValue[] = [
+    { value: 'u1', label: 'Alice' },
+    { value: 'u2', label: 'Bob' },
+  ]
+
+  function ObjectSelect({ value, onChange }: FieldProps) {
+    const current = value as OptionValue | undefined
+    return (
+      <select
+        aria-label='assignee'
+        value={current?.value ?? ''}
+        onChange={(e) =>
+          onChange(options.find((o) => o.value === e.target.value))
+        }
+      >
+        <option value=''>—</option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    )
+  }
+
+  const schema = z.object({
+    assignee: z.object({ value: z.string(), label: z.string() }),
+  })
+
+  it('collapses an object into a single field when meta.component is a string registry key', () => {
+    render(
+      <AutoForm
+        form={new UniForm(schema)}
+        components={{ objectSelect: ObjectSelect }}
+        fields={{ assignee: { component: 'objectSelect' } }}
+        onSubmit={vi.fn()}
+      />,
+    )
+    // A single select renders — not a nested fieldset with two text inputs
+    expect(
+      screen.getByRole('combobox', { name: 'assignee' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  })
+
+  it('writes the whole object back through onChange', async () => {
+    const onSubmit = vi.fn()
+    const { user } = setup(
+      <AutoForm
+        form={new UniForm(schema)}
+        components={{ objectSelect: ObjectSelect }}
+        fields={{ assignee: { component: 'objectSelect' } }}
+        defaultValues={{ assignee: { value: 'u1', label: 'Alice' } }}
+        onSubmit={onSubmit}
+      />,
+    )
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'assignee' }),
+      'u2',
+    )
+    await user.click(screen.getByRole('button', { name: /submit/i }))
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith({
+        assignee: { value: 'u2', label: 'Bob' },
+      })
+    })
+  })
+
+  it('still renders a nested fieldset when the string key does not resolve', () => {
+    render(
+      <AutoForm
+        form={new UniForm(schema)}
+        fields={{ assignee: { component: 'missingKey' } }}
+        onSubmit={vi.fn()}
+      />,
+    )
+    // Falls back to the default object rendering: two text inputs
+    expect(screen.getAllByRole('textbox')).toHaveLength(2)
+  })
+
+  it('collapses an array into a single field via a string registry key', () => {
+    function TagInput({ value }: FieldProps) {
+      const tags = (value ?? []) as { name: string }[]
+      return <div data-testid='tag-input'>{tags.length} tags</div>
+    }
+    const arraySchema = z.object({
+      tags: z.array(z.object({ name: z.string() })),
+    })
+    render(
+      <AutoForm
+        form={new UniForm(arraySchema)}
+        components={{ tagInput: TagInput }}
+        fields={{ tags: { component: 'tagInput' } }}
+        defaultValues={{ tags: [{ name: 'a' }, { name: 'b' }] }}
+        onSubmit={vi.fn()}
+      />,
+    )
+    expect(screen.getByTestId('tag-input')).toHaveTextContent('2 tags')
+  })
+})

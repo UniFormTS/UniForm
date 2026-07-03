@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import { reindexDynamicMeta } from './reindexDynamicMeta'
-import type { MutationType } from './reindexDynamicMeta'
 
 describe('reindexDynamicMeta', () => {
   describe('remove mutation', () => {

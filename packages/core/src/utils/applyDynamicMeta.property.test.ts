@@ -98,7 +98,7 @@ describe('Property 2: applyDynamicMeta row isolation', () => {
           expect(arrayField._rowDynamicMeta).toBeDefined()
 
           // Verify each row N only contains overrides whose key had index N
-          for (const [rowIdx, childField, value] of entries) {
+          for (const [rowIdx, childField] of entries) {
             const key = `${arrayName}.${rowIdx}.${childField}`
             // The last-write-wins value for this key
             const expectedValue = overrides[key]
@@ -202,7 +202,9 @@ describe('Property 2: applyDynamicMeta row isolation', () => {
             expect(arrayField.label).toBe(label)
           }
           if (options !== undefined) {
-            expect((arrayField as any).options).toEqual(options)
+            expect(
+              (arrayField as unknown as Record<string, unknown>).options,
+            ).toEqual(options)
           }
           for (const [key, value] of Object.entries(metaOverrides)) {
             expect(arrayField.meta[key]).toEqual(value)

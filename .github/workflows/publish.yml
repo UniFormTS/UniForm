@@ -20,11 +20,9 @@ jobs:
       id-token: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
+      - uses: pnpm/action-setup@v6
 
       - run: pnpm install --frozen-lockfile
 
@@ -54,7 +52,7 @@ jobs:
           echo "New version in packages/core is:"
           node -p "require('./packages/core/package.json').version"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org

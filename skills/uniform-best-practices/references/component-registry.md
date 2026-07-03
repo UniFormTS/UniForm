@@ -48,6 +48,38 @@ So: register under a type key to restyle **all** fields of that type; pass `comp
 />
 ```
 
+## Rendering an object or array as a single field
+
+By default a `z.object({...})` renders as a nested fieldset and a `z.array(z.object({...}))` as repeating rows. Point either at a component override — **a direct component or a string registry key** — to collapse it into one field whose `value` is the whole object/array:
+
+```tsx
+type UserRef = { value: string; label: string }
+
+function UserSelect({ value, onChange }: FieldProps<UserRef>) {
+  return (
+    <select
+      value={value?.value ?? ''}
+      onChange={(e) => onChange(lookupUser(e.target.value))}
+    >
+      {/* … */}
+    </select>
+  )
+}
+
+const schema = z.object({
+  assignee: z.object({ value: z.string(), label: z.string() }),
+})
+
+<AutoForm
+  form={createForm(schema)}
+  components={{ userSelect: UserSelect }}
+  fields={{ assignee: { component: 'userSelect' } }} // string key OR the component itself
+  ...
+/>
+```
+
+The component receives the entire object (or array) as `value` and must call `onChange` with a full object/array; validation still runs against the complete schema. If the string key does not resolve in the merged registry, the field falls back to the default nested rendering.
+
 ## The `FieldProps` contract
 
 Every field component receives `FieldProps<Value>`. Always parameterise it with the field's value type so `value` and `onChange` are typed precisely (e.g. `FieldProps<number>` for a numeric widget, `FieldProps<string[]>` for a multi-select).

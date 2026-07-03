@@ -1,9 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
 import * as z from 'zod/v4'
+import type * as zCore from 'zod/v4/core'
 import { injectOnChangeHandlers } from './fieldPipeline'
 import { UniForm } from '../UniForm'
 import type { UniFormContext } from '../UniForm'
-import type { FieldConfig, FieldDependencyResult } from '../types'
+import type { FieldConfig, FieldDependencyResult, FormMethods } from '../types'
 import type { RowAwareOnChange } from './createRowScopedContext'
 
 // ---------------------------------------------------------------------------
@@ -13,8 +14,10 @@ import type { RowAwareOnChange } from './createRowScopedContext'
 /**
  * Creates a minimal mock UniFormContext that records setFieldMeta calls.
  */
-function createMockContext(): {
-  ctx: UniFormContext<any>
+function createMockContext<
+  TSchema extends zCore.$ZodObject = zCore.$ZodObject,
+>(): {
+  ctx: UniFormContext<TSchema>
   setFieldMetaCalls: Array<{
     field: string
     meta: Partial<FieldDependencyResult>
@@ -48,7 +51,7 @@ function createMockContext(): {
         setFieldMetaCalls.push({ field, meta })
       },
     ),
-  } as unknown as UniFormContext<any>
+  } as unknown as UniFormContext<TSchema>
 
   return { ctx, setFieldMetaCalls }
 }
@@ -66,7 +69,7 @@ function createArrayFieldConfig(
     label: name,
     required: false,
     meta: {},
-    schema: z.string() as any,
+    schema: z.string() as unknown as zCore.$ZodType,
   }))
 
   return {
@@ -75,14 +78,14 @@ function createArrayFieldConfig(
     label: arrayName,
     required: false,
     meta: {},
-    schema: z.array(z.object({})) as any,
+    schema: z.array(z.object({})) as unknown as zCore.$ZodType,
     itemConfig: {
       type: 'object' as const,
       name: 'item',
       label: 'Item',
       required: false,
       meta: {},
-      schema: z.object({}) as any,
+      schema: z.object({}) as unknown as zCore.$ZodType,
       children,
     },
   }
@@ -98,7 +101,7 @@ function createStringFieldConfig(name: string): FieldConfig {
     label: name,
     required: false,
     meta: {},
-    schema: z.string() as any,
+    schema: z.string() as unknown as zCore.$ZodType,
   }
 }
 
@@ -116,18 +119,18 @@ describe('injectOnChangeHandlers - row context', () => {
         items: z.array(z.object({ type: z.string(), note: z.string() })),
       })
       const uniForm = new UniForm(schema)
-      uniForm.setOnChange('items.type' as any, (value, ctx) => {
-        ctx.setFieldMeta('items.note' as any, {
+      uniForm.setOnChange('items.type', (value, ctx) => {
+        ctx.setFieldMeta('items.note', {
           placeholder: `${value}-placeholder`,
         })
       })
 
-      const { ctx } = createMockContext()
+      const { ctx } = createMockContext<typeof schema>()
       const fields: FieldConfig[] = [
         createArrayFieldConfig('items', ['type', 'note']),
       ]
 
-      const result = injectOnChangeHandlers(fields, uniForm as any, ctx)
+      const result = injectOnChangeHandlers(fields, uniForm, ctx)
 
       // The array field's itemConfig children should have an onChange handler
       const arrayField = result[0]
@@ -153,14 +156,14 @@ describe('injectOnChangeHandlers - row context', () => {
       })
       const handlerSpy = vi.fn()
       const uniForm = new UniForm(schema)
-      uniForm.setOnChange('items.type' as any, handlerSpy)
+      uniForm.setOnChange('items.type', handlerSpy)
 
-      const { ctx } = createMockContext()
+      const { ctx } = createMockContext<typeof schema>()
       const fields: FieldConfig[] = [
         createArrayFieldConfig('items', ['type', 'note']),
       ]
 
-      const result = injectOnChangeHandlers(fields, uniForm as any, ctx)
+      const result = injectOnChangeHandlers(fields, uniForm, ctx)
 
       const arrayField = result[0]
       if (
@@ -175,7 +178,7 @@ describe('injectOnChangeHandlers - row context', () => {
       const handler = typeChild!.meta.onChange as RowAwareOnChange
 
       // Call with rowIndex = 2
-      const mockFormMethods = {} as any
+      const mockFormMethods = {} as unknown as FormMethods
       handler('business', mockFormMethods, 2)
 
       // The UniForm handler should have been called
@@ -187,10 +190,10 @@ describe('injectOnChangeHandlers - row context', () => {
         items: z.array(z.object({ type: z.string(), note: z.string() })),
       })
       const uniForm = new UniForm(schema)
-      uniForm.setOnChange('items.type' as any, vi.fn())
+      uniForm.setOnChange('items.type', vi.fn())
 
       const existingOnChange = vi.fn()
-      const { ctx } = createMockContext()
+      const { ctx } = createMockContext<typeof schema>()
 
       // Create field config with an existing onChange on the child
       const arrayField = createArrayFieldConfig('items', ['type', 'note'])
@@ -204,7 +207,7 @@ describe('injectOnChangeHandlers - row context', () => {
         typeChild.meta = { ...typeChild.meta, onChange: existingOnChange }
       }
 
-      const result = injectOnChangeHandlers([arrayField], uniForm as any, ctx)
+      const result = injectOnChangeHandlers([arrayField], uniForm, ctx)
 
       const resultArray = result[0]
       if (
@@ -218,7 +221,7 @@ describe('injectOnChangeHandlers - row context', () => {
       )
       const handler = typeChild!.meta.onChange as RowAwareOnChange
 
-      handler('personal', {} as any, 0)
+      handler('personal', {} as unknown as FormMethods, 0)
 
       // The existing onChange should also have been called
       expect(existingOnChange).toHaveBeenCalledWith(
@@ -237,16 +240,16 @@ describe('injectOnChangeHandlers - row context', () => {
         items: z.array(z.object({ type: z.string(), note: z.string() })),
       })
       const uniForm = new UniForm(schema)
-      uniForm.setOnChange('items.type' as any, (value, ctx) => {
-        ctx.setFieldMeta('items.note' as any, { placeholder: `${value}-ph` })
+      uniForm.setOnChange('items.type', (value, ctx) => {
+        ctx.setFieldMeta('items.note', { placeholder: `${value}-ph` })
       })
 
-      const { ctx, setFieldMetaCalls } = createMockContext()
+      const { ctx, setFieldMetaCalls } = createMockContext<typeof schema>()
       const fields: FieldConfig[] = [
         createArrayFieldConfig('items', ['type', 'note']),
       ]
 
-      const result = injectOnChangeHandlers(fields, uniForm as any, ctx)
+      const result = injectOnChangeHandlers(fields, uniForm, ctx)
 
       const arrayField = result[0]
       if (
@@ -261,7 +264,7 @@ describe('injectOnChangeHandlers - row context', () => {
       const handler = typeChild!.meta.onChange as RowAwareOnChange
 
       // Fire for row 0
-      handler('personal', {} as any, 0)
+      handler('personal', {} as unknown as FormMethods, 0)
 
       expect(setFieldMetaCalls).toHaveLength(1)
       expect(setFieldMetaCalls[0].field).toBe('items.0.note')
@@ -273,16 +276,16 @@ describe('injectOnChangeHandlers - row context', () => {
         items: z.array(z.object({ type: z.string(), note: z.string() })),
       })
       const uniForm = new UniForm(schema)
-      uniForm.setOnChange('items.type' as any, (value, ctx) => {
-        ctx.setFieldMeta('items.note' as any, { hidden: true })
+      uniForm.setOnChange('items.type', (value, ctx) => {
+        ctx.setFieldMeta('items.note', { hidden: true })
       })
 
-      const { ctx, setFieldMetaCalls } = createMockContext()
+      const { ctx, setFieldMetaCalls } = createMockContext<typeof schema>()
       const fields: FieldConfig[] = [
         createArrayFieldConfig('items', ['type', 'note']),
       ]
 
-      const result = injectOnChangeHandlers(fields, uniForm as any, ctx)
+      const result = injectOnChangeHandlers(fields, uniForm, ctx)
 
       const arrayField = result[0]
       if (
@@ -297,9 +300,9 @@ describe('injectOnChangeHandlers - row context', () => {
       const handler = typeChild!.meta.onChange as RowAwareOnChange
 
       // Fire for row 0
-      handler('a', {} as any, 0)
+      handler('a', {} as unknown as FormMethods, 0)
       // Fire for row 5
-      handler('b', {} as any, 5)
+      handler('b', {} as unknown as FormMethods, 5)
 
       expect(setFieldMetaCalls).toHaveLength(2)
       expect(setFieldMetaCalls[0].field).toBe('items.0.note')
@@ -312,17 +315,17 @@ describe('injectOnChangeHandlers - row context', () => {
         globalField: z.string(),
       })
       const uniForm = new UniForm(schema)
-      uniForm.setOnChange('items.type' as any, (value, ctx) => {
+      uniForm.setOnChange('items.type', (value, ctx) => {
         // 'globalField' is not a sibling of the array item fields
-        ctx.setFieldMeta('globalField' as any, { disabled: true })
+        ctx.setFieldMeta('globalField', { disabled: true })
       })
 
-      const { ctx, setFieldMetaCalls } = createMockContext()
+      const { ctx, setFieldMetaCalls } = createMockContext<typeof schema>()
       const fields: FieldConfig[] = [
         createArrayFieldConfig('items', ['type', 'note']),
       ]
 
-      const result = injectOnChangeHandlers(fields, uniForm as any, ctx)
+      const result = injectOnChangeHandlers(fields, uniForm, ctx)
 
       const arrayField = result[0]
       if (
@@ -336,7 +339,7 @@ describe('injectOnChangeHandlers - row context', () => {
       )
       const handler = typeChild!.meta.onChange as RowAwareOnChange
 
-      handler('business', {} as any, 2)
+      handler('business', {} as unknown as FormMethods, 2)
 
       // 'globalField' is not in the item's sibling set, so it passes through as-is
       expect(setFieldMetaCalls).toHaveLength(1)
@@ -355,23 +358,23 @@ describe('injectOnChangeHandlers - row context', () => {
         state: z.string(),
       })
       const uniForm = new UniForm(schema)
-      uniForm.setOnChange('country' as any, (value, ctx) => {
-        ctx.setFieldMeta('state' as any, { hidden: value !== 'US' })
+      uniForm.setOnChange('country', (value, ctx) => {
+        ctx.setFieldMeta('state', { hidden: value !== 'US' })
       })
 
-      const { ctx, setFieldMetaCalls } = createMockContext()
+      const { ctx, setFieldMetaCalls } = createMockContext<typeof schema>()
       const fields: FieldConfig[] = [
         createStringFieldConfig('country'),
         createStringFieldConfig('state'),
       ]
 
-      const result = injectOnChangeHandlers(fields, uniForm as any, ctx)
+      const result = injectOnChangeHandlers(fields, uniForm, ctx)
 
       const countryField = result.find((f) => f.name === 'country')!
       expect(countryField.meta.onChange).toBeDefined()
 
       // Call the onChange (non-array, so only 2 args: value, formMethods)
-      countryField.meta.onChange!('Canada', {} as any)
+      void countryField.meta.onChange!('Canada', {} as unknown as FormMethods)
 
       // setFieldMeta should be called on the global context with unqualified key
       expect(setFieldMetaCalls).toHaveLength(1)
@@ -385,11 +388,11 @@ describe('injectOnChangeHandlers - row context', () => {
         detail: z.string(),
       })
       const uniForm = new UniForm(schema)
-      uniForm.setOnChange('toggle' as any, (value, ctx) => {
-        ctx.setFieldMeta('detail' as any, { disabled: !value })
+      uniForm.setOnChange('toggle', (value, ctx) => {
+        ctx.setFieldMeta('detail', { disabled: !value })
       })
 
-      const { ctx, setFieldMetaCalls } = createMockContext()
+      const { ctx, setFieldMetaCalls } = createMockContext<typeof schema>()
       const fields: FieldConfig[] = [
         {
           type: 'boolean' as const,
@@ -397,15 +400,15 @@ describe('injectOnChangeHandlers - row context', () => {
           label: 'Toggle',
           required: false,
           meta: {},
-          schema: z.boolean() as any,
+          schema: z.boolean() as unknown as zCore.$ZodType,
         },
         createStringFieldConfig('detail'),
       ]
 
-      const result = injectOnChangeHandlers(fields, uniForm as any, ctx)
+      const result = injectOnChangeHandlers(fields, uniForm, ctx)
 
       const toggleField = result.find((f) => f.name === 'toggle')!
-      toggleField.meta.onChange!(false, {} as any)
+      void toggleField.meta.onChange!(false, {} as unknown as FormMethods)
 
       expect(setFieldMetaCalls).toHaveLength(1)
       expect(setFieldMetaCalls[0].field).toBe('detail')
@@ -421,15 +424,15 @@ describe('injectOnChangeHandlers - row context', () => {
       })
       const uniForm = new UniForm(schema)
       // Only register handler for 'name', not 'email'
-      uniForm.setOnChange('name' as any, vi.fn())
+      uniForm.setOnChange('name', vi.fn())
 
-      const { ctx } = createMockContext()
+      const { ctx } = createMockContext<typeof schema>()
       const fields: FieldConfig[] = [
         createStringFieldConfig('name'),
         createStringFieldConfig('email'),
       ]
 
-      const result = injectOnChangeHandlers(fields, uniForm as any, ctx)
+      const result = injectOnChangeHandlers(fields, uniForm, ctx)
 
       const nameField = result.find((f) => f.name === 'name')!
       const emailField = result.find((f) => f.name === 'email')!
@@ -443,10 +446,10 @@ describe('injectOnChangeHandlers - row context', () => {
       const uniForm = new UniForm(schema)
       // No handlers registered
 
-      const { ctx } = createMockContext()
+      const { ctx } = createMockContext<typeof schema>()
       const fields: FieldConfig[] = [createStringFieldConfig('name')]
 
-      const result = injectOnChangeHandlers(fields, uniForm as any, ctx)
+      const result = injectOnChangeHandlers(fields, uniForm, ctx)
 
       // Should return the same reference since no handlers exist
       expect(result).toBe(fields)

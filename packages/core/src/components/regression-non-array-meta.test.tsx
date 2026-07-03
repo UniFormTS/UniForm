@@ -4,7 +4,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as z from 'zod/v4'
 import { AutoForm } from './AutoForm'
-import { UniForm, createForm } from '../UniForm'
+import { createForm } from '../UniForm'
 
 // ---------------------------------------------------------------------------
 // Helpers
