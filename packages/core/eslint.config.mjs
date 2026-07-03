@@ -1,4 +1,4 @@
-import { defineConfig } from 'eslint'
+import { defineConfig } from 'eslint/config'
 import tseslint from 'typescript-eslint'
 import reactHooks from 'eslint-plugin-react-hooks'
 
