@@ -23,8 +23,6 @@ jobs:
       - uses: actions/checkout@v7
 
       - uses: pnpm/action-setup@v6
-        with:
-          version: 11
 
       - run: pnpm install --frozen-lockfile
 
