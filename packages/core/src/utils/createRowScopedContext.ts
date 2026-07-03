@@ -1,5 +1,5 @@
 import type * as z from 'zod/v4/core'
-import type { FormMethods } from '../types'
+import type { DeepKeys, FormMethods } from '../types'
 import type { UniFormContext } from '../UniForm'
 
 /**
@@ -42,7 +42,7 @@ export function createRowScopedContext<TSchema extends z.$ZodObject>(
       if (itemFieldNames.has(childName)) {
         // Scope to the specific row
         const qualifiedKey = `${arrayName}.${rowIndex}.${childName}`
-        baseCtx.setFieldMeta(qualifiedKey as never, meta)
+        baseCtx.setFieldMeta(qualifiedKey as DeepKeys<z.infer<TSchema>>, meta)
       } else {
         // Pass through unchanged for non-sibling field names
         baseCtx.setFieldMeta(field, meta)

@@ -28,7 +28,7 @@ export function resolveComponent(
   // 2. meta.component as a string key in the merged registry
   if (
     typeof field.meta.component === 'string' &&
-    registry[field.meta.component]
+    Object.prototype.hasOwnProperty.call(registry, field.meta.component)
   ) {
     return registry[field.meta.component]!
   }

@@ -79,7 +79,7 @@ export function FieldRenderer({
   const hasComponentOverride =
     typeof field.meta.component === 'function' ||
     (typeof field.meta.component === 'string' &&
-      registry[field.meta.component] != null)
+      Object.prototype.hasOwnProperty.call(registry, field.meta.component))
 
   if (field.type === 'object' && !hasComponentOverride) {
     const objectField =
