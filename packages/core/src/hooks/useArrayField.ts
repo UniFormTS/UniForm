@@ -12,9 +12,7 @@ function findArrayConfig(
 ): Extract<FieldConfig, { type: 'array' }> | undefined {
   for (const field of fields) {
     if (field.name === name) {
-      return field.type === 'array'
-        ? (field as Extract<FieldConfig, { type: 'array' }>)
-        : undefined
+      return field.type === 'array' ? field : undefined
     }
     if (field.type === 'object') {
       const found = findArrayConfig(field.children, name)

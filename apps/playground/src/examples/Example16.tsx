@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import * as z from 'zod/v4'
 import { AutoForm, createAutoForm, createForm } from '@uniform-ts/core'
-import type { FieldProps, SelectOption } from '@uniform-ts/core'
+import type { FieldProps } from '@uniform-ts/core'
 import {
   BrandedFieldWrapper,
   BrandedSubmitButton,
@@ -51,8 +51,10 @@ function StarRating(props: FieldProps) {
 
 // Multi-value autocomplete — stores an array of strings via z.array(z.string())
 function MultiAutocomplete(props: FieldProps) {
-  const selected = Array.isArray(props.value) ? (props.value as string[]) : []
-  const options = (props.meta.options as SelectOption[] | undefined) ?? []
+  const selected = Array.isArray(props.value)
+    ? props.value.filter((v): v is string => typeof v === 'string')
+    : []
+  const options = props.meta.options ?? []
   const [inputText, setInputText] = useState('')
   const [open, setOpen] = useState(false)
 
@@ -257,7 +259,7 @@ function ColorPicker(props: FieldProps) {
     '#8b5cf6',
     '#ec4899',
   ]
-  const current = String(props.value ?? '#3b82f6')
+  const current = typeof props.value === 'string' ? props.value : '#3b82f6'
   return (
     <div
       style={{

@@ -13,7 +13,7 @@ const registrationSchema = z.object({
 const registrationForm = createForm(registrationSchema)
 
 /** Simulates a slow API call */
-function saveRegistration(values: z.infer<typeof registrationSchema>) {
+function saveRegistration(_values: z.infer<typeof registrationSchema>) {
   return new Promise<void>((resolve) => setTimeout(resolve, 1200))
 }
 

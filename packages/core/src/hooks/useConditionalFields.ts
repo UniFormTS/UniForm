@@ -26,8 +26,11 @@ export function useConditionalFields(
   control: Control,
   scopeName?: string,
 ): FieldConfig[] {
-  const allValues = useWatch({ control })
-  const scopedValues = useWatch({ control, name: scopeName as string })
+  const allValues = useWatch({ control }) as Record<string, unknown>
+  const scopedValues = useWatch({
+    control,
+    name: scopeName as string,
+  }) as Record<string, unknown>
   const values = scopeName ? scopedValues : allValues
 
   return useMemo(() => {

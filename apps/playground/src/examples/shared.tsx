@@ -19,7 +19,7 @@ export function SubmittedData({ data }: { data: unknown }) {
     >
       {JSON.stringify(
         data,
-        (_k, v) => (v instanceof Date ? v.toISOString() : v),
+        (_k, v: unknown) => (v instanceof Date ? v.toISOString() : v),
         2,
       )}
     </pre>
@@ -35,7 +35,7 @@ export function BrandedInput(props: FieldProps) {
     <input
       id={props.name}
       name={props.name}
-      value={String(props.value ?? '')}
+      value={typeof props.value === 'string' ? props.value : ''}
       onChange={(e) => props.onChange(e.target.value)}
       onBlur={props.onBlur}
       ref={props.ref}

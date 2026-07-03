@@ -48,7 +48,7 @@ const arbFieldDependencyResult: fc.Arbitrary<Partial<FieldDependencyResult>> =
 
 /** Creates a minimal mock UniFormContext that records setFieldMeta calls */
 function createMockBaseContext(): {
-  ctx: UniFormContext<any>
+  ctx: UniFormContext
   calls: Array<{ field: string; meta: Partial<FieldDependencyResult> }>
 } {
   const calls: Array<{ field: string; meta: Partial<FieldDependencyResult> }> =
@@ -69,7 +69,7 @@ function createMockBaseContext(): {
         calls.push({ field, meta })
       },
     ),
-  } as unknown as UniFormContext<any>
+  } as unknown as UniFormContext
 
   return { ctx, calls }
 }
@@ -95,7 +95,7 @@ describe('Property 1: Row-scoped setFieldMeta produces fully-qualified keys', ()
           )
 
           // Call setFieldMeta with the child field name
-          scopedCtx.setFieldMeta(childFieldName as any, meta)
+          scopedCtx.setFieldMeta(childFieldName as never, meta)
 
           // The base context should have been called with the fully-qualified key
           const expectedKey = `${arrayName}.${rowIndex}.${childFieldName}`
@@ -129,7 +129,7 @@ describe('Property 1: Row-scoped setFieldMeta produces fully-qualified keys', ()
 
           // Call setFieldMeta for each sibling field
           for (const childFieldName of childFieldNames) {
-            scopedCtx.setFieldMeta(childFieldName as any, meta)
+            scopedCtx.setFieldMeta(childFieldName as never, meta)
           }
 
           // Each call should produce a fully-qualified key
@@ -164,7 +164,7 @@ describe('Property 1: Row-scoped setFieldMeta produces fully-qualified keys', ()
             () => ({}),
           )
 
-          scopedCtx.setFieldMeta(childFieldName as any, meta)
+          scopedCtx.setFieldMeta(childFieldName as never, meta)
 
           // Verify the key structure: split by dots should give exactly 3 parts
           const key = calls[0].field
@@ -198,7 +198,7 @@ describe('Property 1: Row-scoped setFieldMeta produces fully-qualified keys', ()
             () => ({}),
           )
 
-          scopedCtx.setFieldMeta(childFieldName as any, meta)
+          scopedCtx.setFieldMeta(childFieldName as never, meta)
 
           // The meta value should be passed through unchanged
           expect(calls[0].meta).toEqual(meta)
@@ -245,7 +245,7 @@ describe('Property 3: Non-array field meta is stored globally', () => {
           )
 
           // Call setFieldMeta with a field name NOT in the sibling set
-          scopedCtx.setFieldMeta(nonSiblingField as any, meta)
+          scopedCtx.setFieldMeta(nonSiblingField as never, meta)
 
           // The base context should have been called with the field name as-is
           expect(calls).toHaveLength(1)
@@ -280,7 +280,7 @@ describe('Property 3: Non-array field meta is stored globally', () => {
             () => ({}),
           )
 
-          scopedCtx.setFieldMeta(nonSiblingField as any, meta)
+          scopedCtx.setFieldMeta(nonSiblingField as never, meta)
 
           // The key should NOT contain the arrayName or rowIndex prefix
           expect(calls[0].field).not.toContain(`${arrayName}.${rowIndex}.`)
@@ -300,7 +300,7 @@ describe('Property 3: Non-array field meta is stored globally', () => {
           const { ctx: baseCtx, calls } = createMockBaseContext()
 
           // Call setFieldMeta directly on the base context (global, no row scoping)
-          baseCtx.setFieldMeta(fieldName as any, meta)
+          baseCtx.setFieldMeta(fieldName as never, meta)
 
           // The field name should be stored as-is
           expect(calls).toHaveLength(1)
@@ -334,7 +334,7 @@ describe('Property 3: Non-array field meta is stored globally', () => {
             () => ({}),
           )
 
-          scopedCtx.setFieldMeta(nonSiblingField as any, meta)
+          scopedCtx.setFieldMeta(nonSiblingField as never, meta)
 
           // The meta should be passed through identically
           expect(calls[0].meta).toEqual(meta)
@@ -417,9 +417,6 @@ describe('Property 5: getValues scoping', () => {
           const { ctx: baseCtx } = createMockBaseContext()
           const itemFieldNames = new Set([childFieldName])
 
-          // Simulate full form values containing the array
-          const fullFormValues = { [arrayName]: rows, otherField: 'global' }
-
           // The getValues callback for a row-scoped context returns only the row
           const getValues = () => rows[validRowIndex] as Record<string, unknown>
 
@@ -458,7 +455,8 @@ describe('Property 5: getValues scoping', () => {
 
           const { ctx: baseCtx } = createMockBaseContext()
           // Override the base context's getValues to return full form values
-          ;(baseCtx.getValues as any) = () => fullFormValues
+          ;(baseCtx.getValues as unknown as () => typeof fullFormValues) = () =>
+            fullFormValues
 
           // When using the base context directly (top-level handler), getValues returns full form values
           const result = baseCtx.getValues()
@@ -540,7 +538,7 @@ describe('Property 4: Explicit fully-qualified paths pass through unchanged', ()
           const { ctx: baseCtx, calls } = createMockBaseContext()
 
           // Call setFieldMeta directly on the base context (top-level handler)
-          baseCtx.setFieldMeta(fullyQualifiedPath as any, meta)
+          baseCtx.setFieldMeta(fullyQualifiedPath as never, meta)
 
           // The path should be stored exactly as provided
           expect(calls).toHaveLength(1)
@@ -587,7 +585,7 @@ describe('Property 4: Explicit fully-qualified paths pass through unchanged', ()
 
           // Call setFieldMeta with a fully-qualified path that doesn't match any sibling
           const fullyQualifiedPath = `${pathArrayName}.${pathRowIndex}.${pathChildField}`
-          scopedCtx.setFieldMeta(fullyQualifiedPath as any, meta)
+          scopedCtx.setFieldMeta(fullyQualifiedPath as never, meta)
 
           // Since the path is not in itemFieldNames, it passes through unchanged
           expect(calls).toHaveLength(1)
@@ -607,7 +605,7 @@ describe('Property 4: Explicit fully-qualified paths pass through unchanged', ()
         (fullyQualifiedPath, meta) => {
           const { ctx: baseCtx, calls } = createMockBaseContext()
 
-          baseCtx.setFieldMeta(fullyQualifiedPath as any, meta)
+          baseCtx.setFieldMeta(fullyQualifiedPath as never, meta)
 
           // Verify exact string equality — no prefix added, no modification
           const storedKey = calls[0].field
@@ -628,7 +626,7 @@ describe('Property 4: Explicit fully-qualified paths pass through unchanged', ()
         (fullyQualifiedPath, meta) => {
           const { ctx: baseCtx, calls } = createMockBaseContext()
 
-          baseCtx.setFieldMeta(fullyQualifiedPath as any, meta)
+          baseCtx.setFieldMeta(fullyQualifiedPath as never, meta)
 
           // The meta object should be passed through identically
           expect(calls[0].meta).toEqual(meta)
