@@ -86,6 +86,47 @@ To replace it for a **single field** only, pass the component directly in `field
 fields={{ bio: { component: MyTextarea } }}
 ```
 
+## Rendering an object or array as a single field
+
+By default a `z.object({ ... })` renders as a nested fieldset and a `z.array(z.object({ ... }))` renders as repeating rows. To treat one of them as a **single field** whose value is the whole object (or array) — a user picker, a tag input, a map coordinate widget — point it at a component override. The override can be a **direct component or a string registry key**:
+
+```tsx
+type UserRef = { value: string; label: string }
+
+function UserSelect({ value, onChange }: FieldProps) {
+  const current = value as UserRef | undefined
+  return (
+    <select
+      value={current?.value ?? ''}
+      onChange={(e) => onChange(lookupUser(e.target.value))}
+    >
+      {/* … */}
+    </select>
+  )
+}
+
+const schema = z.object({
+  assignee: z.object({ value: z.string(), label: z.string() }),
+})
+
+// String registry key…
+<AutoForm
+  form={createForm(schema)}
+  components={{ userSelect: UserSelect }}
+  fields={{ assignee: { component: 'userSelect' } }}
+  ...
+/>
+
+// …or the component itself:
+<AutoForm
+  form={createForm(schema)}
+  fields={{ assignee: { component: UserSelect } }}
+  ...
+/>
+```
+
+The component receives the **entire object (or array)** as `value` and must call `onChange` with a full object/array — validation still runs against the complete schema on submit. If a string key does not resolve in the merged registry, the field falls back to its default nested rendering.
+
 ## Live Example
 
 ```jsx live noInline

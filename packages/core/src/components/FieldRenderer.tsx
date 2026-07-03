@@ -68,14 +68,20 @@ export function FieldRenderer({
 }: FieldRendererProps) {
   const effectiveShouldUnregister =
     shouldUnregister ?? typeof field.meta.condition === 'function'
-  const { fieldWrapper: FieldWrapper, messages } = useAutoFormContext()
+  const {
+    fieldWrapper: FieldWrapper,
+    messages,
+    registry,
+  } = useAutoFormContext()
   const { errors } = useFormState({ control })
   const effectiveName = getEffectiveName(field, namePrefix)
 
-  // object and array manage their own layout — unless a direct component overrides
-  const hasDirectComponent = typeof field.meta.component === 'function'
+  const hasComponentOverride =
+    typeof field.meta.component === 'function' ||
+    (typeof field.meta.component === 'string' &&
+      registry[field.meta.component] != null)
 
-  if (field.type === 'object' && !hasDirectComponent) {
+  if (field.type === 'object' && !hasComponentOverride) {
     const objectField =
       effectiveName !== field.name ? { ...field, name: effectiveName } : field
     return (
@@ -89,7 +95,7 @@ export function FieldRenderer({
     )
   }
 
-  if (field.type === 'array' && !hasDirectComponent) {
+  if (field.type === 'array' && !hasComponentOverride) {
     const arrayField =
       effectiveName !== field.name ? { ...field, name: effectiveName } : field
     return (
@@ -135,8 +141,7 @@ export function FieldRenderer({
       field.type === 'string' ||
       field.type === 'number' ||
       field.type === 'date' ||
-      // array/object with a direct meta.component — let ScalarField render it
-      hasDirectComponent
+      hasComponentOverride
     ) {
       return (
         <ScalarField

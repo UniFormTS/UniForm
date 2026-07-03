@@ -431,7 +431,7 @@ type ComponentRegistry = {
 ```
 
 :::note
-Enum fields use the `select` key, not `enum`. The `array` and `object` keys are not part of the registry — those field types are handled internally.
+Enum fields use the `select` key, not `enum`. There are no dedicated `array`/`object` type keys — those field types are handled internally. You can still render an object or array field with a single component by pointing it at a `component` override (a direct component or a custom registry key) via `fields` or schema `meta` — see [Custom Components](/docs/guides/custom-components#rendering-an-object-or-array-as-a-single-field).
 :::
 
 ---
