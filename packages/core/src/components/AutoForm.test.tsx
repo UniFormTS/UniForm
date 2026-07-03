@@ -3864,9 +3864,8 @@ describe('object/array rendered as a single field via component override', () =>
     { value: 'u2', label: 'Bob' },
   ]
 
-  function ObjectSelect({ value, onChange }: FieldProps) {
-    const current = value as OptionValue | undefined
-    return (
+  function ObjectSelect({ value, onChange }: FieldProps<OptionValue | undefined>) {
+    const current = value
       <select
         aria-label='assignee'
         value={current?.value ?? ''}
