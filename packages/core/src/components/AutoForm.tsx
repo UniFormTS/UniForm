@@ -32,6 +32,7 @@ import { useConditionalFields } from '../hooks/useConditionalFields'
 import { useSectionGrouping } from '../hooks/useSectionGrouping'
 import { useFormPersistence } from '../hooks/useFormPersistence'
 import { useLatestRef } from '../hooks/useLatestRef'
+import { createArrayFieldRegistry } from '../hooks/arrayFieldRegistry'
 import {
   applyFieldOverrides,
   injectOnChangeHandlers,
@@ -396,6 +397,8 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   const SectionWrapper = resolvedLayout.sectionWrapper
   const SubmitButton = resolvedLayout.submitButton
 
+  const [arrayFields] = React.useState(createArrayFieldRegistry)
+
   const contextValue = React.useMemo(
     () => ({
       registry,
@@ -411,6 +414,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       formMethods: formMethods as unknown as FormMethods,
       control,
       setDynamicMeta,
+      arrayFields,
     }),
     [
       registry,
@@ -426,6 +430,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       formMethods,
       control,
       setDynamicMeta,
+      arrayFields,
     ],
   )
 

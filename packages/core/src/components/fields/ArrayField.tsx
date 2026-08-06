@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import * as React from 'react'
 import { useFieldArray, useWatch } from 'react-hook-form'
 import type { Control } from 'react-hook-form'
@@ -119,17 +119,52 @@ function applyRowDynamicMeta(
 }
 
 export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
-  const { classNames, layout, labels, setDynamicMeta } = useAutoFormContext()
+  const { classNames, layout, labels, setDynamicMeta, arrayFields } =
+    useAutoFormContext()
   const {
     fields: rows,
     append,
+    prepend,
     remove,
     move,
+    swap,
     insert,
+    update,
+    replace,
   } = useFieldArray({
     control,
     name: effectiveName,
   })
+
+  // Publish the live row operations so `useArrayField` can drive *this*
+  // field array instead of mounting a second, desynchronised one.
+  useEffect(
+    () =>
+      arrayFields.register(effectiveName, {
+        fields: rows,
+        append,
+        prepend,
+        insert,
+        remove,
+        move,
+        swap,
+        update,
+        replace,
+      }),
+    [
+      arrayFields,
+      effectiveName,
+      rows,
+      append,
+      prepend,
+      insert,
+      remove,
+      move,
+      swap,
+      update,
+      replace,
+    ],
+  )
 
   const [collapsed, setCollapsed] = useState<Set<number>>(() => new Set())
 
@@ -141,7 +176,7 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
   const atMax = maxItems != null && rows.length >= maxItems
 
   const showMove = field.meta.movable === true
-  const showDuplicate = field.meta.duplicable === true
+  const showDuplicate = field.meta.duplicable === true && isObjectItems
   const showCollapse = field.meta.collapsible === true && isObjectItems
 
   const toggleCollapse = (index: number) => {
@@ -158,13 +193,21 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
 
   // When the array belongs to a section, propagate section to the item config
   // so nested ObjectField also skips its own <fieldset>.
-  const effectiveItemConfig =
-    field.meta.section && !itemConfig.meta.section
+  const sectionAwareItemConfig =
+    isObjectItems && field.meta.section && !itemConfig.meta.section
       ? {
           ...itemConfig,
           meta: { ...itemConfig.meta, section: field.meta.section },
         }
       : itemConfig
+
+  // Scalar rows carry no label of their own — the array's label covers the
+  // whole list. `meta.itemLabel` opts back in to a per-row label.
+  const itemLabel = field.meta.itemLabel
+  const effectiveItemConfig =
+    !isObjectItems && typeof itemLabel === 'string'
+      ? { ...sectionAwareItemConfig, label: itemLabel }
+      : sectionAwareItemConfig
 
   const {
     add: AddBtn,

@@ -3850,6 +3850,171 @@ describe('useArrayField', () => {
     // defaultValues has 1 row, minItems is 1
     expect(states[states.length - 1]?.atMin).toBe(true)
   })
+
+  // -------------------------------------------------------------------------
+  // W1 regression (REVIEW-1 P1): the hook must drive the *rendered* array,
+  // not a detached useFieldArray copy. Assert the DOM, not just rowCount.
+  // -------------------------------------------------------------------------
+
+  function ControlHarness() {
+    const { append, remove, insert, move, rowCount } = useArrayField('items')
+    return (
+      <div>
+        <span data-testid='row-count'>{rowCount}</span>
+        <button type='button' onClick={() => append({ name: 'appended' })}>
+          ext-add
+        </button>
+        <button type='button' onClick={() => remove(0)}>
+          ext-remove
+        </button>
+        <button type='button' onClick={() => insert(0, { name: 'inserted' })}>
+          ext-insert
+        </button>
+        <button type='button' onClick={() => move(0, 1)}>
+          ext-move
+        </button>
+      </div>
+    )
+  }
+
+  function renderWithControls(defaults: { name: string }[]) {
+    return setup(
+      <AutoForm
+        form={form}
+        defaultValues={{ items: defaults }}
+        layout={{
+          formWrapper: ({ children }) => (
+            <>
+              <ControlHarness />
+              {children}
+            </>
+          ),
+        }}
+        onSubmit={vi.fn()}
+      />,
+    )
+  }
+
+  const itemInputs = () =>
+    screen
+      .queryAllByRole('textbox')
+      .filter((el) => el.getAttribute('name')?.startsWith('items.'))
+
+  it('append() from outside renders a new row in the DOM', async () => {
+    const { user } = renderWithControls([{ name: 'first' }])
+    expect(itemInputs()).toHaveLength(1)
+
+    await user.click(screen.getByRole('button', { name: 'ext-add' }))
+
+    await waitFor(() => expect(itemInputs()).toHaveLength(2))
+    expect(itemInputs()[1]).toHaveValue('appended')
+    expect(screen.getByTestId('row-count')).toHaveTextContent('2')
+  })
+
+  it('remove() from outside removes the row from the DOM', async () => {
+    const { user } = renderWithControls([{ name: 'first' }, { name: 'second' }])
+    expect(itemInputs()).toHaveLength(2)
+
+    await user.click(screen.getByRole('button', { name: 'ext-remove' }))
+
+    await waitFor(() => expect(itemInputs()).toHaveLength(1))
+    expect(itemInputs()[0]).toHaveValue('second')
+    expect(screen.getByTestId('row-count')).toHaveTextContent('1')
+  })
+
+  it('insert() from outside inserts the row at the right index in the DOM', async () => {
+    const { user } = renderWithControls([{ name: 'first' }])
+
+    await user.click(screen.getByRole('button', { name: 'ext-insert' }))
+
+    await waitFor(() => expect(itemInputs()).toHaveLength(2))
+    expect(itemInputs()[0]).toHaveValue('inserted')
+    expect(itemInputs()[1]).toHaveValue('first')
+  })
+
+  it('move() from outside reorders the rows in the DOM', async () => {
+    const { user } = renderWithControls([{ name: 'first' }, { name: 'second' }])
+
+    await user.click(screen.getByRole('button', { name: 'ext-move' }))
+
+    await waitFor(() => expect(itemInputs()[0]).toHaveValue('second'))
+    expect(itemInputs()[1]).toHaveValue('first')
+  })
+
+  it('rows added by the internal Add button are visible to the hook', async () => {
+    const { user } = renderWithControls([{ name: 'first' }])
+
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-count')).toHaveTextContent('2'),
+    )
+  })
+
+  it('falls back to its own field array when the array field is hidden', async () => {
+    const hiddenForm = createForm(schema)
+    function HiddenHarness() {
+      const { append, rowCount } = useArrayField('items')
+      return (
+        <div>
+          <span data-testid='hidden-count'>{rowCount}</span>
+          <button type='button' onClick={() => append({ name: 'x' })}>
+            hidden-add
+          </button>
+        </div>
+      )
+    }
+    const { user } = setup(
+      <AutoForm
+        form={hiddenForm}
+        defaultValues={{ items: [{ name: 'first' }] }}
+        fields={{ items: { hidden: true } }}
+        layout={{
+          formWrapper: ({ children }) => (
+            <>
+              <HiddenHarness />
+              {children}
+            </>
+          ),
+        }}
+        onSubmit={vi.fn()}
+      />,
+    )
+
+    expect(itemInputs()).toHaveLength(0)
+    await user.click(screen.getByRole('button', { name: 'hidden-add' }))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('hidden-count')).toHaveTextContent('2'),
+    )
+  })
+
+  it('warns when called with a name that is not an array field', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    function BadHarness() {
+      useArrayField('notAnArray')
+      return null
+    }
+    render(
+      <AutoForm
+        form={form}
+        defaultValues={{ items: [{ name: 'first' }] }}
+        layout={{
+          formWrapper: ({ children }) => (
+            <>
+              <BadHarness />
+              {children}
+            </>
+          ),
+        }}
+        onSubmit={vi.fn()}
+      />,
+    )
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('useArrayField("notAnArray")'),
+    )
+    warn.mockRestore()
+  })
 })
 
 // ---------------------------------------------------------------------------

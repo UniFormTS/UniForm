@@ -12,6 +12,7 @@ import type {
   FormLabels,
   FormMethods,
 } from '../types'
+import type { ArrayFieldRegistry } from '../hooks/arrayFieldRegistry'
 
 export type AutoFormContextValue = {
   registry: ComponentRegistry
@@ -29,6 +30,8 @@ export type AutoFormContextValue = {
   setDynamicMeta: React.Dispatch<
     React.SetStateAction<Record<string, Partial<FieldDependencyResult>>>
   >
+  /** Live row operations published by every mounted `ArrayField`. @internal */
+  arrayFields: ArrayFieldRegistry
 }
 
 const AutoFormContext = React.createContext<AutoFormContextValue | null>(null)

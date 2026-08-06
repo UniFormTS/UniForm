@@ -57,7 +57,7 @@ UniForm introspects the schema, renders appropriate inputs, validates with Zod, 
 
 **`createAutoForm(defaults)`** — factory that bakes in your design system defaults (components, classNames, fieldWrapper) once, so you don't repeat them on every form.
 
-**`useArrayField(fieldName)`** — a React hook for external array controls (toolbars, section headers, sticky footers) inside the `<AutoForm>` tree. It returns `append/remove/move/...` from `useFieldArray` plus `rowCount`, `canAdd`, and `atMin` derived from the array's `minItems`/`maxItems`.
+**`useArrayField(fieldName)`** — a React hook for external array controls (toolbars, section headers, sticky footers) inside the `<AutoForm>` tree. It delegates to the field array that renders the rows — so `append()` from a toolbar adds a visible row — and returns `append/prepend/insert/remove/move/swap/update/replace` plus `fields`, `rowCount`, `canAdd`, and `atMin` derived from the array's `minItems`/`maxItems`.
 
 **`components`** — a registry mapping Zod types (`string`, `number`, `boolean`, etc.) to your own input components. Pass a component directly on a field via `fields` for one-off overrides. For custom components, type field values precisely with `FieldProps<Value>` (for example, `FieldProps<number>` for a rating widget).
 
@@ -98,7 +98,7 @@ UniForm introspects the schema, renders appropriate inputs, validates with Zod, 
 - **react-hook-form** under the hood — performant, uncontrolled forms with `zodResolver`
 - **Section grouping** — group fields into named sections via `meta.section`
 - **Conditional fields** — show/hide fields based on form values; `hidden` and row-local sibling conditions work inside array rows too
-- **Array fields** — movable, duplicable, collapsible rows; `minItems`/`maxItems` from Zod schema; per-row conditional fields
+- **Array fields** — objects _or_ primitives as rows (`z.array(z.string())` renders one input per row); movable, duplicable, collapsible rows; `minItems`/`maxItems` from Zod schema; per-row conditional fields
 - **External array controls** — use `useArrayField('path.to.array')` to place Add/Remove controls outside the default array block while staying in sync with schema limits
 - **Programmatic control** — `reset()`, `submit()`, `setValues()`, `getValues()`, `setErrors()`, `focus()` via ref
 - **Form persistence** — auto-save to `localStorage` (or custom storage) with configurable debounce

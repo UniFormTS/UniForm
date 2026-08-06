@@ -45,7 +45,7 @@ If multiple forms share components/layout/classNames/labels, bake them once with
 
 ### Step 6: Wire cross-cutting concerns if requested
 
-- Arrays: rely on schema bounds for Add/Remove; use `useArrayField(path)` for external controls.
+- Arrays: rely on schema bounds for Add/Remove; use `useArrayField(path)` for external controls — it drives the rendered rows, so `append()` from a toolbar adds a visible row. Primitive item schemas render one input per row; do not wrap scalars in `z.object({ value })`.
 - Validation wording overrides: the `messages` prop (schema messages stay primary).
 - Programmatic control: a `ref` typed `AutoFormHandle<typeof schema>`.
 - Persistence: `persistKey` (+ `persistStorage={localStorage}` to survive tab close; default is `sessionStorage`).

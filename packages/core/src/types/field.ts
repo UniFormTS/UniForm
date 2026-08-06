@@ -128,10 +128,16 @@ export type FieldMetaBase = {
   // Array-specific options
   /** When `true`, rows in an array field can be reordered via move-up/move-down buttons. */
   movable?: boolean
-  /** When `true`, rows in an array field can be duplicated. */
+  /** When `true`, rows in an array field can be duplicated. Object rows only. */
   duplicable?: boolean
-  /** When `true`, rows in an array field can be individually collapsed. */
+  /** When `true`, rows in an array field can be individually collapsed. Object rows only. */
   collapsible?: boolean
+  /**
+   * Label rendered on each row of an array of primitives (e.g. `z.array(z.string())`).
+   * Scalar rows are unlabelled by default because the array's own label already
+   * describes the list.
+   */
+  itemLabel?: string
   /**
    * Override the wrapper component rendered around this specific object or array field.
    * Takes precedence over the global `layout.objectWrapper` / `layout.arrayWrapper` slots.
