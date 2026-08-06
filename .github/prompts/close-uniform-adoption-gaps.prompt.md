@@ -26,11 +26,14 @@ At the start of a run, create a todo list with one entry per work item in scope,
 
 1. **Read before writing.** Read the source of truth listed under "Source of truth" first. If a file cannot be read, stop and say which one — do not infer API shapes.
 2. **Additive and backwards compatible.** No breaking changes to `AutoForm`, `createForm`, `createAutoForm`, `FieldProps`, or the component registry. Existing playground examples and tests must keep passing untouched. If an item genuinely cannot be done additively, stop and propose the breaking change to the user before implementing it.
-3. **Per-item workflow** (from [CLAUDE.md](../../CLAUDE.md)) — do all four for every item, before moving to the next:
+3. **Per-item workflow** (from [CLAUDE.md](../../CLAUDE.md)) — do all five for every item, before moving to the next:
    1. Implement in `packages/core/src/`.
    2. Add tests in the relevant test file; run `pnpm test` and confirm the whole suite passes.
    3. Update the affected guide(s) in `docs/docs/guides/` and/or `docs/docs/api/`.
-   4. Keep [README.md](../../README.md) and [packages/core/README.md](../../packages/core/README.md) **byte-identical**.
+   4. Update both READMEs — add the new API to the public surface, then keep [README.md](../../README.md) and [packages/core/README.md](../../packages/core/README.md) **byte-identical**.
+   5. Update the `uniform-best-practices` skill in **both** of its locations.
+
+   Steps 3–5 are not optional cleanup at the end of the run — see "Documentation propagation" for exactly which files and why. A work item is not done until its documentation is true.
 4. **New public API must be exported** from [packages/core/src/index.ts](../../packages/core/src/index.ts) with a JSDoc block and at least one `@example`.
 5. **Every regression fix gets a regression test** that fails against the current code. Write the failing test first.
 6. **Add a playground example** in `apps/playground/src/examples/` for each new user-facing API (W1–W9), so the pattern is verified against the real build.
@@ -52,6 +55,47 @@ Read all of these before starting:
 - [packages/core/src/types/utils.ts](../../packages/core/src/types/utils.ts) — `DeepKeys`, `DeepKeysIndexed`, `DeepFieldValue`, `ConditionValues`.
 - [packages/core/src/hooks/useFormPersistence.ts](../../packages/core/src/hooks/useFormPersistence.ts) — the storage default.
 - The guides in [docs/docs/guides](../../docs/docs/guides) and the API reference in [docs/docs/api](../../docs/docs/api).
+
+## Documentation propagation
+
+Every behaviour change in this prompt must be reflected in **four** artifacts. Two of the reported problems (P8, P9) were *purely* documentation failures, and REVIEW-1 P1 notes that the docs "actively recommend the broken path" — so stale docs here are not cosmetic debt, they are the defect.
+
+### 1. Both READMEs
+
+[README.md](../../README.md) is the source of truth; [packages/core/README.md](../../packages/core/README.md) is what npm publishes. `prepack` copies the root one, but keep both in sync manually so editors show the right content. **They must be byte-identical** — verify at the end.
+
+Add every new public API to the README's API surface, not just to the docs site. REVIEW-1 P8's complaint was that a load-bearing API existed only in `dist/index.d.ts`.
+
+### 2. The docs site
+
+Update the affected guide in [docs/docs/guides](../../docs/docs/guides) and the matching API page in [docs/docs/api](../../docs/docs/api). **Any new guide file must be registered in [docs/sidebars.ts](../../docs/sidebars.ts)** or it will not appear in navigation. Add an API page for each new public hook or component (`useUniForm`, `useFormValue`, `useFormValues`, `useField`, `useFieldError`, `useFieldErrors`, `Field`, `UniFormProvider`).
+
+### 3. The skill — **both copies**
+
+The `uniform-best-practices` skill exists twice and both must be updated identically:
+
+- [skills/uniform-best-practices/](../../skills/uniform-best-practices) — the **source**, referenced by `skills-lock.json` as `skillPath`.
+- [.agents/skills/uniform-best-practices/](../../.agents/skills/uniform-best-practices) — the **installed copy** that agents actually load.
+
+Edit the source first, then mirror to `.agents/`. Each copy contains `SKILL.md`, `references/` (`arrays.md`, `component-registry.md`, `reactivity.md`), `agents/` (`form-builder.md`, `form-reviewer.md`, `schema-architect.md`), and `evals/evals.json`. The `computedHash` for `uniform-best-practices` in [skills-lock.json](../../skills-lock.json) will no longer match after editing — flag this in the closing summary; do not hand-edit the hash unless you can regenerate it correctly.
+
+### Known-stale content — fix these when the corresponding item lands
+
+This inventory is verified, not guessed. Search for these exact strings; do not assume the list is exhaustive.
+
+| Work item | Stale claim | Locations |
+| --- | --- | --- |
+| **W1** | Recommends `useArrayField` for external controls — currently the broken path | `SKILL.md` §6 (×2 copies), `references/arrays.md` §"External controls" (×2), `agents/form-builder.md` (×2), `agents/form-reviewer.md` (×2 — tells reviewers to *suggest* the hook), `SKILL.md` §8 ("prefer `useArrayField` over the ref"), [docs/docs/guides/arrays.md](../../docs/docs/guides/arrays.md), [docs/docs/api/use-array-field.md](../../docs/docs/api/use-array-field.md) |
+| **W2** | "Array rows must be `z.object(...)`. Arrays of primitives are not rendered" | `SKILL.md` §6 (×2), `agents/schema-architect.md` (×2), `agents/form-reviewer.md` (×2 — instructs reviewers to **flag** primitive arrays as an error), [docs/docs/guides/arrays.md](../../docs/docs/guides/arrays.md) |
+| **W3–W5** | No skill coverage of headless mode, `<Field>`, or typed state access — the skill's mental model is "AutoForm renders everything" | Add a new `SKILL.md` section and a `references/headless.md`; update the `agents/form-builder.md` workflow so bespoke layouts stay on the library instead of leaving it |
+| **W6** | Skill presents `required` as a static schema property; conditional-fields coverage offers only visibility | `SKILL.md` §5, `references/reactivity.md`, `agents/schema-architect.md` |
+| **W8** | `setValue`/`setValues` documented without options | `SKILL.md` §8, [docs/docs/guides/programmatic-control.md](../../docs/docs/guides/programmatic-control.md) |
+| **W9** | `setOnChange` documented as one-handler-per-field with no cascade story | `SKILL.md` §5, `references/reactivity.md` |
+| **W14** | `persistStorage` default documented as `localStorage`, implemented as `sessionStorage` | [packages/core/src/types/form.ts](../../packages/core/src/types/form.ts) JSDoc, `SKILL.md` §9, [docs/docs/guides/persistence.md](../../docs/docs/guides/persistence.md) |
+
+The `agents/form-reviewer.md` entries matter most: that file currently instructs a review agent to **flag correct code as wrong** once W1 and W2 land. Update it in the same commit as the fix.
+
+Also update `evals/evals.json` when a change alters expected agent behaviour — an eval asserting the old limitation will fail against the fixed library.
 
 ## Phases
 
@@ -379,16 +423,20 @@ const form = useUniForm(requisitionForm, { defaultValues })
 - Do not "fix" W1 by removing `useArrayField`; both reports treat external array control as a required capability.
 - Do not implement W6 as an asterisk-only cosmetic flag — a required marker that doesn't block submit re-creates the duplicated-rules problem from W7.
 - Do not add a second message/localization system; W14 must reduce the number of message layers, not increase it.
+- Do not update one copy of the skill and not the other, and do not leave `agents/form-reviewer.md` telling reviewers to flag behaviour that now works.
 - Do not create summary markdown files reporting on this work. Report in the closing message.
 
 ## Before finishing
 
 1. From the repo root, run `pnpm test`, `pnpm lint`, `pnpm build`, and — when docs changed — `pnpm docs:build`. Report each result. All four must pass; do not report the work complete with a red suite.
-2. Confirm [README.md](../../README.md) and [packages/core/README.md](../../packages/core/README.md) are identical.
-3. Deliver a closing summary containing:
+2. Confirm [README.md](../../README.md) and [packages/core/README.md](../../packages/core/README.md) are identical, and that every new public API appears in them.
+3. Confirm the two skill copies (`skills/uniform-best-practices/` and `.agents/skills/uniform-best-practices/`) are identical to each other, and that no file in either still carries a stale claim from the "Known-stale content" table for an item you implemented. Grep for the removed limitation strings to prove it.
+4. Confirm any new guide is registered in [docs/sidebars.ts](../../docs/sidebars.ts).
+5. Deliver a closing summary containing:
    - A table mapping every review item **in the implemented scope** (**P1–P11**, **REVIEW-1 notes A/B**, **R1–R5**) → work item → status (`done` / `partial` / `deferred`) → the files that changed.
    - Every deviation from the API shapes proposed in the reviews, with the reason.
    - Every case where a review's stated root cause did not match what you observed in this repo, with the corrected diagnosis.
    - Every doc-vs-implementation mismatch found during the W14 audit.
    - Anything that could not be done additively, listed as a proposed breaking change for the next major.
+   - Whether `skills-lock.json`'s `computedHash` for `uniform-best-practices` needs regenerating.
    - The next phase to run, so the following session can pick up cleanly.
