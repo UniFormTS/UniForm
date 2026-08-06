@@ -40,7 +40,8 @@ Flag anything not in UniForm:
 
 - Manual `{cond && <input/>}` toggling instead of `setCondition`/`condition` → flag (hidden fields should be unregistered, not just unmounted).
 - Hand-guarded array limits (`disabled={rows.length >= max}`) instead of schema bounds → flag.
-- Arrays of primitives expected to render as repeating rows → flag (rows must be `z.object`).
+- Scalars wrapped as `z.array(z.object({ value: z.string() }))` only to make them render → flag; primitive arrays render natively, so keep the storage shape flat.
+- `duplicable` / `collapsible` set on an array of primitives → flag as a no-op (object rows only).
 - External array controls re-implemented instead of `useArrayField(path)` → suggest the hook.
 
 ### Step 5: Check the factory split

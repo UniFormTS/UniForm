@@ -9,6 +9,8 @@ sidebar_position: 4
 
 It is ideal when you want array controls outside the default array field layout (toolbars, section headers, sticky footers, custom wrappers).
 
+The hook **delegates to the field array that renders the rows**, so calling `append()` from a toolbar immediately adds a visible row. It does not create a competing field array.
+
 ```tsx
 import { useArrayField } from '@uniform-ts/core'
 
@@ -30,7 +32,7 @@ function LineItemsToolbar() {
 ## Signature
 
 ```ts
-function useArrayField(fieldName: string): UseFieldArrayReturn & {
+function useArrayField(fieldName: string): ArrayFieldActions & {
   rowCount: number
   canAdd: boolean
   atMin: boolean
@@ -45,9 +47,9 @@ function useArrayField(fieldName: string): UseFieldArrayReturn & {
 
 ## Returns
 
-`useArrayField` returns all standard [`useFieldArray`](https://react-hook-form.com/docs/usefieldarray) members for that field, including:
+`useArrayField` returns the same row operations as [`useFieldArray`](https://react-hook-form.com/docs/usefieldarray):
 
-- `fields`
+- `fields` — the current rows, each carrying react-hook-form's generated `id`
 - `append`
 - `prepend`
 - `insert`
@@ -70,9 +72,28 @@ And it adds UniForm-specific derived flags:
 ## Requirements
 
 - Must be called from a component rendered under `<AutoForm>`.
-- `fieldName` must point to an array field rendered by UniForm.
+- `fieldName` should point to an array in the form schema.
 
-If either condition is not met, React Hook Form / context usage will fail at runtime.
+When UniForm does not render the array — it is `hidden`, or replaced by a custom component via `fields.<name>.component` — the operations fall back to writing the array value directly, so the hook still works.
+
+In development, calling `useArrayField` with a path that is neither a mounted array field nor an array in the schema logs a `console.warn` naming the path, instead of silently doing nothing.
+
+## Primitive arrays
+
+The hook works identically for arrays of primitives:
+
+```tsx
+const schema = z.object({ tags: z.array(z.string()).max(5) })
+
+function TagToolbar() {
+  const { append, canAdd } = useArrayField('tags')
+  return (
+    <button type='button' disabled={!canAdd} onClick={() => append('')}>
+      + Add tag
+    </button>
+  )
+}
+```
 
 ## Example: external toolbar + hidden built-in Add button
 

@@ -82,6 +82,7 @@ export { useSectionGrouping } from './hooks/useSectionGrouping'
 export type { SectionGroup } from './hooks/useSectionGrouping'
 export { useFormPersistence } from './hooks/useFormPersistence'
 export { useArrayField } from './hooks/useArrayField'
+export type { ArrayFieldActions } from './hooks/arrayFieldRegistry'
 
 // Context
 export { useAutoFormContext } from './context/AutoFormContext'

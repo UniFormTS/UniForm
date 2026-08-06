@@ -33,10 +33,12 @@ export function DefaultFieldWrapper({
       data-has-error={hasError || undefined}
       data-has-description={hasDescription || undefined}
     >
-      <label htmlFor={field.name} className={classNames.label}>
-        {field.label}
-        {field.required && ' *'}
-      </label>
+      {field.label !== '' && (
+        <label htmlFor={field.name} className={classNames.label}>
+          {field.label}
+          {field.required && ' *'}
+        </label>
+      )}
       {children}
       {hasDescription && (
         <p className={classNames.description}>

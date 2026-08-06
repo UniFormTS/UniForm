@@ -58,8 +58,8 @@ UniForm introspects the schema, renders the right input for each field type (`z.
 - **`createForm()` / `<AutoForm>`** — a type-safe form object lives outside React; attach typed `setOnChange` and `setCondition` handlers per field
 - **Per-field overrides** — customise labels, descriptions, ordering, column span, and components via the `fields` prop without changing the schema
 - **Conditional fields** — show/hide fields based on form values; hidden fields are unregistered from validation and excluded from submit
-- **Array fields** — `z.array(z.object(...))` renders a repeating group with add/remove/reorder controls
-- **`useArrayField()` hook** — build external array controls (toolbars, headers, custom wrappers) while staying in sync with `min`/`max`
+- **Array fields** — `z.array(...)` renders a repeating group with add/remove/reorder controls; rows can be objects or primitives (`z.array(z.string())` renders one input per row)
+- **`useArrayField()` hook** — build external array controls (toolbars, headers, custom wrappers) that drive the rendered rows, while staying in sync with `min`/`max`
 - **Async everywhere** — async `onSubmit`, async `setOnChange` handlers, and async `defaultValues` with a loading fallback
 - **Programmatic control** — `reset()`, `submit()`, `setValues()`, `getValues()`, `setErrors()`, `focus()` via a `ref`
 - **Persistence** — auto-save form values to `sessionStorage` (or any custom storage) with configurable debounce

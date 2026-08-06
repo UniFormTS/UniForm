@@ -6,11 +6,7 @@ description: Render and manage repeating groups of fields from z.array() schemas
 
 # Array Fields
 
-`z.array(z.object(...))` fields are automatically rendered as a repeating group. Each row is an independent nested form segment rendered below an **Add** button.
-
-:::note Object arrays only
-UniForm renders array fields whose item schema is a `z.object(...)`. Arrays of primitives (e.g. `z.array(z.string())`) are not rendered as repeating fields — use a custom component for those cases.
-:::
+`z.array(...)` fields are automatically rendered as a repeating group. Each row is an independent form segment rendered above an **Add** button.
 
 ```ts
 const schema = z.object({
@@ -24,6 +20,32 @@ const schema = z.object({
 })
 ```
 
+## Arrays of primitives
+
+Item schemas do not have to be objects. `z.array(z.string())`, `z.array(z.number())`, `z.array(z.date())`, `z.array(z.boolean())` and `z.array(z.enum([...]))` each render one input per row, resolved through the component registry exactly like any other leaf field.
+
+```ts
+const schema = z.object({
+  tags: z.array(z.string().min(2)).min(1).max(5),
+  scores: z.array(z.number().min(0).max(10)),
+  audiences: z.array(z.enum(['public', 'members', 'staff'])),
+})
+```
+
+Keep the storage shape flat — there is no need to model a tag list as `z.array(z.object({ value: z.string() }))`.
+
+- Item-level constraints (`.min()`, `.max()`, `.email()`, …) are validated per row, and the error renders on the row that failed.
+- Path resolution is the bare index: the first tag input is registered at `tags.0`.
+- `.min(n)` / `.max(n)` on the array still gate the Add and Remove buttons.
+- **Add**, **Remove** and **Move** work for scalar rows. **Duplicate** and **Collapse** are object-row only — setting `duplicable` or `collapsible` on a primitive array renders no button.
+- Scalar rows are unlabelled by default, because the array's own label already describes the list. Opt into a per-row label with `itemLabel`:
+
+```tsx
+<AutoForm fields={{ scores: { label: 'Scores', itemLabel: 'Score' } }} ... />
+```
+
+`append()` with no argument inserts a sensible empty item for the row type (`''`, `0`, `false`, the first enum option, and so on).
+
 ## Row controls
 
 By default each row gets:
@@ -33,7 +55,7 @@ By default each row gets:
 | Remove              | Removes that row from the array |
 | Move Up / Move Down | Reorders rows                   |
 
-Enable **Duplicate** and **Collapse** per-row via the `fields` prop:
+Enable **Duplicate** and **Collapse** per-row via the `fields` prop (object rows only):
 
 ```tsx
 <AutoForm
@@ -131,8 +153,11 @@ See [`ArrayFieldLayoutProps`](/docs/api/types#arrayfieldlayoutprops) for the ful
 
 When you need array actions outside the array field block (for example in a toolbar above the form), use `useArrayField(fieldName)` inside any component rendered under `<AutoForm>`.
 
-The hook returns all `useFieldArray` actions (`append`, `remove`, `move`, `swap`, `replace`, etc.) plus:
+The hook delegates to the field array that renders the rows, so `append()` from a toolbar immediately adds a **visible** row. When UniForm does not render the array — it is `hidden`, or replaced by a custom component — the operations fall back to writing the array value directly.
 
+It returns all `useFieldArray` actions (`append`, `prepend`, `insert`, `remove`, `move`, `swap`, `update`, `replace`) plus:
+
+- `fields` — the current rows, each carrying react-hook-form's generated `id`
 - `rowCount` — current number of rows
 - `canAdd` — `false` when the array reached Zod `.max(...)`
 - `atMin` — `true` when row count is at or below Zod `.min(...)`
@@ -147,15 +172,28 @@ const schema = z.object({
 const form = createForm(schema)
 
 function Toolbar() {
-  const { append, canAdd, rowCount } = useArrayField('lineItems')
+  const { append, remove, move, canAdd, atMin, rowCount } =
+    useArrayField('lineItems')
   return (
-    <button
-      type='button'
-      disabled={!canAdd}
-      onClick={() => append({ name: '' })}
-    >
-      Add item ({rowCount}/5)
-    </button>
+    <>
+      <button
+        type='button'
+        disabled={!canAdd}
+        onClick={() => append({ name: '' })}
+      >
+        Add item ({rowCount}/5)
+      </button>
+      <button
+        type='button'
+        disabled={atMin}
+        onClick={() => remove(rowCount - 1)}
+      >
+        Remove last
+      </button>
+      <button type='button' onClick={() => move(0, 1)}>
+        Move first down
+      </button>
+    </>
   )
 }
 
@@ -176,7 +214,9 @@ const RowsOnly = ({ rows }: ArrayFieldLayoutProps) => <>{rows}</>
 />
 ```
 
-Use dot paths for nested arrays too (for example `"profile.contacts"`).
+Use dot paths for nested arrays too (for example `"profile.contacts"`). Primitive arrays work the same way — `append('draft')` adds a visible string row.
+
+In development the hook warns when the path is neither a mounted array field nor an array in the schema, so a typo fails loudly instead of silently doing nothing.
 
 See [`useArrayField()` API](/docs/api/use-array-field) for the full contract.
 

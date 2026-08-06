@@ -24,6 +24,8 @@ import Example23 from './examples/Example23'
 import Example24 from './examples/Example24'
 import Example25 from './examples/Example25'
 import Example26 from './examples/Example26'
+import Example27 from './examples/Example27'
+import Example28 from './examples/Example28'
 
 const examples = [
   { id: 'ex1', label: '1. classNames + span' },
@@ -52,6 +54,8 @@ const examples = [
   { id: 'ex24', label: '24. External Array Buttons' },
   { id: 'ex25', label: '25. Per-Row Field Meta' },
   { id: 'ex26', label: '26. Row-Specific onChange' },
+  { id: 'ex27', label: '27. External Array Control' },
+  { id: 'ex28', label: '28. Arrays of Primitives' },
 ]
 
 export default function App() {
@@ -148,6 +152,10 @@ export default function App() {
       <Example25 />
       <hr style={{ margin: '2rem 0' }} />
       <Example26 />
+      <hr style={{ margin: '2rem 0' }} />
+      <Example27 />
+      <hr style={{ margin: '2rem 0' }} />
+      <Example28 />
     </main>
   )
 }

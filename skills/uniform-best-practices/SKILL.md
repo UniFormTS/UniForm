@@ -263,9 +263,22 @@ const schema = z.object({
 />
 ```
 
-> Array rows must be `z.object(...)`. Arrays of primitives (`z.array(z.string())`) are not rendered as repeating fields — use a custom component for those.
+Rows can be objects **or primitives**. `z.array(z.string())`, `z.array(z.number())` and `z.array(z.enum([...]))` each render one input per row at the bare index path (`tags.0`), with item-level validation reported on the failing row. Keep the storage shape flat — do not wrap scalars in `z.object({ value })` to make them render.
 
-For **external controls** (an Add button in a toolbar, a sticky footer count), call `useArrayField(path)` from any component rendered inside `<AutoForm>`. It returns every `useFieldArray` action plus `rowCount`, `canAdd` (false at max), and `atMin` (true at min), all synced to the schema's bounds:
+```tsx
+const schema = z.object({ tags: z.array(z.string().min(2)).min(1).max(5) })
+
+<AutoForm
+  form={createForm(schema)}
+  defaultValues={{ tags: ['zod'] }}
+  fields={{ tags: { label: 'Tags', itemLabel: 'Tag' } }}
+  onSubmit={save}
+/>
+```
+
+> Scalar rows support Add, Remove and Move. `duplicable` and `collapsible` are object-row only. Scalar rows are unlabelled by default — use `itemLabel` to opt into a per-row label.
+
+For **external controls** (an Add button in a toolbar, a sticky footer count), call `useArrayField(path)` from any component rendered inside `<AutoForm>`. It delegates to the field array that renders the rows, so `append()` from outside adds a **visible** row. It returns every `useFieldArray` action plus `rowCount`, `canAdd` (false at max), and `atMin` (true at min), all synced to the schema's bounds:
 
 ```tsx
 import { useArrayField } from '@uniform-ts/core'
@@ -284,7 +297,7 @@ function Toolbar() {
 }
 ```
 
-**Read [references/arrays.md](references/arrays.md)** for custom row layouts (`arrayRowLayout`), Add-button positioning (`arrayFieldLayout`), swapping array button components (`arrayButtons`), and nested-array dot paths.
+**Read [references/arrays.md](references/arrays.md)** for custom row layouts (`arrayRowLayout`), Add-button positioning (`arrayFieldLayout`), swapping array button components (`arrayButtons`), primitive rows, and nested-array dot paths.
 
 ---
 
