@@ -23,7 +23,7 @@ Every row gets Remove and Move Up / Move Down by default. Enable Duplicate and C
 />
 ```
 
-`.min(n)` / `.max(n)` on the array drive the UI: the Add button hides at max, and Remove is suppressed below min. Keep these bounds in the **schema** so validation and UI stay in agreement.
+`.min(n)` / `.max(n)` on the array drive the UI: the Add button is **disabled** at max, and Remove is **disabled** at min (both stay in the DOM). Keep these bounds in the **schema** so validation and UI stay in agreement.
 
 ## Arrays of primitives
 
@@ -94,6 +94,8 @@ const RowsOnly = ({ rows }: ArrayFieldLayoutProps) => <>{rows}</>
 ## Swapping array buttons (`arrayButtons`)
 
 Swap the button component for every array action at once with `layout.arrayButtons`. Set `base` as the fallback and override individual slots as needed. Resolution: **specific slot → `base` → built-in default**. `undefined` means "use fallback/default"; `null` means "omit this button".
+
+The **collapse** toggle is the exception: it takes an extra `isCollapsed` prop, so it does **not** fall back to `base` — override or omit it explicitly.
 
 ```tsx
 import { Button } from 'my-design-system'

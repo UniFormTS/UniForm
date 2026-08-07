@@ -59,15 +59,15 @@ export interface ArrayRowLayoutProps {
   children: React.ReactNode
   /** Action button nodes for the row. */
   buttons: {
-    /** Button to move the row up, or `null` if already first. */
+    /** Button to move the row up — rendered `disabled` on the first row, `null` when `movable` is off or there is only one row. */
     moveUp: React.ReactNode | null
-    /** Button to move the row down, or `null` if already last. */
+    /** Button to move the row down — rendered `disabled` on the last row, `null` when `movable` is off or there is only one row. */
     moveDown: React.ReactNode | null
-    /** Button to duplicate the row, or `null` if at max items. */
+    /** Button to duplicate the row, or `null` if at max items, `duplicable` is off, or rows are primitives. */
     duplicate: React.ReactNode | null
-    /** Button to remove the row, or `null` when omitted via layout slot. */
+    /** Button to remove the row — rendered `disabled` at min items, `null` when omitted via layout slot. */
     remove: React.ReactNode | null
-    /** Button to collapse/expand the row, or `null` if collapsing is disabled. */
+    /** Button to collapse/expand the row, or `null` if collapsing is disabled or rows are primitives. */
     collapse: React.ReactNode | null
   }
   /** Zero-based index of this row within the array. */
@@ -154,11 +154,15 @@ export type SectionConfig = {
 /**
  * Button component overrides for array fields. Set `base` to swap in your
  * design system's button everywhere; use the specific keys to override
- * individual actions on top of that. All keys fall back to `base`, which
- * itself falls back to a plain `<button>`.
+ * individual actions on top of that.
+ *
+ * `add`, `remove`, `moveUp`, `moveDown` and `duplicate` fall back to `base`,
+ * which itself falls back to a plain `<button>`. **`collapse` does not** — it
+ * receives an extra `isCollapsed` prop, so it falls back to its own default and
+ * must be overridden (or set to `null`) explicitly.
  */
 export type ArrayButtonSlots = {
-  /** Used for every array button that has no specific override. Set to `null` to omit all unspecified buttons. */
+  /** Used for every array button that has no specific override, except `collapse`. Set to `null` to omit all unspecified buttons. */
   base?: OptionalSlotComponent<ArrayButtonProps>
   /** Override for the add-row button only. Set to `null` to omit. */
   add?: OptionalSlotComponent<ArrayButtonProps>

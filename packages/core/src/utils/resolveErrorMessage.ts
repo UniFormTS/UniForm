@@ -59,9 +59,12 @@ export function resolveErrorMessage(
  *
  * Zod v4 uses `invalid_type` for `undefined` on required fields, and
  * `too_small` (with `inclusive` minimum) for empty strings / zero values.
+ * `required` is UniForm's own code, produced by a `setRequired` predicate.
  */
 function isRequiredError(error: FieldError): boolean {
-  // RHF maps Zod errors; "too_small" with inclusive minimum is the common Zod required pattern
-  // Also handle "invalid_type" which Zod v4 uses for undefined-on-required
-  return error.type === 'too_small' || error.type === 'invalid_type'
+  return (
+    error.type === 'too_small' ||
+    error.type === 'invalid_type' ||
+    error.type === 'required'
+  )
 }

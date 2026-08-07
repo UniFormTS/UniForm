@@ -35,6 +35,7 @@ const sidebars: SidebarsConfig = {
         'guides/sections',
         'guides/conditional-fields',
         'guides/dynamic-requiredness',
+        'guides/dependencies',
         'guides/arrays',
         'guides/localization',
         'guides/validation',

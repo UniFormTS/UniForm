@@ -74,7 +74,8 @@ export function ArrayContainerField({
   effectiveName,
   shouldUnregister,
 }: ContainerFieldProps) {
-  const { registry, arrayFields } = useAutoFormContext()
+  const { registry, _internal } = useAutoFormContext()
+  const { arrayFields } = _internal
   const Component = resolveComponent(field, registry)
   const setPath = useSetPath(effectiveName)
   const base = useContainerBase(field, effectiveName)

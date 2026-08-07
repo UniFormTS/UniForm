@@ -49,11 +49,11 @@ export function Field({
   disabled,
   className,
 }: FieldComponentProps) {
-  const { resolvedFields, control } = useAutoFormContext()
+  const { _internal, control } = useAutoFormContext()
   const basePath = useFieldPath()
   const path = joinFieldPath(basePath, name)
 
-  const resolved = resolveFieldAt(resolvedFields, path)
+  const resolved = resolveFieldAt(_internal.resolvedFields, path)
 
   React.useEffect(() => {
     if (resolved) return

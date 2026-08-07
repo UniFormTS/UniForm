@@ -47,7 +47,7 @@ export function useField<TValue = unknown>(
 ): UseFieldResult<TValue> {
   const {
     control,
-    resolvedFields,
+    _internal,
     messages,
     coercions,
     disabled: contextDisabled,
@@ -56,7 +56,7 @@ export function useField<TValue = unknown>(
   const basePath = useFieldPath()
   const path = joinFieldPath(basePath, name)
 
-  const resolved = resolveFieldAt(resolvedFields, path)
+  const resolved = resolveFieldAt(_internal.resolvedFields, path)
   const config = resolved?.config
 
   React.useEffect(() => {

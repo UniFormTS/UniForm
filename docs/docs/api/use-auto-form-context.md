@@ -65,7 +65,28 @@ Throws if called outside an `<AutoForm>` / `<UniFormProvider>` subtree — unles
 | `messages`     | `ValidationMessages \| undefined`        | Active custom validation messages                                            |
 | `labels`       | `FormLabels`                             | UI label overrides (submit button text, array button text, …)                |
 
-**Internal — may change without a major release:** `resolvedFields`, `fieldOverrides`, `layoutSlots`, `setDynamicMeta`, `arrayFields`.
+**Internal — not covered by semver.** Everything UniForm needs to render itself lives under `_internal`, so what is safe to depend on is legible at a glance:
+
+| `_internal` member | Description                                                        |
+| ------------------ | ------------------------------------------------------------------ |
+| `resolvedFields`   | Field configs after the full pipeline (handlers, conditions, meta) |
+| `fieldOverrides`   | The raw `fields` prop                                              |
+| `layoutSlots`      | The raw `layout` prop, needed for per-section config               |
+| `setDynamicMeta`   | Backing store for `setFieldMeta`                                   |
+| `arrayFields`      | Live row operations published by mounted array fields              |
+
+```ts
+const { _internal } = useAutoFormContext()
+_internal.resolvedFields // may change in a minor release
+```
+
+:::caution Deprecated aliases
+These five members are still readable at the top level (`ctx.resolvedFields`, `ctx.arrayFields`, …) for one minor version, and are marked `@deprecated`. Move to `_internal` — the aliases will be removed.
+:::
+
+:::note Errors are not on the context
+The error tree is deliberately absent here. Putting it on the context would change the context object's identity on every error change and re-render every consumer. Use [`useFieldError` / `useFieldErrors` / `useFormErrors`](./use-field-error) instead — they are reactive _and_ scoped.
+:::
 
 ## Common use cases
 

@@ -8,8 +8,39 @@ Read this when writing custom field components, customising which Zod type maps 
 - [Resolution order](#resolution-order)
 - [The `FieldProps` contract](#the-fieldprops-contract)
 - [Rendering a string field as a select](#rendering-a-string-field-as-a-select)
+- [Option identity for rich select values](#option-identity-for-rich-select-values)
 - [The `schema` escape hatch](#the-schema-escape-hatch)
 - [Plain unions](#plain-unions)
+
+## Option identity for rich select values
+
+Select option values are `string | number` by default and need nothing extra. For richer values — a composite key such as `{ dataset, version }` — supply an identity rather than hand-rolling a key/equality layer outside the library:
+
+```tsx
+const reportKey = (option: { value: unknown }) => {
+  const id = option.value as ReportId
+  return `${id.dataset}@${id.version}`
+}
+
+<AutoForm
+  fields={{
+    source: {
+      component: 'select',
+      options: reports,
+      getOptionKey: reportKey,
+      isOptionEqual: (a, b) => reportKey({ value: a }) === reportKey({ value: b }),
+    },
+  }}
+  ...
+/>
+```
+
+- `getOptionKey(option)` — stable string for React keys and the DOM `value`. **Required** when values are not strings, numbers or booleans.
+- `isOptionEqual(formValue, optionValue)` — which option is selected. Defaults to `Object.is`, then key equality; usually omit it.
+- **The key is never the value.** `onChange` always receives the option's raw `value`, so objects round-trip unchanged (and a numeric option submits a `number`, not `"2"`).
+- Set both once for every form via `createAutoForm({ getOptionKey, isOptionEqual })`; per-field `meta` wins.
+- UniForm throws, naming the field, when an object-valued option has no `getOptionKey` or two options share a key — both are silent selection bugs otherwise.
+- `SelectOption`'s value type defaults to `string | number`; type rich lists as `SelectOption<MyValue>[]` and the component as `FieldProps<MyValue>`.
 
 ## Built-in registry keys
 

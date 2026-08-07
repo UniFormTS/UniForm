@@ -73,15 +73,22 @@ Common Zod error codes: `too_small`, `too_big`, `invalid_type`, `invalid_string`
 
 ## Resolution order
 
+There is **one** source of validation messages — Zod — and `messages` is a targeted override on top of its result, not a second message system. Anything you do not list falls through to Zod untouched, so a global `z.config({ localeError })` keeps working exactly as it does everywhere else in your app.
+
 `messages[fieldName]` accepts **either** a `string` (replaces all errors on that field) **or** an object (maps individual Zod error codes to strings). These are two alternative shapes — you choose one per field.
 
 For each field error, UniForm resolves the message in this priority:
 
 1. **Per-field string** — if `messages[fieldName]` is a `string`, it replaces every error on that field regardless of error code
 2. **Per-field per-code** — if `messages[fieldName]` is an object, the matching `messages[fieldName][error.code]` string is used
-3. **Global `messages.required`** — when the error is a required-field error (`too_small` or `invalid_type`) and no per-field override matched
+3. **Global `messages.required`** — when the error is a required-field error (`too_small`, `invalid_type`, or a `setRequired` predicate) and no per-field override matched
 4. **Schema message** — the message passed directly in the schema (e.g. `z.string().min(3, 'Too short!')`)
-5. **Zod's default English message**
+5. **Zod's configured locale** — including a global `z.config({ localeError })`
+6. **Zod's default English message**
+
+:::tip Where to put a message
+Author messages in the **schema** first, and set a **global Zod locale** for language. Reach for `messages` only when one form needs different wording from everywhere else — that keeps the number of message layers at one plus exceptions, rather than two parallel systems.
+:::
 
 ## Cross-field and array-index errors
 

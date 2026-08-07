@@ -95,8 +95,8 @@ function createFallbackActions(
  * }
  */
 export function useArrayField(fieldName: string) {
-  const { control, resolvedFields, arrayFields, formMethods } =
-    useAutoFormContext()
+  const { control, _internal, formMethods } = useAutoFormContext()
+  const { resolvedFields, arrayFields } = _internal
 
   const live = React.useSyncExternalStore(
     arrayFields.subscribe,

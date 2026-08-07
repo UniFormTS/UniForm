@@ -7,6 +7,7 @@ Read this when a field must react to another field's value: cascading dropdowns,
 - [`setOnChange` — react to a field change](#setonchange--react-to-a-field-change)
 - [`setFieldMeta` — dynamic field metadata](#setfieldmeta--dynamic-field-metadata)
 - [`setRequired` — runtime requiredness](#setrequired--runtime-requiredness)
+- [`setDependency` — chained dependencies](#setdependency--chained-dependencies)
 - [Per-row `setFieldMeta` in arrays](#per-row-setfieldmeta)
 - [Row-specific handlers](#row-specific-handlers)
 - [Inline `onChange` via the `fields` prop](#inline-onchange-via-the-fields-prop)
@@ -79,13 +80,59 @@ Each row is evaluated independently, so the submit error lands on the row that f
 
 Three ways to express it, in increasing precedence:
 
-| Where | Use when |
-| --- | --- |
-| `form.setRequired(path, predicate)` | The rule belongs to the form definition and should travel with it |
-| `fields={{ x: { requiredWhen } }}` | A one-off at the render site |
+| Where                                 | Use when                                                                           |
+| ------------------------------------- | ---------------------------------------------------------------------------------- |
+| `form.setRequired(path, predicate)`   | The rule belongs to the form definition and should travel with it                  |
+| `fields={{ x: { requiredWhen } }}`    | A one-off at the render site                                                       |
 | `ctx.setFieldMeta('x', { required })` | Easier to express imperatively inside an `onChange` handler; applied last and wins |
 
 **Empty** means `undefined`, `null`, `''` or `[]`. `false` and `0` are values, not absences. An error Zod already reported at the path is never overwritten. The message comes from `messages.required`, defaulting to `"This field is required"`.
+
+## `setDependency` — chained dependencies
+
+`setOnChange` reacts to one field. For a **chain** (country → region → city) or a derived value fed by several fields, declare each edge once and let UniForm walk the transitive closure:
+
+```ts
+const addressForm = createForm(schema)
+  .setDependency('region', {
+    dependsOn: 'country',
+    resolve: async ({ ctx, value }) => {
+      ctx.setValue('region', '')
+      ctx.setFieldMeta('region', { options: await loadRegions(value) })
+    },
+  })
+  .setDependency('city', {
+    dependsOn: 'region',
+    resolve: ({ ctx }) => ctx.setValue('city', ''),
+  })
+```
+
+Changing `country` re-resolves `region` **and** `city`, in dependency order — `country` never needs to know `city` exists.
+
+- `dependsOn` takes one path or an array (`['quantity', 'unitPrice']` for a derived total).
+- `setDependencies(graph)` registers many at once.
+- The resolver receives `{ source, value, field, ctx }` — `source` is what *started* the cascade, which may be upstream of what you depend on.
+- **Programmatic `setValue` propagates too**, unlike `setOnChange`, which fires only from a real UI `onChange`.
+- **Cycles throw at registration**, naming the path; the instance stays usable after the throw.
+- One pass per logical change: a resolver writing a value does not start a second cascade. If a resolver writes a field with its own dependents, declare that edge.
+
+### Several handlers on one field
+
+`setOnChange` **replaces** the handler for a field (deliberately — it stops accumulation across renders). When composed modules each attach behaviour to the same field, use `addOnChange`, which is additive and fires in registration order:
+
+```ts
+form.addOnChange('country', loadRegions)
+form.addOnChange('country', trackAnalytics) // both fire, in this order
+```
+
+### Which lever
+
+| Use | When |
+| --- | --- |
+| `setOnChange` / `addOnChange` | One field triggers a side effect |
+| `setDependency` | A field is **derived** from others, transitively |
+| `setCondition` | Visibility depends on values |
+| `setRequired` | Requiredness depends on values |
 
 ## Per-row `setFieldMeta`
 

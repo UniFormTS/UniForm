@@ -1,6 +1,6 @@
 ---
 name: uniform-best-practices
-description: 'Build React forms correctly and idiomatically with UniForm (@uniform-ts/core), the headless Zod V4 form library. Trigger this skill whenever the user mentions any of: building a React form, rendering a form from a Zod schema, AutoForm, createForm, createAutoForm, useUniForm, UniFormProvider, Field, useField, useFormValue, useArrayField, setRequired, useFieldError, component registry, field overrides, conditional fields, or form validation/persistence/i18n with UniForm. Prefer triggering over skipping when uncertain — even partial or exploratory requests ("how do I show a field only when…", "make this field required only if…", "add a repeating row", "wire a Zod schema to inputs", "render the form myself but keep validation") count.'
+description: 'Build React forms correctly and idiomatically with UniForm (@uniform-ts/core), the headless Zod V4 form library. Trigger this skill whenever the user mentions any of: building a React form, rendering a form from a Zod schema, AutoForm, createForm, createAutoForm, useUniForm, UniFormProvider, Field, useField, useFormValue, useArrayField, setRequired, setDependency, useFieldError, component registry, field overrides, conditional fields, or form validation/persistence/i18n with UniForm. Prefer triggering over skipping when uncertain — even partial or exploratory requests ("how do I show a field only when…", "make this field required only if…", "reset this dropdown when that one changes", "add a repeating row", "wire a Zod schema to inputs", "render the form myself but keep validation") count.'
 ---
 
 # Building forms with UniForm
@@ -34,6 +34,12 @@ Import the schema builder from the Zod V4 entrypoint and the API from the packag
 ```tsx
 import * as z from 'zod/v4'
 import { AutoForm, createForm } from '@uniform-ts/core'
+```
+
+**Never write a bare `import '@uniform-ts/core'`.** The `.meta()` autocomplete is a *type-only* Zod augmentation, applied as soon as anything imports from the package — `import type` included. A bare runtime import does nothing except pull the whole library into that entry chunk. For a schema-only module that never references UniForm, use the types-only subpath instead (zero runtime cost), typically in `vite-env.d.ts`:
+
+```ts
+/// <reference types="@uniform-ts/core/zod-augmentation" />
 ```
 
 ## Default workflow
@@ -259,13 +265,33 @@ Also available per field as `fields={{ x: { requiredWhen } }}`, and imperatively
 
 Empty means `undefined`, `null`, `''`, `[]`. `false` and `0` are values. An error Zod already reported at the path is never overwritten.
 
-**Read [references/reactivity.md](references/reactivity.md)** for `setOnChange` (cascading dropdowns, async lookups), row-scoped `setFieldMeta`, row-specific `arrayName.index.field` handlers, and discriminated unions.
+**Read [references/reactivity.md](references/reactivity.md)** for `setOnChange` (cascading dropdowns, async lookups), `setDependency` (transitive graphs), row-scoped `setFieldMeta`, row-specific `arrayName.index.field` handlers, and discriminated unions.
+
+### Chained dependencies
+
+`setOnChange` reacts to **one** field. When fields form a chain (country → region → city) or several feed one derived value, do **not** hand-compute the closure — declare each edge and let UniForm walk it:
+
+```ts
+const addressForm = createForm(schema)
+  .setDependency('region', {
+    dependsOn: 'country',
+    resolve: async ({ ctx, value }) => {
+      ctx.setValue('region', '')
+      ctx.setFieldMeta('region', { options: await loadRegions(value) })
+    },
+  })
+  .setDependency('city', { dependsOn: 'region', resolve: ({ ctx }) => ctx.setValue('city', '') })
+```
+
+Propagation is **transitive** and runs for programmatic `setValue` as well as UI edits — unlike `setOnChange`, which fires only from a real `onChange`. Cycles throw at registration time, naming the path. `dependsOn` accepts an array. `setDependencies(graph)` registers many at once.
+
+**Multiple handlers on one field:** `setOnChange` *replaces*; use `addOnChange` when composed modules each attach behaviour, or the second registration silently wins.
 
 ---
 
 ## 6. Array fields
 
-`z.array(z.object({...}))` renders as a repeating group with Add/Remove/Move row controls out of the box. UniForm reads `.min(n)`/`.max(n)` straight off the schema — the Add button hides at max, and the last row cannot be removed below min — so enforce array bounds in the **schema**, not in UI code.
+`z.array(z.object({...}))` renders as a repeating group with Add/Remove/Move row controls out of the box. UniForm reads `.min(n)`/`.max(n)` straight off the schema — the Add button is disabled at max and Remove is disabled at min — so enforce array bounds in the **schema**, not in UI code.
 
 ```tsx
 const schema = z.object({
@@ -341,7 +367,9 @@ Validation is Zod's job — UniForm runs your schema through `zodResolver` and s
 />
 ```
 
-Resolution priority per error: per-field string → per-field per-code → global `messages.required` → the schema's own message → Zod's default. Common codes: `too_small`, `too_big`, `invalid_type`, `invalid_string`, `invalid_enum_value`.
+Resolution priority per error: per-field string → per-field per-code → global `messages.required` → the schema's own message → Zod's configured locale (including a global `z.config({ localeError })`) → Zod's default. Common codes: `too_small`, `too_big`, `invalid_type`, `invalid_string`, `invalid_enum_value`.
+
+**There is one source of validation messages — Zod — and `messages` is a targeted override on top of it, not a parallel system.** Author messages in the schema, set language with a global `z.config(locale())`, and reach for `messages` only when one form needs different wording. Anything you do not list falls through untouched.
 
 **Async validation** comes for free: `onSubmit` may return a `Promise`, and `formState.isSubmitting` is forwarded to the submit button slot so you can disable it / show a spinner.
 
@@ -405,7 +433,14 @@ formRef.current?.focus('email')      // focus a field by name
 formRef.current?.setErrors({ email: 'Taken' })
 ```
 
-Methods: `setValue`, `setValues`, `getValues`, `watch`, `reset`, `resetField`, `setError`, `setErrors`, `clearErrors`, `submit`, `focus`. `setValue(name, value, options?)` accepts `{ shouldValidate, shouldDirty, shouldTouch }` and defaults to `{ shouldValidate: true, shouldDirty: true }` — pass `{ shouldValidate: false }` for high-frequency writes. For array mutations from _inside_ the tree, prefer `useArrayField` (section 6) over the ref; for reads prefer `useFormValue` (section 11) over `watch`.
+Methods: `setValue`, `setValues`, `getValues`, `watch`, `reset`, `resetField`, `setError`, `setErrors`, `setIssues`, `clearErrors`, `submit`, `focus`, `clearPersistedData`, `hasPersistedDraft`.
+
+`setValue(name, value, options?)` and `setValues(values, options?)` both take `{ shouldValidate, shouldDirty, shouldTouch }`, defaulting to `{ shouldValidate: true, shouldDirty: true }`. Validation runs the **whole** schema, so:
+
+- high-frequency writes (a container pushing per keystroke, a bulk import) → `{ shouldValidate: false }`;
+- several keys at once → `setValues`, which writes them all and revalidates **once**, not once per key. Never loop `setValue` to set multiple fields.
+
+For array mutations from _inside_ the tree, prefer `useArrayField` (section 6) over the ref; for reads prefer `useFormValue` (section 11) over `watch`.
 
 ---
 
@@ -422,7 +457,7 @@ Add `persistKey` to auto-save form state and re-hydrate it on remount — useful
 />
 ```
 
-The default storage is **`sessionStorage`** (cleared when the tab closes). To survive tab closes, pass `persistStorage={localStorage}`. Any synchronous adapter implementing `getItem`/`setItem`/`removeItem` works — handy for namespacing keys per user or an in-memory store in tests:
+The default storage is **`sessionStorage`** (cleared when the tab closes). To survive tab closes, pass `persistStorage={localStorage}`. Any adapter implementing `getItem`/`setItem`/`removeItem` works, and each method **may return a promise** — so IndexedDB / AsyncStorage adapters are first-class. While an async adapter is being read the form reports `isLoading` and renders `layout.loadingFallback`; synchronous adapters never show it.
 
 ```tsx
 const userStorage = (userId: string) => ({
@@ -435,6 +470,26 @@ const userStorage = (userId: string) => ({
 ```
 
 `persistDebounce` defaults to `300` ms (set `0` to write on every change).
+
+**Version your drafts whenever the shape of the values can change.** Drafts are stored in a versioned envelope; a mismatch without a migration is discarded with a console warning rather than half-restored.
+
+```tsx
+<AutoForm
+  persistKey='checkout-draft'
+  persistVersion={2}
+  persistMigrate={(persisted, fromVersion) => {
+    if (fromVersion !== 1) return undefined // too old — start fresh
+    const old = persisted as { fullName?: string }
+    const [firstName = '', lastName = ''] = (old.fullName ?? '').split(' ')
+    return { firstName, lastName }
+  }}
+  ...
+/>
+```
+
+`clearPersistedData()` and `hasPersistedDraft()` are on the form methods (ref handle and `useUniForm().methods`).
+
+For a **multi-step flow spanning routes**, `persistKey` on a single `<AutoForm>` is not enough — its draft dies with that component. Create the store once with `useUniForm` (section 11) and keep it mounted above the routes; the draft then lives as long as the instance.
 
 ---
 
@@ -490,7 +545,7 @@ function TicketPage() {
 - **`useUniForm(form, options)`** builds the store above `<AutoForm>`. Options mirror the state-level `<AutoForm>` props. `<AutoForm form={instance}>` renders into that store — **never a second one**.
 - **`<UniFormProvider form={instance}>`** publishes it, so every hook resolves with no `<AutoForm>` rendered at all.
 - **`useFormValue(form, path)` / `useFormValues(form)`** are typed reactive reads. Pass the form for inference — **no casts** — and index paths (`'lines.0.sku'`) work. `useFormValue` re-renders only on its own path.
-- **`useAutoFormContext(form)`** infers the schema type too; the untyped `useAutoFormContext()` still works.
+- **`useAutoFormContext(form)`** infers the schema type too; the untyped `useAutoFormContext()` still works. Supported members: `formMethods`, `control`, `registry`, `fieldConfigs`, `fieldWrapper`, `layout`, `classNames`, `disabled`, `coercions`, `messages`, `labels`, `getOptionKey`, `isOptionEqual`. Anything under **`_internal`** (`resolvedFields`, `fieldOverrides`, `layoutSlots`, `setDynamicMeta`, `arrayFields`) is UniForm's own plumbing and not covered by semver — do not build on it.
 - **`<Field name="address.city" />`** renders one field anywhere; **`useField(path)`** returns the resolved props when you want to own the markup.
 - A component registered for an `object` / `array` field receives the **container props superset** (`path`, `setPath`, `rows`, `rowCount`, `canAdd`, `atMin`, `append`/`remove`/`move`/…), and `<Field name="0.qty" />` inside it resolves **relative** to the container's path.
 

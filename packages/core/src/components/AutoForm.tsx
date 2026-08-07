@@ -108,21 +108,26 @@ function AutoFormWithInstance<TSchema extends z.$ZodObject>(
   React.useImperativeHandle(ref, () => instance.methods, [instance.methods])
 
   const base = instance._context
-  const context = React.useMemo<AutoFormContextValue<z.infer<TSchema>>>(
-    () => ({
-      ...base,
+  const context = React.useMemo<AutoFormContextValue<z.infer<TSchema>>>(() => {
+    const internals = {
+      ...base._internal,
       ...(fields
         ? {
             resolvedFields: applyFieldOverrides(
-              base.resolvedFields,
+              base._internal.resolvedFields,
               fields as Record<string, Partial<FieldMeta>>,
             ),
-            fieldOverrides: { ...base.fieldOverrides, ...fields },
+            fieldOverrides: { ...base._internal.fieldOverrides, ...fields },
           }
         : {}),
-      ...(layout
-        ? { layout: resolveLayoutSlots(layout), layoutSlots: layout }
-        : {}),
+      ...(layout ? { layoutSlots: layout } : {}),
+    }
+
+    return {
+      ...base,
+      ...internals,
+      _internal: internals,
+      ...(layout ? { layout: resolveLayoutSlots(layout) } : {}),
       ...(classNames
         ? { classNames: { ...base.classNames, ...classNames } }
         : {}),
@@ -136,20 +141,19 @@ function AutoFormWithInstance<TSchema extends z.$ZodObject>(
       ...(labels ? { labels: { ...base.labels, ...labels } } : {}),
       ...(messages ? { messages: { ...base.messages, ...messages } } : {}),
       ...(coercions ? { coercions: { ...base.coercions, ...coercions } } : {}),
-    }),
-    [
-      base,
-      fields,
-      layout,
-      classNames,
-      fieldWrapper,
-      components,
-      disabled,
-      labels,
-      messages,
-      coercions,
-    ],
-  )
+    }
+  }, [
+    base,
+    fields,
+    layout,
+    classNames,
+    fieldWrapper,
+    components,
+    disabled,
+    labels,
+    messages,
+    coercions,
+  ])
 
   const scoped = React.useMemo(
     () => ({ ...instance, _context: context }) as UniFormInstance<TSchema>,

@@ -203,6 +203,54 @@ setPath('0.qty', 3, { shouldValidate: false }) // …without re-running the sche
 
 See the [Headless Mode guide](./headless) for the full picture, including rendering fields with no `<AutoForm>` at all.
 
+## Option identity for rich select values
+
+Select option values are `string | number` by default, and that needs nothing extra. When a value is richer — a composite key such as `{ dataset, version }` — supply an identity so UniForm never has to stringify it:
+
+```tsx
+type ReportId = { dataset: string; version: number }
+
+const reportKey = (option: { value: unknown }) => {
+  const id = option.value as ReportId
+  return `${id.dataset}@${id.version}`
+}
+
+;<AutoForm
+  form={reportForm}
+  fields={{
+    source: {
+      component: 'select',
+      options: reports,
+      getOptionKey: reportKey,
+      isOptionEqual: (a, b) =>
+        reportKey({ value: a }) === reportKey({ value: b }),
+    },
+  }}
+  onSubmit={save}
+/>
+```
+
+| Option                                  | Purpose                                                                                                          |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `getOptionKey(option)`                  | Stable string used for React keys and the DOM `value`. Required when values are not strings, numbers or booleans |
+| `isOptionEqual(formValue, optionValue)` | Decides which option is selected. Defaults to `Object.is`, then to key equality — usually you can omit it        |
+
+**The key is never the value.** `onChange` always receives the option's raw `value`, so an object round-trips into the submitted payload unchanged. (This also means a numeric option submits a `number`, not `"2"`.)
+
+Set the same functions once for every form via the factory:
+
+```ts
+const AppForm = createAutoForm({ getOptionKey: reportKey })
+```
+
+Per-field `meta` always wins over the factory default.
+
+UniForm throws a clear error, naming the field, when an object-valued option has no `getOptionKey`, or when two options collapse onto the same key — both are silent selection bugs otherwise.
+
+:::note Typing rich options
+`SelectOption`'s value type defaults to `string | number`, so existing components keep compiling. For richer values, type the list as `SelectOption<MyValue>[]` and your component as `FieldProps<MyValue>`.
+:::
+
 ## Live Example
 
 ```jsx live noInline
