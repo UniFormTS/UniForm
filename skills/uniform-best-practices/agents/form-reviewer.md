@@ -43,6 +43,10 @@ Flag anything not in UniForm:
 - Scalars wrapped as `z.array(z.object({ value: z.string() }))` only to make them render → flag; primitive arrays render natively, so keep the storage shape flat.
 - `duplicable` / `collapsible` set on an array of primitives → flag as a no-op (object rows only).
 - External array controls re-implemented instead of `useArrayField(path)` → suggest the hook.
+- Application chrome hosted inside `layout.formWrapper` to reach the form context → flag; `useUniForm` + `<UniFormProvider>` is the supported route.
+- `control as unknown as Control<Values>` or any cast to recover the schema type → flag; `useAutoFormContext(form)` / `useFormValue(form, path)` infer it.
+- `useWatch`, `Control` or `useFieldArray` imported from `react-hook-form` in application code → flag; use `useFormValue` / `useArrayField`.
+- A custom object/array component that rebuilds the whole container value per keystroke → flag; delegate leaves to a relative `<Field>` or write with `setPath`.
 
 ### Step 5: Check the factory split
 

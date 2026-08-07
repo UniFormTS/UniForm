@@ -8,6 +8,10 @@ import { BooleanField } from './fields/BooleanField'
 import { SelectField } from './fields/SelectField'
 import { ObjectField } from './fields/ObjectField'
 import { ArrayField } from './fields/ArrayField'
+import {
+  ObjectContainerField,
+  ArrayContainerField,
+} from './fields/ContainerField'
 
 export type FieldRendererProps = {
   field: FieldConfig
@@ -117,6 +121,26 @@ export function FieldRenderer({
   const error = resolveErrorMessage(effectiveName, rawError, messages)
 
   const renderField = () => {
+    if (field.type === 'object' && hasComponentOverride) {
+      return (
+        <ObjectContainerField
+          field={effectiveField}
+          control={control}
+          effectiveName={effectiveName}
+          shouldUnregister={effectiveShouldUnregister}
+        />
+      )
+    }
+    if (field.type === 'array' && hasComponentOverride) {
+      return (
+        <ArrayContainerField
+          field={effectiveField}
+          control={control}
+          effectiveName={effectiveName}
+          shouldUnregister={effectiveShouldUnregister}
+        />
+      )
+    }
     if (field.type === 'boolean') {
       return (
         <BooleanField

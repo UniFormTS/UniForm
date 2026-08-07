@@ -24,8 +24,19 @@ export function applyFieldOverrides(
 ): FieldConfig[] {
   return fields.map((field) => {
     const override = overrides[field.name]
-    const updated = override
-      ? { ...field, meta: { ...field.meta, ...override } }
+    // `label` and `options` are read off the config, not off meta, so they have
+    // to be promoted — merging them into meta alone would silently do nothing.
+    const updated: FieldConfig = override
+      ? ({
+          ...field,
+          ...(typeof override.label === 'string'
+            ? { label: override.label }
+            : {}),
+          ...(field.type === 'select' && Array.isArray(override.options)
+            ? { options: override.options }
+            : {}),
+          meta: { ...field.meta, ...override },
+        } as FieldConfig)
       : field
 
     if (updated.type === 'object') {

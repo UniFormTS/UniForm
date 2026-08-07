@@ -2,26 +2,19 @@ import * as React from 'react'
 import { useWatch } from 'react-hook-form'
 import type { FieldConfig } from '../types'
 import { useAutoFormContext } from '../context/AutoFormContext'
+import { resolveFieldAt } from '../utils/resolveFieldAt'
 import type { ArrayFieldActions } from './arrayFieldRegistry'
 
 /**
- * Recursively searches the field config tree for an array field by its
- * dot-notated name, handling top-level and nested (object-contained) arrays.
+ * Finds the array field config at a dot-notated path, including nested and
+ * indexed paths such as `"groups.0.emails"`.
  */
 function findArrayConfig(
   fields: FieldConfig[],
   name: string,
 ): Extract<FieldConfig, { type: 'array' }> | undefined {
-  for (const field of fields) {
-    if (field.name === name) {
-      return field.type === 'array' ? field : undefined
-    }
-    if (field.type === 'object') {
-      const found = findArrayConfig(field.children, name)
-      if (found) return found
-    }
-  }
-  return undefined
+  const resolved = resolveFieldAt(fields, name)
+  return resolved?.config.type === 'array' ? resolved.config : undefined
 }
 
 function toPayload(value: unknown): unknown[] {
@@ -102,7 +95,7 @@ function createFallbackActions(
  * }
  */
 export function useArrayField(fieldName: string) {
-  const { control, fieldConfigs, arrayFields, formMethods } =
+  const { control, resolvedFields, arrayFields, formMethods } =
     useAutoFormContext()
 
   const live = React.useSyncExternalStore(
@@ -129,7 +122,7 @@ export function useArrayField(fieldName: string) {
   )
 
   const actions = live ?? fallback
-  const config = findArrayConfig(fieldConfigs, fieldName)
+  const config = findArrayConfig(resolvedFields, fieldName)
 
   React.useEffect(() => {
     if (live || config) return

@@ -1,10 +1,21 @@
 import type * as React from 'react'
 import type { FieldProps } from './field'
 import type { FieldConfig } from './field'
+import type { ObjectContainerProps, ArrayContainerProps } from './field'
 
 // ---------------------------------------------------------------------------
 // ComponentRegistry
 // ---------------------------------------------------------------------------
+
+/**
+ * Any component that can be registered: a leaf field renderer, or a component
+ * that replaces a whole object/array subtree and receives the container props
+ * superset.
+ */
+export type RegisterableComponent =
+  | React.ComponentType<FieldProps>
+  | React.ComponentType<ObjectContainerProps>
+  | React.ComponentType<ArrayContainerProps>
 
 /**
  * A map of field type keys to React components used to render them.
@@ -19,7 +30,7 @@ export type ComponentRegistry = {
   date?: React.ComponentType<FieldProps>
   select?: React.ComponentType<FieldProps>
   textarea?: React.ComponentType<FieldProps>
-  [key: string]: React.ComponentType<FieldProps> | undefined
+  [key: string]: RegisterableComponent | undefined
 }
 
 // ---------------------------------------------------------------------------

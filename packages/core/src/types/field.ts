@@ -275,6 +275,76 @@ export interface FieldProps<Value = unknown> {
 }
 
 // ---------------------------------------------------------------------------
+// Container field props (object / array component overrides)
+// ---------------------------------------------------------------------------
+
+/**
+ * Options accepted by targeted value writes. Mirrors the react-hook-form
+ * `setValue` config without leaking the peer dependency's types.
+ */
+export type SetValueOptions = {
+  /** Re-run validation after the write. */
+  shouldValidate?: boolean
+  /** Mark the field dirty. */
+  shouldDirty?: boolean
+  /** Mark the field touched. */
+  shouldTouch?: boolean
+}
+
+/**
+ * Props shared by custom components that replace an **object** or **array**
+ * field. A superset of {@link FieldProps} — everything a container needs to
+ * render its own layout while keeping UniForm's plumbing for the leaves inside.
+ */
+export interface ContainerFieldProps<
+  Value = unknown,
+> extends FieldProps<Value> {
+  /** Absolute dot-notated path of this container (identical to `name`). */
+  path: string
+  /**
+   * Write a value at a path **relative to this container**, without replacing
+   * the container's whole value.
+   *
+   * @example
+   * setPath('0.qty', 3)          // writes lineItems.0.qty
+   * setPath('street', 'Main St') // writes address.street
+   */
+  setPath: (subPath: string, value: unknown, options?: SetValueOptions) => void
+}
+
+/** Props passed to a custom component that replaces an object field. */
+export interface ObjectContainerProps<
+  Value = unknown,
+> extends ContainerFieldProps<Value> {
+  /** Field configs for the object's children. */
+  fields: FieldConfig[]
+}
+
+/** Props passed to a custom component that replaces an array field. */
+export interface ArrayContainerProps<
+  Value = unknown,
+> extends ContainerFieldProps<Value> {
+  /** Field config describing a single row. */
+  itemConfig: FieldConfig
+  /** Current number of rows. */
+  rowCount: number
+  /** Current rows, each carrying react-hook-form's generated `id`. */
+  rows: Record<string, unknown>[]
+  /** `false` once the schema's `.max(...)` is reached. */
+  canAdd: boolean
+  /** `true` at or below the schema's `.min(...)`. */
+  atMin: boolean
+  append: (value?: unknown) => void
+  prepend: (value?: unknown) => void
+  insert: (index: number, value?: unknown) => void
+  remove: (index?: number | number[]) => void
+  move: (from: number, to: number) => void
+  swap: (from: number, to: number) => void
+  update: (index: number, value: unknown) => void
+  replace: (values: unknown[]) => void
+}
+
+// ---------------------------------------------------------------------------
 // FieldOverride
 // ---------------------------------------------------------------------------
 

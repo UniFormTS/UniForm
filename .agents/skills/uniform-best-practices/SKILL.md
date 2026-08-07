@@ -1,6 +1,6 @@
 ---
 name: uniform-best-practices
-description: 'Build React forms correctly and idiomatically with UniForm (@uniform-ts/core), the headless Zod V4 form library. Trigger this skill whenever the user mentions any of: building a React form, rendering a form from a Zod schema, AutoForm, createForm, createAutoForm, useArrayField, component registry, field overrides, conditional fields, or form validation/persistence/i18n with UniForm. Prefer triggering over skipping when uncertain — even partial or exploratory requests ("how do I show a field only when…", "add a repeating row", "wire a Zod schema to inputs") count.'
+description: 'Build React forms correctly and idiomatically with UniForm (@uniform-ts/core), the headless Zod V4 form library. Trigger this skill whenever the user mentions any of: building a React form, rendering a form from a Zod schema, AutoForm, createForm, createAutoForm, useUniForm, UniFormProvider, Field, useField, useFormValue, useArrayField, component registry, field overrides, conditional fields, or form validation/persistence/i18n with UniForm. Prefer triggering over skipping when uncertain — even partial or exploratory requests ("how do I show a field only when…", "add a repeating row", "wire a Zod schema to inputs", "render the form myself but keep validation") count.'
 ---
 
 # Building forms with UniForm
@@ -46,7 +46,7 @@ When asked to build or change a UniForm form, follow this order — it mirrors h
 4. **Layer presentation** via `components` (per-type), `fields` (per-field), `layout`, `classNames`, `labels`.
 5. **Add reactivity** (`setOnChange`, `setCondition`, conditions) only where behaviour depends on values.
 
-Read [references/component-registry.md](references/component-registry.md), [references/arrays.md](references/arrays.md), and [references/reactivity.md](references/reactivity.md) when a topic below points you there — they carry the deep detail that does not belong in this overview.
+Read [references/component-registry.md](references/component-registry.md), [references/arrays.md](references/arrays.md), [references/reactivity.md](references/reactivity.md), and [references/headless.md](references/headless.md) when a topic below points you there — they carry the deep detail that does not belong in this overview.
 
 ## Specialized agents
 
@@ -363,7 +363,7 @@ formRef.current?.focus('email')      // focus a field by name
 formRef.current?.setErrors({ email: 'Taken' })
 ```
 
-Methods: `setValue`, `setValues`, `getValues`, `watch`, `reset`, `resetField`, `setError`, `setErrors`, `clearErrors`, `submit`, `focus`. For array mutations from _inside_ the tree, prefer `useArrayField` (section 6) over the ref.
+Methods: `setValue`, `setValues`, `getValues`, `watch`, `reset`, `resetField`, `setError`, `setErrors`, `clearErrors`, `submit`, `focus`. `setValue(name, value, options?)` accepts `{ shouldValidate, shouldDirty, shouldTouch }` and defaults to `{ shouldValidate: true, shouldDirty: true }` — pass `{ shouldValidate: false }` for high-frequency writes. For array mutations from _inside_ the tree, prefer `useArrayField` (section 6) over the ref; for reads prefer `useFormValue` (section 11) over `watch`.
 
 ---
 
@@ -417,3 +417,41 @@ const AppForm = createAutoForm({ labels: he })
 ```
 
 Define a custom language by exporting your own `FormLabels` object (keys like `submit`, `arrayAdd`, `arrayRemove`, and the `arrayAria*` aria-label functions). Any omitted key falls back to the English default.
+
+---
+
+## 11. Headless mode — own the layout, keep the plumbing
+
+`<AutoForm>` renders everything, and that is the right default. When the **application owns the page** — chrome that reads live form state, an external submit button, a bespoke table for one array field — do **not** smuggle it through `layout.formWrapper` (a styling slot) and do **not** drop out to raw `react-hook-form`. Use the headless APIs:
+
+```tsx
+import {
+  AutoForm,
+  useUniForm,
+  UniFormProvider,
+  useFormValue,
+  Field,
+} from '@uniform-ts/core'
+
+function TicketPage() {
+  const form = useUniForm(ticketForm, { defaultValues, onSubmit: save })
+
+  return (
+    <UniFormProvider form={form}>
+      <PageHeader onSave={form.submit} busy={form.isSubmitting} />
+      <AutoForm form={form} onSubmit={save} />
+    </UniFormProvider>
+  )
+}
+```
+
+- **`useUniForm(form, options)`** builds the store above `<AutoForm>`. Options mirror the state-level `<AutoForm>` props. `<AutoForm form={instance}>` renders into that store — **never a second one**.
+- **`<UniFormProvider form={instance}>`** publishes it, so every hook resolves with no `<AutoForm>` rendered at all.
+- **`useFormValue(form, path)` / `useFormValues(form)`** are typed reactive reads. Pass the form for inference — **no casts** — and index paths (`'lines.0.sku'`) work. `useFormValue` re-renders only on its own path.
+- **`useAutoFormContext(form)`** infers the schema type too; the untyped `useAutoFormContext()` still works.
+- **`<Field name="address.city" />`** renders one field anywhere; **`useField(path)`** returns the resolved props when you want to own the markup.
+- A component registered for an `object` / `array` field receives the **container props superset** (`path`, `setPath`, `rows`, `rowCount`, `canAdd`, `atMin`, `append`/`remove`/`move`/…), and `<Field name="0.qty" />` inside it resolves **relative** to the container's path.
+
+An app using UniForm should **never** need to import `useWatch`, `Control` or `useFieldArray` from `react-hook-form`. If you find yourself reaching for them, reach for the equivalent UniForm hook instead.
+
+**Read [references/headless.md](references/headless.md)** for the full contract, the container props table, and the "own the layout, keep the plumbing" pattern.

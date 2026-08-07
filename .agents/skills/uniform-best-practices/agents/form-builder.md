@@ -46,6 +46,7 @@ If multiple forms share components/layout/classNames/labels, bake them once with
 ### Step 6: Wire cross-cutting concerns if requested
 
 - Arrays: rely on schema bounds for Add/Remove; use `useArrayField(path)` for external controls — it drives the rendered rows, so `append()` from a toolbar adds a visible row. Primitive item schemas render one input per row; do not wrap scalars in `z.object({ value })`.
+- Bespoke layouts stay **on** the library. If the page chrome needs form state, or the submit button lives outside the form, use `useUniForm` + `<UniFormProvider>` — never `layout.formWrapper` as a smuggling route. If one object/array field needs custom UI, register a component for it and delegate each leaf to a relative `<Field name="0.qty" />`; read state with `useFormValue(form, path)`. Never import `useWatch` / `Control` / `useFieldArray` from `react-hook-form`. See `references/headless.md`.
 - Validation wording overrides: the `messages` prop (schema messages stay primary).
 - Programmatic control: a `ref` typed `AutoFormHandle<typeof schema>`.
 - Persistence: `persistKey` (+ `persistStorage={localStorage}` to survive tab close; default is `sessionStorage`).
