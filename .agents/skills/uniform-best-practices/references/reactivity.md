@@ -111,7 +111,7 @@ Changing `country` re-resolves `region` **and** `city`, in dependency order — 
 
 - `dependsOn` takes one path or an array (`['quantity', 'unitPrice']` for a derived total).
 - `setDependencies(graph)` registers many at once.
-- The resolver receives `{ source, value, field, ctx }` — `source` is what *started* the cascade, which may be upstream of what you depend on.
+- The resolver receives `{ source, value, field, ctx }` — `source` is what _started_ the cascade, which may be upstream of what you depend on.
 - **Programmatic `setValue` propagates too**, unlike `setOnChange`, which fires only from a real UI `onChange`.
 - **Cycles throw at registration**, naming the path; the instance stays usable after the throw.
 - One pass per logical change: a resolver writing a value does not start a second cascade. If a resolver writes a field with its own dependents, declare that edge.
@@ -127,12 +127,12 @@ form.addOnChange('country', trackAnalytics) // both fire, in this order
 
 ### Which lever
 
-| Use | When |
-| --- | --- |
-| `setOnChange` / `addOnChange` | One field triggers a side effect |
-| `setDependency` | A field is **derived** from others, transitively |
-| `setCondition` | Visibility depends on values |
-| `setRequired` | Requiredness depends on values |
+| Use                           | When                                             |
+| ----------------------------- | ------------------------------------------------ |
+| `setOnChange` / `addOnChange` | One field triggers a side effect                 |
+| `setDependency`               | A field is **derived** from others, transitively |
+| `setCondition`                | Visibility depends on values                     |
+| `setRequired`                 | Requiredness depends on values                   |
 
 ## Per-row `setFieldMeta`
 

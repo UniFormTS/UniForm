@@ -107,7 +107,7 @@ See the [Dynamic Requiredness](https://uniformts.github.io/UniForm/docs/guides/d
 
 ### Reactivity, writes and drafts
 
-**`form.setDependency(field, { dependsOn, resolve })`** — declare each edge of a dependency graph once; UniForm walks the **transitive** closure in dependency order, for UI edits *and* programmatic `setValue`. Cycles are rejected at registration time, naming the path. `setDependencies(graph)` registers several at once.
+**`form.setDependency(field, { dependsOn, resolve })`** — declare each edge of a dependency graph once; UniForm walks the **transitive** closure in dependency order, for UI edits _and_ programmatic `setValue`. Cycles are rejected at registration time, naming the path. `setDependencies(graph)` registers several at once.
 
 **`form.addOnChange(field, handler)`** — additive registration, so composed modules stop silently clobbering one another. `setOnChange` keeps its replace-one semantics.
 
@@ -159,7 +159,7 @@ See the [`useAutoFormContext` API reference](https://uniformts.github.io/UniForm
 | `layout`        | `LayoutSlots`                               | Replace form/section/object/array wrappers, submit button, array rows. Set `null` on omittable slots (submit/array buttons) to hide them |
 | `classNames`    | `FormClassNames`                            | CSS classes for form, fields, labels, errors, fieldset/legend wrappers                                                                   |
 | `ref`           | `React.Ref<AutoFormHandle>`                 | Imperative `reset`, `submit`, `setValues`, `getValues`                                                                                   |
-| `persistKey`    | `string`                                 | Auto-save form state to `sessionStorage` under this key (see `persistVersion` / `persistMigrate`)                                        |
+| `persistKey`    | `string`                                    | Auto-save form state to `sessionStorage` under this key (see `persistVersion` / `persistMigrate`)                                        |
 | `labels`        | `FormLabels`                                | Override built-in UI strings for i18n; import a ready-made locale pack from `@uniform-ts/core/locales/{en,he,es}`                        |
 
 ## Features
@@ -174,7 +174,7 @@ See the [`useAutoFormContext` API reference](https://uniformts.github.io/UniForm
 - **Typed state access** — `useFormValue` / `useFormValues` / `useAutoFormContext(form)` infer value types straight from the schema, with no casts and no `react-hook-form` imports
 - **Runtime requiredness** — `setRequired(path, predicate)` drives the asterisk, `aria-required` and submit validation from one rule
 - **Error tree access** — `useFieldError` / `useFieldErrors` render `superRefine` issues anchored at array elements or the form root; `setIssues` anchors backend responses anywhere
-- **Dependency graph** — `setDependency` cascades transitively from UI edits *and* programmatic writes, with cycles rejected at registration
+- **Dependency graph** — `setDependency` cascades transitively from UI edits _and_ programmatic writes, with cycles rejected at registration
 - **Batched writes** — `setValues` validates once per logical update; `setValue(…, { shouldValidate: false })` skips it entirely
 - **Rich select values** — `getOptionKey` / `isOptionEqual` let options carry composite identities without conflating the key with the value
 - **Programmatic control** — `reset()`, `submit()`, `setValues()`, `getValues()`, `setErrors()`, `focus()` via ref
