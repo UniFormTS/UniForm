@@ -26,6 +26,8 @@ import Example25 from './examples/Example25'
 import Example26 from './examples/Example26'
 import Example27 from './examples/Example27'
 import Example28 from './examples/Example28'
+import Example29 from './examples/Example29'
+import Example30 from './examples/Example30'
 
 const examples = [
   { id: 'ex1', label: '1. classNames + span' },
@@ -56,6 +58,8 @@ const examples = [
   { id: 'ex26', label: '26. Row-Specific onChange' },
   { id: 'ex27', label: '27. External Array Control' },
   { id: 'ex28', label: '28. Arrays of Primitives' },
+  { id: 'ex29', label: '29. Headless useUniForm' },
+  { id: 'ex30', label: '30. Custom Layout with <Field>' },
 ]
 
 export default function App() {
@@ -156,6 +160,10 @@ export default function App() {
       <Example27 />
       <hr style={{ margin: '2rem 0' }} />
       <Example28 />
+      <hr style={{ margin: '2rem 0' }} />
+      <Example29 />
+      <hr style={{ margin: '2rem 0' }} />
+      <Example30 />
     </main>
   )
 }

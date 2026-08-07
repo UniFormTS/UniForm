@@ -127,6 +127,82 @@ const schema = z.object({
 
 The component receives the **entire object (or array)** as `value` and must call `onChange` with a full object/array — validation still runs against the complete schema on submit. If a string key does not resolve in the merged registry, the field falls back to its default nested rendering.
 
+## Own the layout, keep the plumbing
+
+Replacing a container does **not** mean everything below it leaves the library. A component registered for an `object` or `array` field receives the **container props superset** — [`ObjectContainerProps`](/docs/api/types) / [`ArrayContainerProps`](/docs/api/types) — and any [`<Field>`](/docs/api/field) rendered inside it resolves **relative to that field's path**.
+
+```tsx
+import { Field, type ArrayContainerProps } from '@uniform-ts/core'
+
+function LinesTable({ rows, canAdd, append, remove }: ArrayContainerProps) {
+  return (
+    <table>
+      <tbody>
+        {rows.map((row, index) => (
+          <tr key={String(row.id)}>
+            {/* relative to `lines` → registers at lines.0.sku */}
+            <td>
+              <Field name={`${index}.sku`} />
+            </td>
+            <td>
+              <Field name={`${index}.qty`} />
+            </td>
+            <td>
+              <button type='button' onClick={() => remove(index)}>
+                ✕
+              </button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td>
+            <button
+              type='button'
+              disabled={!canAdd}
+              onClick={() => append({ sku: '', qty: 1 })}
+            >
+              Add line
+            </button>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  )
+}
+
+;<AutoForm
+  form={orderForm}
+  components={{ linesTable: LinesTable }}
+  fields={{ lines: { component: 'linesTable' } }}
+  onSubmit={save}
+/>
+```
+
+Each cell is a real UniForm field: it registers with the store, uses the registered component for its type, honours item-level schema constraints and shows its own error. Typing in a cell writes **only that path** — the container's `onChange` is never called, so a keystroke does not rebuild the whole array.
+
+| Prop                                                                  | Available on   | Description                                      |
+| --------------------------------------------------------------------- | -------------- | ------------------------------------------------ |
+| `path`                                                                | object + array | Absolute path of the container                   |
+| `setPath(subPath, value, options?)`                                   | object + array | Targeted write relative to the container         |
+| `fields`                                                              | object         | Child field configs                              |
+| `itemConfig`                                                          | array          | Field config for a single row                    |
+| `rows` / `rowCount`                                                   | array          | Current rows (each with an `id`) and their count |
+| `canAdd` / `atMin`                                                    | array          | Schema `.max()` / `.min()` gates                 |
+| `append` `prepend` `insert` `remove` `move` `swap` `update` `replace` | array          | Row operations                                   |
+
+```tsx
+setPath('0.qty', 3) // writes lines.0.qty
+setPath('0.qty', 3, { shouldValidate: false }) // …without re-running the schema
+```
+
+:::note Build fields with `<Field>`, not `FieldConfig`
+`FieldConfig` is an introspection detail, not the extension point. To render something UniForm knows about, use [`<Field>`](/docs/api/field) or [`useField`](/docs/api/use-field).
+:::
+
+See the [Headless Mode guide](./headless) for the full picture, including rendering fields with no `<AutoForm>` at all.
+
 ## Live Example
 
 ```jsx live noInline

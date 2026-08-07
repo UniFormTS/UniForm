@@ -22,6 +22,10 @@ export type {
   FieldConfig,
   FieldProps,
   FieldOverride,
+  SetValueOptions,
+  ContainerFieldProps,
+  ObjectContainerProps,
+  ArrayContainerProps,
 } from './field'
 
 export type { ComponentRegistry, FieldWrapperProps } from './registry'

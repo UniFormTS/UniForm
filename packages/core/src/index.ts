@@ -37,6 +37,10 @@ export type {
   CoercionMap,
   ValidationMessages,
   PersistStorage,
+  SetValueOptions,
+  ContainerFieldProps,
+  ObjectContainerProps,
+  ArrayContainerProps,
 } from './types'
 
 // Introspection
@@ -48,6 +52,10 @@ export {
 // Components
 export { AutoForm } from './components/AutoForm'
 export { FieldRenderer } from './components/FieldRenderer'
+export { Field } from './components/Field'
+export type { FieldComponentProps } from './components/Field'
+export { UniFormProvider } from './components/UniFormProvider'
+export type { UniFormProviderProps } from './components/UniFormProvider'
 
 // Default components
 export { DefaultInput } from './components/defaults/DefaultInput'
@@ -83,7 +91,13 @@ export type { SectionGroup } from './hooks/useSectionGrouping'
 export { useFormPersistence } from './hooks/useFormPersistence'
 export { useArrayField } from './hooks/useArrayField'
 export type { ArrayFieldActions } from './hooks/arrayFieldRegistry'
+export { useUniForm, isUniFormInstance } from './hooks/useUniForm'
+export type { UniFormInstance, UseUniFormOptions } from './hooks/useUniForm'
+export { useFormValue, useFormValues } from './hooks/useFormValue'
+export { useField } from './hooks/useField'
+export type { UseFieldOptions, UseFieldResult } from './hooks/useField'
 
 // Context
 export { useAutoFormContext } from './context/AutoFormContext'
 export type { AutoFormContextValue } from './context/AutoFormContext'
+export { useFieldPath } from './context/FieldPathContext'

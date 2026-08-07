@@ -226,7 +226,9 @@ describe('ArrayField with primitive items', () => {
           onSubmit={vi.fn()}
         />,
       )
-      expect(screen.getByRole('button', { name: 'Remove item 1' })).toBeDisabled()
+      expect(
+        screen.getByRole('button', { name: 'Remove item 1' }),
+      ).toBeDisabled()
 
       await user.click(screen.getByRole('button', { name: 'Add' }))
       await waitFor(() => expect(rowInputs('tags')).toHaveLength(2))

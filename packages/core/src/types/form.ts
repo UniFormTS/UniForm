@@ -1,7 +1,7 @@
 import type { FieldPath, FieldPathValue, FieldValues } from 'react-hook-form'
 import type * as z from 'zod/v4/core'
 import type { DeepKeys, DeepFieldValue } from './utils'
-import type { FieldOverride } from './field'
+import type { FieldOverride, SetValueOptions } from './field'
 import type { ComponentRegistry, FieldWrapperProps } from './registry'
 import type { LayoutSlots, FormClassNames } from './layout'
 
@@ -16,10 +16,17 @@ import type { LayoutSlots, FormClassNames } from './layout'
  * @template TValues - The inferred shape of the form values.
  */
 export type FormMethods<TValues extends FieldValues = FieldValues> = {
-  /** Set a single field value programmatically */
+  /**
+   * Set a single field value programmatically.
+   *
+   * Defaults to `{ shouldValidate: true, shouldDirty: true }`. Pass
+   * `{ shouldValidate: false }` to write without re-running the whole schema —
+   * useful for high-frequency writes.
+   */
   setValue: <K extends FieldPath<TValues>>(
     name: K,
     value: FieldPathValue<TValues, K>,
+    options?: SetValueOptions,
   ) => void
   /** Set multiple field values at once */
   setValues: (values: Partial<TValues>) => void

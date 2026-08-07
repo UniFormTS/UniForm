@@ -5,14 +5,16 @@ sidebar_position: 5
 
 # `useAutoFormContext()`
 
-`useAutoFormContext()` returns the internal context of the nearest `<AutoForm>` ancestor. It lets custom layout components, field wrappers, and submit buttons read form state and call form methods without prop-drilling.
+`useAutoFormContext()` returns the context of the nearest `<AutoForm>` or [`<UniFormProvider>`](./uniform-provider) ancestor. It lets custom layout components, field wrappers, and submit buttons read form state and call form methods without prop-drilling.
+
+**Pass the form to infer the schema's value type** — this is the recommended form, and removes the need for casts like `control as unknown as Control<MyValues>`:
 
 ```tsx
 import { useAutoFormContext } from '@uniform-ts/core'
 
 function StatusBar() {
-  const { formMethods, disabled } = useAutoFormContext()
-  const values = formMethods.watch()
+  const { formMethods, disabled } = useAutoFormContext(ticketForm)
+  const values = formMethods.getValues() // TicketValues — fully typed
 
   return (
     <div>
@@ -23,33 +25,47 @@ function StatusBar() {
 }
 ```
 
+For reactive reads prefer [`useFormValue()`](./use-form-value) — it re-renders only when the watched path changes.
+
 ## Signature
 
 ```ts
-function useAutoFormContext(): AutoFormContextValue
+// Inference form (recommended)
+function useAutoFormContext<TSchema extends z.ZodObject>(form: {
+  readonly schema: TSchema
+}): AutoFormContextValue<z.infer<TSchema>>
+
+// Explicit type argument
+function useAutoFormContext<
+  TValues extends FieldValues = FieldValues,
+>(): AutoFormContextValue<TValues>
 ```
 
-Throws if called outside an `<AutoForm>` subtree.
+The generic threads through `control` and `formMethods`. The default type argument keeps every existing call site compiling.
+
+Throws if called outside an `<AutoForm>` / `<UniFormProvider>` subtree — unless you pass the live `useUniForm()` result, which carries its own context and therefore works above the provider too.
 
 ## Returns
 
-### `AutoFormContextValue`
+### `AutoFormContextValue<TValues>`
 
-| Property         | Type                                                                                   | Description                                                                    |
-| ---------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `registry`       | `ComponentRegistry`                                                                    | The resolved component registry for this form                                  |
-| `fieldConfigs`   | `FieldConfig[]`                                                                        | Introspected field config array derived from the schema                        |
-| `fieldOverrides` | `Record<string, unknown>`                                                              | Per-field overrides passed via the `fields` prop                               |
-| `fieldWrapper`   | `React.ComponentType<FieldWrapperProps>`                                               | The active field wrapper component                                             |
-| `layout`         | `ResolvedLayoutSlots`                                                                  | All layout slots (formWrapper, submitButton, arrayButtons, …) fully resolved   |
-| `classNames`     | `FormClassNames`                                                                       | CSS class names for form, label, error, and description elements               |
-| `disabled`       | `boolean`                                                                              | Whether the entire form is currently disabled                                  |
-| `coercions`      | `CoercionMap \| undefined`                                                             | Active value coercion map                                                      |
-| `messages`       | `ValidationMessages \| undefined`                                                      | Active custom validation messages                                              |
-| `labels`         | `FormLabels`                                                                           | UI label overrides (submit button text, array button text, …)                  |
-| `formMethods`    | `FormMethods`                                                                          | Programmatic form methods — see [`FormMethods`](/docs/api/types#formmethods)   |
-| `control`        | `Control`                                                                              | The underlying `react-hook-form` `Control` object                              |
-| `setDynamicMeta` | `React.Dispatch<React.SetStateAction<Record<string, Partial<FieldDependencyResult>>>>` | Internal setter for dynamic field metadata — rarely needed in application code |
+**Supported surface:**
+
+| Property       | Type                                     | Description                                                                  |
+| -------------- | ---------------------------------------- | ---------------------------------------------------------------------------- |
+| `formMethods`  | `FormMethods<TValues>`                   | Programmatic form methods — see [`FormMethods`](/docs/api/types#formmethods) |
+| `control`      | `Control<TValues>`                       | The underlying `react-hook-form` `Control` object                            |
+| `registry`     | `ComponentRegistry`                      | The resolved component registry for this form                                |
+| `fieldConfigs` | `FieldConfig[]`                          | Introspected field config array derived from the schema                      |
+| `fieldWrapper` | `React.ComponentType<FieldWrapperProps>` | The active field wrapper component                                           |
+| `layout`       | `ResolvedLayoutSlots`                    | All layout slots (formWrapper, submitButton, arrayButtons, …) fully resolved |
+| `classNames`   | `FormClassNames`                         | CSS class names for form, label, error, and description elements             |
+| `disabled`     | `boolean`                                | Whether the entire form is currently disabled                                |
+| `coercions`    | `CoercionMap \| undefined`               | Active value coercion map                                                    |
+| `messages`     | `ValidationMessages \| undefined`        | Active custom validation messages                                            |
+| `labels`       | `FormLabels`                             | UI label overrides (submit button text, array button text, …)                |
+
+**Internal — may change without a major release:** `resolvedFields`, `fieldOverrides`, `layoutSlots`, `setDynamicMeta`, `arrayFields`.
 
 ## Common use cases
 
@@ -113,7 +129,7 @@ function ResetButton() {
 
 ## Requirements
 
-- Must be called from a component rendered **inside** an `<AutoForm>` subtree.
-- Throws `[UniForm] useAutoFormContext must be used inside an <AutoForm> component.` if called outside one.
+- Must be called from a component rendered inside an `<AutoForm>` or `<UniFormProvider>` subtree — or given the live `useUniForm()` result.
+- Throws `[UniForm] useAutoFormContext must be used inside an <AutoForm> or <UniFormProvider> component.` otherwise.
 
-See also: [Programmatic control guide](/docs/guides/programmatic-control), [`FormMethods`](/docs/api/types#formmethods), [`useArrayField()`](/docs/api/use-array-field).
+See also: [Headless Mode guide](/docs/guides/headless), [`useFormValue()`](/docs/api/use-form-value), [Programmatic control guide](/docs/guides/programmatic-control), [`FormMethods`](/docs/api/types#formmethods), [`useArrayField()`](/docs/api/use-array-field).

@@ -60,8 +60,9 @@ export function useFormPersistence(options: {
     }
   }, [key, storage, reset, defaultValues])
 
-  // Watch all values and persist on change
-  const values = useWatch({ control })
+  // Watch all values and persist on change. Disabled without a key so the
+  // owning component does not re-render on every keystroke for nothing.
+  const values = useWatch({ control, disabled: !key })
 
   useEffect(() => {
     if (!key || !storage) return
