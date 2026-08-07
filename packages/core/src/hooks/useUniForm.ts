@@ -8,6 +8,7 @@ import type {
   FieldCondition,
   FieldMeta,
   FieldOverride,
+  FieldRequirement,
   FieldDependencyResult,
   FormClassNames,
   FormLabels,
@@ -35,9 +36,16 @@ import {
   applyFieldOverrides,
   injectOnChangeHandlers,
   injectConditions,
+  injectRequirements,
   applyDynamicMeta,
   buildDefaults,
 } from '../utils/fieldPipeline'
+import {
+  applyRequiredErrors,
+  normalizeRootErrors,
+  ROOT_ERROR_KEY,
+  type RequirementEntry,
+} from '../validation/requiredResolver'
 
 /** Brand identifying a `useUniForm` result at runtime and at compile time. */
 const UNIFORM_INSTANCE = Symbol.for('uniform.instance')
@@ -232,8 +240,44 @@ export function useUniForm<TSchema extends z.$ZodObject>(
   const [isLoadingDefaults, setIsLoadingDefaults] =
     React.useState(isAsyncDefaults)
 
+  // Requiredness predicates from `setRequired` plus any `requiredWhen` given
+  // through the `fields` prop. Collected here so the resolver can enforce them.
+  const requirements = React.useMemo<RequirementEntry[]>(() => {
+    const collected = new Map<string, FieldRequirement>(
+      (uniForm as UniForm<TSchema>)._getRequirements?.() ?? [],
+    )
+    for (const [name, override] of Object.entries(
+      fieldOverridesProp as Record<string, Partial<FieldMeta>>,
+    )) {
+      if (typeof override.requiredWhen === 'function') {
+        collected.set(name, override.requiredWhen)
+      }
+    }
+    return Array.from(collected, ([path, predicate]) => ({ path, predicate }))
+  }, [uniForm, fieldOverridesProp])
+
+  const requiredMessage = messages?.required ?? 'This field is required'
+
+  const resolver = React.useMemo<Resolver>(() => {
+    const base = zodResolver(schema) as unknown as Resolver
+    return async (values, context, options) => {
+      const result = await base(values, context, options)
+      const errors = applyRequiredErrors(
+        normalizeRootErrors(result.errors),
+        values,
+        requirements,
+        requiredMessage,
+      )
+      // A dynamically-required empty field must block submit, so drop `values`
+      // whenever we introduce an error the schema did not report.
+      return Object.keys(errors).length
+        ? { errors, values: {} }
+        : { errors: {}, values: result.values }
+    }
+  }, [schema, requirements, requiredMessage])
+
   const rhf = useForm({
-    resolver: zodResolver(schema) as unknown as Resolver,
+    resolver,
     defaultValues: computedDefaults,
   })
 
@@ -356,6 +400,14 @@ export function useUniForm<TSchema extends z.$ZodObject>(
           setError(key, { type: 'manual', message: message as string })
         }
       },
+      setIssues: (issues) => {
+        for (const { path, message } of issues) {
+          setError(path === '' ? ROOT_ERROR_KEY : path, {
+            type: 'manual',
+            message,
+          })
+        }
+      },
       clearErrors: (names?) => clearErrors(names),
       submit: () => {
         void handleSubmit((values) =>
@@ -422,10 +474,18 @@ export function useUniForm<TSchema extends z.$ZodObject>(
     [fieldsWithHandlers, uniForm],
   )
 
+  // Inject UniForm requiredness predicates into field.meta.requiredWhen
+  const fieldsWithRequirements = React.useMemo(() => {
+    const map = new Map<string, FieldRequirement>(
+      requirements.map((r) => [r.path, r.predicate as FieldRequirement]),
+    )
+    return injectRequirements(fieldsWithConditions, map)
+  }, [fieldsWithConditions, requirements])
+
   // Apply event-driven dynamic meta overrides (from setFieldMeta calls)
   const resolvedFields = React.useMemo(
-    () => applyDynamicMeta(fieldsWithConditions, dynamicMeta),
-    [fieldsWithConditions, dynamicMeta],
+    () => applyDynamicMeta(fieldsWithRequirements, dynamicMeta),
+    [fieldsWithRequirements, dynamicMeta],
   )
 
   const allValues = useWatch({ control, disabled: !onValuesChange })

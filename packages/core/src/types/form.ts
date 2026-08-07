@@ -40,6 +40,21 @@ export type FormMethods<TValues extends FieldValues = FieldValues> = {
   setError: (name: FieldPath<TValues>, message: string) => void
   /** Set validation errors on multiple fields at once */
   setErrors: (errors: Partial<Record<FieldPath<TValues>, string>>) => void
+  /**
+   * Push an arbitrary list of issues into the error tree — including paths that
+   * are not rendered fields, array-element paths like `"lines.0"`, and the form
+   * root (`''` or `'root'`).
+   *
+   * Shaped for backend `/validate` responses, which rarely arrive as a flat map
+   * keyed by field name.
+   *
+   * @example
+   * formMethods.setIssues([
+   *   { path: 'lines.0', message: 'Duplicate SKU in this order' },
+   *   { path: '', message: 'Order total exceeds the customer credit limit' },
+   * ])
+   */
+  setIssues: (issues: { path: string; message: string }[]) => void
   /** Clear validation errors (all fields, or specific ones) */
   clearErrors: (names?: FieldPath<TValues> | FieldPath<TValues>[]) => void
   /** Programmatically trigger form submission */

@@ -100,10 +100,11 @@ function applyRowDynamicMeta(
     const override = rowOverrides[child.name]
     if (!override) return child
 
-    const { options, label, ...metaOverrides } = override
+    const { options, label, required, ...metaOverrides } = override
     let updated: FieldConfig = {
       ...child,
       ...(label !== undefined ? { label } : {}),
+      ...(required !== undefined ? { required } : {}),
       meta: { ...child.meta, ...metaOverrides },
     }
 

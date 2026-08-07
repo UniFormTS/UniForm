@@ -16,6 +16,7 @@ export type { SelectOption } from './shared'
 export type {
   FieldType,
   FieldCondition,
+  FieldRequirement,
   FieldDependencyResult,
   FieldMetaBase,
   FieldMeta,
@@ -28,7 +29,11 @@ export type {
   ArrayContainerProps,
 } from './field'
 
-export type { ComponentRegistry, FieldWrapperProps } from './registry'
+export type {
+  ComponentRegistry,
+  RegisterableComponent,
+  FieldWrapperProps,
+} from './registry'
 
 export type {
   ArrayButtonProps,

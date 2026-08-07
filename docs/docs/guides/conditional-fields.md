@@ -24,6 +24,10 @@ myForm.setCondition(
 - When a field becomes visible again, it is re-registered and its previous value is restored. This means switching a field off and back on does not lose the user's input.
 - Conditions are evaluated reactively on every form value change.
 
+:::tip Visibility is not the only runtime lever
+`setCondition` decides whether a field is **shown**. To decide whether it is **required** — from a lookup matrix, a backend rule, or a sibling value — use `setRequired`, which drives the asterisk, `aria-required` and submit validation from one predicate. See the [Dynamic Requiredness guide](./dynamic-requiredness).
+:::
+
 ## Inline condition (without `createForm`)
 
 For simple cases you can skip `createForm` and pass a `condition` predicate directly in the `fields` prop:

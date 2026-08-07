@@ -6,6 +6,7 @@ Read this when a field must react to another field's value: cascading dropdowns,
 
 - [`setOnChange` — react to a field change](#setonchange--react-to-a-field-change)
 - [`setFieldMeta` — dynamic field metadata](#setfieldmeta--dynamic-field-metadata)
+- [`setRequired` — runtime requiredness](#setrequired--runtime-requiredness)
 - [Per-row `setFieldMeta` in arrays](#per-row-setfieldmeta)
 - [Row-specific handlers](#row-specific-handlers)
 - [Inline `onChange` via the `fields` prop](#inline-onchange-via-the-fields-prop)
@@ -38,7 +39,7 @@ const shippingForm = createForm(schema).setOnChange('country', (value, ctx) => {
 
 ## `setFieldMeta` — dynamic field metadata
 
-`ctx.setFieldMeta(field, partialMeta)` overrides per-field UI properties at runtime (`hidden`, `disabled`, `options`, `label`, `placeholder`, `description`). Changes apply synchronously and re-render. Use it for behaviour that depends on values but is richer than show/hide:
+`ctx.setFieldMeta(field, partialMeta)` overrides per-field UI properties at runtime (`hidden`, `disabled`, `required`, `options`, `label`, `placeholder`, `description`). Changes apply synchronously and re-render. Use it for behaviour that depends on values but is richer than show/hide:
 
 ```ts
 form.setOnChange('expressAvailable', (value, ctx) => {
@@ -49,6 +50,42 @@ form.setOnChange('expressAvailable', (value, ctx) => {
   if (!value) ctx.setValue('shippingMethod', 'standard')
 })
 ```
+
+`required` set this way drives the asterisk, `aria-required` **and** submit validation — it is not a cosmetic flag.
+
+## `setRequired` — runtime requiredness
+
+A Zod schema is static, so "required only when …" cannot live in it. The wrong fix is to mark the field `.optional()` and re-implement the rule in a top-level `superRefine`: the UI then has no asterisk and no `aria-required`, and you maintain two rules that drift.
+
+Mark the field `.optional()` and put the real rule in `setRequired`. One predicate drives the marker, the accessibility attribute and submit validation:
+
+```ts
+const requisitionForm = createForm(schema).setRequired(
+  'orderReason',
+  (values) => REASON_REQUIRED[values.action]?.[values.sector] ?? false,
+)
+```
+
+Inside an array the predicate receives the **row** — the same convention `setCondition` uses — and the second argument is always the full form values:
+
+```ts
+orderForm.setRequired(
+  'lines.spec',
+  (row, values) => row.kind === 'custom' && values.contractType === 'fixed',
+)
+```
+
+Each row is evaluated independently, so the submit error lands on the row that failed.
+
+Three ways to express it, in increasing precedence:
+
+| Where | Use when |
+| --- | --- |
+| `form.setRequired(path, predicate)` | The rule belongs to the form definition and should travel with it |
+| `fields={{ x: { requiredWhen } }}` | A one-off at the render site |
+| `ctx.setFieldMeta('x', { required })` | Easier to express imperatively inside an `onChange` handler; applied last and wins |
+
+**Empty** means `undefined`, `null`, `''` or `[]`. `false` and `0` are values, not absences. An error Zod already reported at the path is never overwritten. The message comes from `messages.required`, defaulting to `"This field is required"`.
 
 ## Per-row `setFieldMeta`
 

@@ -56,17 +56,19 @@ You can render **no `<AutoForm>` at all**:
   <h1>Checkout</h1>
   <Field name='email' />
   <Field name='address.city' />
-  <button type='button' onClick={form.submit}>Pay</button>
+  <button type='button' onClick={form.submit}>
+    Pay
+  </button>
 </UniFormProvider>
 ```
 
 ## Reading state: `useFormValue` / `useFormValues`
 
 ```tsx
-const title = useFormValue(ticketForm, 'title')       // string
+const title = useFormValue(ticketForm, 'title') // string
 const priority = useFormValue(ticketForm, 'priority') // 'low' | 'normal' | 'urgent'
 const firstSku = useFormValue(ticketForm, 'lines.0.sku')
-const all = useFormValues(ticketForm)                 // whole object
+const all = useFormValues(ticketForm) // whole object
 ```
 
 - Pass the form first for inference — **zero casts**. An unknown path is a compile error.
@@ -99,15 +101,15 @@ If you render a field yourself **and** `<AutoForm>` also renders it, the path re
 
 A component registered for an `object` or `array` field receives a **superset** of `FieldProps`:
 
-| Prop | Available on | Description |
-| --- | --- | --- |
-| `path` | object + array | Absolute path of the container |
-| `setPath(subPath, value, options?)` | object + array | Targeted write relative to the container |
-| `fields` | object | Child field configs |
-| `itemConfig` | array | Field config for a single row |
-| `rows` / `rowCount` | array | Current rows (each with an `id`) and their count |
-| `canAdd` / `atMin` | array | Schema `.max()` / `.min()` gates |
-| `append` `prepend` `insert` `remove` `move` `swap` `update` `replace` | array | Row operations |
+| Prop                                                                  | Available on   | Description                                      |
+| --------------------------------------------------------------------- | -------------- | ------------------------------------------------ |
+| `path`                                                                | object + array | Absolute path of the container                   |
+| `setPath(subPath, value, options?)`                                   | object + array | Targeted write relative to the container         |
+| `fields`                                                              | object         | Child field configs                              |
+| `itemConfig`                                                          | array          | Field config for a single row                    |
+| `rows` / `rowCount`                                                   | array          | Current rows (each with an `id`) and their count |
+| `canAdd` / `atMin`                                                    | array          | Schema `.max()` / `.min()` gates                 |
+| `append` `prepend` `insert` `remove` `move` `swap` `update` `replace` | array          | Row operations                                   |
 
 Inside it, `<Field>` paths are **relative to the container**:
 
@@ -118,24 +120,33 @@ function LinesTable({ rows, canAdd, append, remove }: ArrayContainerProps) {
       <tbody>
         {rows.map((row, index) => (
           <tr key={String(row.id)}>
-            <td><Field name={`${index}.sku`} /></td>{/* → lines.0.sku */}
-            <td><Field name={`${index}.qty`} /></td>
             <td>
-              <button type='button' onClick={() => remove(index)}>✕</button>
+              <Field name={`${index}.sku`} />
+            </td>
+            {/* → lines.0.sku */}
+            <td>
+              <Field name={`${index}.qty`} />
+            </td>
+            <td>
+              <button type='button' onClick={() => remove(index)}>
+                ✕
+              </button>
             </td>
           </tr>
         ))}
       </tbody>
       <tfoot>
-        <tr><td>
-          <button
-            type='button'
-            disabled={!canAdd}
-            onClick={() => append({ sku: '', qty: 1 })}
-          >
-            Add line
-          </button>
-        </td></tr>
+        <tr>
+          <td>
+            <button
+              type='button'
+              disabled={!canAdd}
+              onClick={() => append({ sku: '', qty: 1 })}
+            >
+              Add line
+            </button>
+          </td>
+        </tr>
       </tfoot>
     </table>
   )

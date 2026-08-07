@@ -3,6 +3,7 @@ import type {
   FieldConfig,
   FieldCondition,
   FieldMeta,
+  FieldRequirement,
   FormMethods,
   FieldDependencyResult,
 } from '../types'
@@ -262,6 +263,48 @@ export function injectConditions(
   })
 }
 
+/**
+ * Injects UniForm requiredness predicates into `meta.requiredWhen`, recursing
+ * into object children and array itemConfig with prefix-stripping, exactly as
+ * `injectConditions` does.
+ */
+export function injectRequirements(
+  fields: FieldConfig[],
+  requirements: Map<string, FieldRequirement>,
+): FieldConfig[] {
+  if (!requirements.size) return fields
+
+  return fields.map((field) => {
+    const requiredWhen = requirements.get(field.name)
+    let updated: FieldConfig = requiredWhen
+      ? { ...field, meta: { ...field.meta, requiredWhen } }
+      : field
+
+    if (updated.type === 'object') {
+      const newChildren = injectRequirements(updated.children, requirements)
+      if (newChildren !== updated.children)
+        updated = { ...updated, children: newChildren }
+    } else if (updated.type === 'array') {
+      const prefix = field.name + '.'
+      const itemRequirements = new Map<string, FieldRequirement>()
+      for (const [key, predicate] of requirements) {
+        if (key.startsWith(prefix))
+          itemRequirements.set(key.slice(prefix.length), predicate)
+      }
+      if (itemRequirements.size) {
+        const newItemConfig = injectRequirements(
+          [updated.itemConfig],
+          itemRequirements,
+        )[0]
+        if (newItemConfig !== updated.itemConfig)
+          updated = { ...updated, itemConfig: newItemConfig }
+      }
+    }
+
+    return updated
+  })
+}
+
 // ---------------------------------------------------------------------------
 // Internal type for array fields carrying per-row dynamic meta (not public API)
 // ---------------------------------------------------------------------------
@@ -302,11 +345,12 @@ export function applyDynamicMeta(
     let updated: FieldConfig = field
 
     if (override) {
-      const { options, label, ...metaOverrides } = override
+      const { options, label, required, ...metaOverrides } = override
       updated = {
         ...field,
         ...(label !== undefined ? { label } : {}),
         ...(options !== undefined ? { options } : {}),
+        ...(required !== undefined ? { required } : {}),
         meta: { ...field.meta, ...metaOverrides },
       }
     }
