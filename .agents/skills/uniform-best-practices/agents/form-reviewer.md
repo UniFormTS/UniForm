@@ -47,6 +47,8 @@ Flag anything not in UniForm:
 - `control as unknown as Control<Values>` or any cast to recover the schema type → flag; `useAutoFormContext(form)` / `useFormValue(form, path)` infer it.
 - `useWatch`, `Control` or `useFieldArray` imported from `react-hook-form` in application code → flag; use `useFormValue` / `useArrayField`.
 - A custom object/array component that rebuilds the whole container value per keystroke → flag; delegate leaves to a relative `<Field>` or write with `setPath`.
+- Every field marked `.optional()` with the real requiredness rules re-implemented in a top-level `superRefine` → flag; `setRequired(path, predicate)` drives the asterisk, `aria-required` and submit validation from one rule.
+- A cross-field rule written twice — once in `superRefine` for submit, once in a plain function for display → flag; `useFieldError(path)` reads issues anchored at array elements (`'lines.0'`) and the form root (`''`).
 
 ### Step 5: Check the factory split
 

@@ -33,6 +33,8 @@ List every field the form needs and the JavaScript type each should produce on s
 
 Put `.min`, `.max`, `.email`, `.optional`, `.default`, and array bounds (`.min(n)`/`.max(n)`) on the schema — not in UI code. Array bounds drive the Add/Remove buttons; do not plan to enforce them in components.
 
+For requiredness that depends on **current values** (a lookup matrix, a backend rule, a sibling field), mark the field `.optional()` in the schema and hand the rule to `setRequired(path, predicate)` — never re-implement it in a top-level `superRefine`, which leaves the UI with no asterisk and two rules that drift. Keep genuinely static requiredness in the schema.
+
 ### Step 4: Author validation messages in the schema
 
 Every constraint gets a human message: `z.string().min(1, 'Name is required')`, `z.email('Enter a valid email')`. For a required checkbox use `z.boolean().refine(v => v === true, '...')` (or `z.literal(true)`).

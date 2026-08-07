@@ -28,6 +28,8 @@ import Example27 from './examples/Example27'
 import Example28 from './examples/Example28'
 import Example29 from './examples/Example29'
 import Example30 from './examples/Example30'
+import Example31 from './examples/Example31'
+import Example32 from './examples/Example32'
 
 const examples = [
   { id: 'ex1', label: '1. classNames + span' },
@@ -60,6 +62,8 @@ const examples = [
   { id: 'ex28', label: '28. Arrays of Primitives' },
   { id: 'ex29', label: '29. Headless useUniForm' },
   { id: 'ex30', label: '30. Custom Layout with <Field>' },
+  { id: 'ex31', label: '31. Runtime Requiredness' },
+  { id: 'ex32', label: '32. Cross-field & Row Errors' },
 ]
 
 export default function App() {
@@ -164,6 +168,10 @@ export default function App() {
       <Example29 />
       <hr style={{ margin: '2rem 0' }} />
       <Example30 />
+      <hr style={{ margin: '2rem 0' }} />
+      <Example31 />
+      <hr style={{ margin: '2rem 0' }} />
+      <Example32 />
     </main>
   )
 }

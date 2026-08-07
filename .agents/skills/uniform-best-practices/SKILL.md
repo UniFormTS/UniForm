@@ -1,6 +1,6 @@
 ---
 name: uniform-best-practices
-description: 'Build React forms correctly and idiomatically with UniForm (@uniform-ts/core), the headless Zod V4 form library. Trigger this skill whenever the user mentions any of: building a React form, rendering a form from a Zod schema, AutoForm, createForm, createAutoForm, useUniForm, UniFormProvider, Field, useField, useFormValue, useArrayField, component registry, field overrides, conditional fields, or form validation/persistence/i18n with UniForm. Prefer triggering over skipping when uncertain — even partial or exploratory requests ("how do I show a field only when…", "add a repeating row", "wire a Zod schema to inputs", "render the form myself but keep validation") count.'
+description: 'Build React forms correctly and idiomatically with UniForm (@uniform-ts/core), the headless Zod V4 form library. Trigger this skill whenever the user mentions any of: building a React form, rendering a form from a Zod schema, AutoForm, createForm, createAutoForm, useUniForm, UniFormProvider, Field, useField, useFormValue, useArrayField, setRequired, useFieldError, component registry, field overrides, conditional fields, or form validation/persistence/i18n with UniForm. Prefer triggering over skipping when uncertain — even partial or exploratory requests ("how do I show a field only when…", "make this field required only if…", "add a repeating row", "wire a Zod schema to inputs", "render the form myself but keep validation") count.'
 ---
 
 # Building forms with UniForm
@@ -239,6 +239,26 @@ taskForm.setCondition('tasks.note', (row) => row.priority === 'high')
 
 For **discriminated unions** (`z.discriminatedUnion`), you usually need _no_ conditions at all — UniForm flattens the variants and shows only the active one automatically. See [references/reactivity.md](references/reactivity.md#discriminated-unions).
 
+### Requiredness decided at runtime
+
+`required` is **not** only a static schema property. When whether a field is required depends on the current values — a lookup matrix, a backend rule, a sibling value — do **not** mark it `.optional()` and re-implement the rule in a top-level `superRefine`: that leaves the UI with no asterisk and gives you two rules that drift.
+
+Mark it `.optional()` in the schema and put the real rule in `setRequired`. One predicate drives the asterisk, `aria-required` **and** submit validation:
+
+```ts
+const requisitionForm = createForm(schema).setRequired(
+  'orderReason',
+  (values) => REASON_REQUIRED[values.action]?.[values.sector] ?? false,
+)
+
+// Inside an array the predicate receives the row (same convention as setCondition):
+orderForm.setRequired('lines.spec', (row, values) => row.kind === 'custom')
+```
+
+Also available per field as `fields={{ x: { requiredWhen } }}`, and imperatively as `ctx.setFieldMeta('x', { required })` (applied last, wins).
+
+Empty means `undefined`, `null`, `''`, `[]`. `false` and `0` are values. An error Zod already reported at the path is never overwritten.
+
 **Read [references/reactivity.md](references/reactivity.md)** for `setOnChange` (cascading dropdowns, async lookups), row-scoped `setFieldMeta`, row-specific `arrayName.index.field` handlers, and discriminated unions.
 
 ---
@@ -338,6 +358,28 @@ For **server-side errors** (e.g. "email already taken" discovered after submit),
 
 ```tsx
 formRef.current?.setErrors({ email: 'Email already registered' })
+```
+
+### Cross-field and array-index errors
+
+Cross-field rules belong in `superRefine`. Their issues are often anchored where **no leaf field can render them** — an array element (`path: ['lines', index]`), a whole container, or the form itself (`path: []`). Do **not** duplicate the rule in a plain function just to display it. Read it where it was anchored:
+
+```tsx
+const rowError = useFieldError(`lines.${index}`) // array-element issue
+const rootError = useFieldError('') // form-level issue
+const issues = useFieldErrors('lines.0') // { path, message, code }[] beneath a path
+const tree = useFormErrors() // the whole typed tree
+```
+
+All are reactive and none require the path to be a rendered field. `<FormErrorSummary />` lists exactly the issues no field renders, so nothing is silently swallowed.
+
+For **backend validation responses** that are not shaped as a flat field-name map, use `setIssues` — it accepts arbitrary paths, including non-fields and the root:
+
+```ts
+formMethods.setIssues([
+  { path: 'lines.0', message: 'Duplicate SKU' },
+  { path: '', message: 'Order exceeds the credit limit' },
+])
 ```
 
 ---

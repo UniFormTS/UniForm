@@ -7,6 +7,7 @@ export type {
   SelectOption,
   FieldDependencyResult,
   FieldCondition,
+  FieldRequirement,
   FieldMetaBase,
   FieldMeta,
   FieldOverride,
@@ -56,6 +57,8 @@ export { Field } from './components/Field'
 export type { FieldComponentProps } from './components/Field'
 export { UniFormProvider } from './components/UniFormProvider'
 export type { UniFormProviderProps } from './components/UniFormProvider'
+export { FormErrorSummary } from './components/FormErrorSummary'
+export type { FormErrorSummaryProps } from './components/FormErrorSummary'
 
 // Default components
 export { DefaultInput } from './components/defaults/DefaultInput'
@@ -96,6 +99,13 @@ export type { UniFormInstance, UseUniFormOptions } from './hooks/useUniForm'
 export { useFormValue, useFormValues } from './hooks/useFormValue'
 export { useField } from './hooks/useField'
 export type { UseFieldOptions, UseFieldResult } from './hooks/useField'
+export {
+  useFieldError,
+  useFieldErrors,
+  useFormErrors,
+} from './hooks/useFieldError'
+export type { FormIssue } from './hooks/useFieldError'
+export { isEmptyValue } from './validation/requiredResolver'
 
 // Context
 export { useAutoFormContext } from './context/AutoFormContext'

@@ -84,6 +84,25 @@ const form = useUniForm(ticketForm, { defaultValues, onSubmit: save })
 
 After this, an app never needs to import `useWatch`, `Control` or `useFieldArray` from `react-hook-form` directly. See the [Headless Mode guide](https://uniformts.github.io/UniForm/docs/guides/headless).
 
+### Runtime requiredness and the error tree
+
+**`form.setRequired(path, predicate)`** — decide at runtime whether a field is required. One predicate drives the asterisk, `aria-required` **and** submit validation, so there is no second copy of the rule. Mark the field `.optional()` in the schema and put the real rule here. Array-item paths receive the **row**; the second argument is always the full values. Empty means `undefined`, `null`, `''` or `[]` — `false` and `0` are values. Also available per field as `fields={{ x: { requiredWhen } }}` and imperatively as `ctx.setFieldMeta(x, { required })`.
+
+```ts
+const requisitionForm = createForm(schema).setRequired(
+  'sectors.orderReason',
+  (row, values) => isReasonRequired(values.action, row.sector),
+)
+```
+
+**`useFieldError(path)` / `useFieldErrors(path)` / `useFormErrors()`** — read validation errors at **any** path, including paths that are not rendered fields: an array element (`'lines.0'`), a whole container, or the form root (`''`). This is where a `superRefine` issue anchored at `['lines', 0]` becomes renderable, so cross-field rules never have to be written twice.
+
+**`<FormErrorSummary>`** — lists exactly the issues no field renders, so nothing is silently swallowed.
+
+**`formMethods.setIssues(issues)`** — push `{ path, message }[]` into the same tree, including non-field paths and the root; shaped for backend `/validate` responses. `setError` / `setErrors` still cover the flat, field-keyed case.
+
+See the [Dynamic Requiredness](https://uniformts.github.io/UniForm/docs/guides/dynamic-requiredness) and [Validation](https://uniformts.github.io/UniForm/docs/guides/validation) guides.
+
 **`components`** — a registry mapping Zod types (`string`, `number`, `boolean`, etc.) to your own input components. Pass a component directly on a field via `fields` for one-off overrides. For custom components, type field values precisely with `FieldProps<Value>` (for example, `FieldProps<number>` for a rating widget).
 
 **`fields`** — per-field overrides using dot-notated paths. Control labels, descriptions, ordering, sections, conditions, and custom components without touching the schema.
@@ -127,6 +146,8 @@ After this, an app never needs to import `useWatch`, `Control` or `useFieldArray
 - **External array controls** — use `useArrayField('path.to.array')` to place Add/Remove controls outside the default array block while staying in sync with schema limits
 - **Headless mode** — `useUniForm` + `<UniFormProvider>` + `<Field>` let the app own the page layout while UniForm keeps the store, registration, validation and errors
 - **Typed state access** — `useFormValue` / `useFormValues` / `useAutoFormContext(form)` infer value types straight from the schema, with no casts and no `react-hook-form` imports
+- **Runtime requiredness** — `setRequired(path, predicate)` drives the asterisk, `aria-required` and submit validation from one rule
+- **Error tree access** — `useFieldError` / `useFieldErrors` render `superRefine` issues anchored at array elements or the form root; `setIssues` anchors backend responses anywhere
 - **Programmatic control** — `reset()`, `submit()`, `setValues()`, `getValues()`, `setErrors()`, `focus()` via ref
 - **Form persistence** — auto-save to `localStorage` (or custom storage) with configurable debounce
 - **Pluggable coercion** — automatic `string → number`, `string → Date` with customizable coercion map

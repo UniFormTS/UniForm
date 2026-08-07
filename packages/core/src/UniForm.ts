@@ -6,6 +6,7 @@ import type {
   ConditionValues,
   FormMethods,
   FieldDependencyResult,
+  FieldRequirement,
 } from './types'
 
 /**
@@ -35,6 +36,8 @@ type Handler<TSchema extends z.$ZodObject, TValue> = (
 ) => void | Promise<void>
 
 type Condition = (values: unknown) => boolean
+
+type Requirement = (values: unknown, allValues: unknown) => boolean
 
 /**
  * A type-safe form definition that lives outside React components.
@@ -66,11 +69,13 @@ export class UniForm<
   readonly schema: TSchema
   private readonly _handlers: Map<string, Handler<TSchema, unknown>>
   private readonly _conditions: Map<string, Condition>
+  private readonly _requirements: Map<string, Requirement>
 
   constructor(schema: TSchema) {
     this.schema = schema
     this._handlers = new Map()
     this._conditions = new Map()
+    this._requirements = new Map()
   }
 
   /**
@@ -108,6 +113,39 @@ export class UniForm<
     return this
   }
 
+  /**
+   * Decide at runtime whether a field is required, based on the current values.
+   *
+   * The predicate drives the asterisk, `aria-required`, **and** submit
+   * validation — an empty value at a field the predicate marks required blocks
+   * submission with the configured required message. Mark the field
+   * `.optional()` in the schema and put the real rule here, so there is one
+   * rule rather than two that can drift.
+   *
+   * Array-item paths receive the **row** as the first argument (so row-local
+   * rules read naturally); everything else receives the full values. The second
+   * argument is always the full values.
+   *
+   * Empty means `undefined`, `null`, `''` or `[]`. `false` and `0` are values.
+   *
+   * Returns `this` for fluent chaining.
+   *
+   * @example
+   * requisitionForm.setRequired('sectors.orderReason', (row, values) =>
+   *   isReasonRequired(values.action, row.sector),
+   * )
+   */
+  setRequired<K extends DeepKeys<z.infer<TSchema>>>(
+    field: K,
+    predicate: FieldRequirement<
+      ConditionValues<z.infer<TSchema>, K>,
+      z.infer<TSchema>
+    >,
+  ): this {
+    this._requirements.set(field, predicate as Requirement)
+    return this
+  }
+
   /** @internal Called by AutoForm to fire the handler registered for a field. */
   _fireHandler(
     field: string,
@@ -125,6 +163,11 @@ export class UniForm<
   /** @internal Returns a copy of the conditions map for AutoForm to inject into field meta. */
   _getConditions(): Map<string, Condition> {
     return new Map(this._conditions)
+  }
+
+  /** @internal Returns a copy of the requiredness predicates. */
+  _getRequirements(): Map<string, Requirement> {
+    return new Map(this._requirements)
   }
 }
 

@@ -39,6 +39,19 @@ export type FieldCondition<TValues = Record<string, unknown>> = (
   values: TValues,
 ) => boolean
 
+/**
+ * A predicate that decides whether a field is required, given the current
+ * values. Array-item paths receive the **row**; every other path receives the
+ * full form values. The second argument is always the full form values.
+ *
+ * @template TValues - The shape the predicate receives as its first argument.
+ * @template TAll - The shape of the whole form values object.
+ */
+export type FieldRequirement<
+  TValues = Record<string, unknown>,
+  TAll = Record<string, unknown>,
+> = (values: TValues, allValues: TAll) => boolean
+
 // ---------------------------------------------------------------------------
 // FieldDependencyResult
 // ---------------------------------------------------------------------------
@@ -55,6 +68,12 @@ export type FieldDependencyResult = {
   hidden?: boolean
   /** Dynamically enable or disable the field */
   disabled?: boolean
+  /**
+   * Dynamically mark the field required or optional. Drives the asterisk,
+   * `aria-required`, **and** submit validation — an empty value at a field
+   * marked required here blocks submission.
+   */
+  required?: boolean
   /** Override the field label */
   label?: string
   /** Override the placeholder text */
@@ -104,6 +123,18 @@ export type FieldMetaBase = {
   disabled?: boolean
   /** Conditionally show or hide the field based on the current form values. */
   condition?: FieldCondition
+  /**
+   * Decide at runtime whether the field is required, based on the current
+   * values. Returning `true` shows the asterisk, sets `aria-required`, **and**
+   * blocks submit when the value is empty.
+   *
+   * Mark the field `.optional()` in the schema and put the real rule here —
+   * that way there is one rule, not two.
+   *
+   * Inside an array the predicate receives the **row**; elsewhere it receives
+   * the full form values. The second argument is always the full values.
+   */
+  requiredWhen?: FieldRequirement
   /**
    * Override the component used to render this field.
    *
