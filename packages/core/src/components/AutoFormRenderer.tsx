@@ -20,10 +20,10 @@ export function AutoFormRenderer({
   onSubmit,
   isSubmitting,
 }: AutoFormRendererProps) {
-  const { resolvedFields, control, classNames, labels, layout, layoutSlots } =
+  const { _internal, control, classNames, labels, layout } =
     useAutoFormContext()
 
-  const visibleFields = useConditionalFields(resolvedFields, control)
+  const visibleFields = useConditionalFields(_internal.resolvedFields, control)
   const sections = useSectionGrouping(visibleFields)
 
   const FormWrapper = layout.formWrapper
@@ -52,7 +52,7 @@ export function AutoFormRenderer({
             )
           }
 
-          const sectionConfig = layoutSlots?.sections?.[section.title]
+          const sectionConfig = _internal.layoutSlots?.sections?.[section.title]
           const PerSectionWrapper = sectionConfig?.component ?? SectionWrapper
 
           return (

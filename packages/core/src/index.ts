@@ -5,6 +5,8 @@ export type * from './zod-augmentation'
 export type {
   FieldType,
   SelectOption,
+  GetOptionKey,
+  IsOptionEqual,
   FieldDependencyResult,
   FieldCondition,
   FieldRequirement,
@@ -85,7 +87,8 @@ export { coerceValue, defaultCoercionMap } from './coercion/coerce'
 
 // UniForm
 export { UniForm, createForm } from './UniForm'
-export type { UniFormContext } from './UniForm'
+export type { UniFormContext, DependencyConfig } from './UniForm'
+export type { DependencyArgs } from './utils/dependencyGraph'
 
 // Hooks
 export { useConditionalFields } from './hooks/useConditionalFields'
@@ -109,5 +112,8 @@ export { isEmptyValue } from './validation/requiredResolver'
 
 // Context
 export { useAutoFormContext } from './context/AutoFormContext'
-export type { AutoFormContextValue } from './context/AutoFormContext'
+export type {
+  AutoFormContextValue,
+  AutoFormInternals,
+} from './context/AutoFormContext'
 export { useFieldPath } from './context/FieldPathContext'

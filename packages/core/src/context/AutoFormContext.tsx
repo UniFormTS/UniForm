@@ -13,8 +13,30 @@ import type {
   ValidationMessages,
   FormLabels,
   FormMethods,
+  GetOptionKey,
+  IsOptionEqual,
 } from '../types'
 import type { ArrayFieldRegistry } from '../hooks/arrayFieldRegistry'
+
+/**
+ * The parts of the context that exist only to make UniForm's own components
+ * work. They are not covered by semver — read them at your own risk, and open
+ * an issue if you need something here promoted to the supported surface.
+ */
+export type AutoFormInternals = {
+  /** Field configs after the full pipeline (handlers, conditions, dynamic meta). */
+  resolvedFields: FieldConfig[]
+  /** Raw `fields` prop, kept for override lookups. */
+  fieldOverrides: Record<string, unknown>
+  /** The raw layout prop, needed for per-section config. */
+  layoutSlots?: LayoutSlots
+  /** Dynamic meta setter used by `setFieldMeta`. */
+  setDynamicMeta: React.Dispatch<
+    React.SetStateAction<Record<string, Partial<FieldDependencyResult>>>
+  >
+  /** Live row operations published by every mounted `ArrayField`. */
+  arrayFields: ArrayFieldRegistry
+}
 
 /**
  * Everything `<AutoForm>` (or `<UniFormProvider>`) publishes to the tree.
@@ -23,6 +45,10 @@ import type { ArrayFieldRegistry } from '../hooks/arrayFieldRegistry'
  * `useAutoFormContext(myForm)`. Without it the values default to
  * `FieldValues`, which keeps every existing call site compiling.
  *
+ * Members documented `@public` are the supported surface. Everything UniForm
+ * uses to render itself lives under {@link AutoFormContextValue._internal} and
+ * may change in a minor release.
+ *
  * @template TValues - The inferred shape of the form values.
  */
 export type AutoFormContextValue<TValues extends FieldValues = FieldValues> = {
@@ -30,16 +56,10 @@ export type AutoFormContextValue<TValues extends FieldValues = FieldValues> = {
   registry: ComponentRegistry
   /** @public Introspected field configs with `fields` overrides merged in. */
   fieldConfigs: FieldConfig[]
-  /** @internal Field configs after the full pipeline (handlers, conditions, dynamic meta). */
-  resolvedFields: FieldConfig[]
-  /** @internal Raw `fields` prop, kept for override lookups. */
-  fieldOverrides: Record<string, unknown>
   /** @public The wrapper rendered around every leaf field. */
   fieldWrapper: React.ComponentType<FieldWrapperProps>
   /** @public Fully resolved layout slots. */
   layout: ResolvedLayoutSlots
-  /** @internal The raw layout prop, needed for per-section config. */
-  layoutSlots?: LayoutSlots
   /** @public CSS class names in effect for this form. */
   classNames: FormClassNames
   /** @public Whether the whole form is disabled. */
@@ -50,16 +70,58 @@ export type AutoFormContextValue<TValues extends FieldValues = FieldValues> = {
   messages?: ValidationMessages
   /** @public UI strings (submit, array buttons, aria labels). */
   labels: FormLabels
+  /** @public Form-wide option key derivation; per-field `meta` wins. */
+  getOptionKey?: GetOptionKey
+  /** @public Form-wide option equality; per-field `meta` wins. */
+  isOptionEqual?: IsOptionEqual
   /** @public Typed programmatic form control methods. */
   formMethods: FormMethods<TValues>
   /** @public react-hook-form control for the underlying store. */
   control: Control<TValues>
-  /** @internal Dynamic meta setter used by `setFieldMeta`. */
+  /** @public UniForm's own rendering internals. Not covered by semver. */
+  _internal: AutoFormInternals
+
+  /**
+   * @deprecated Moved to `_internal.resolvedFields`. The alias will be removed
+   * in the next minor release.
+   */
+  resolvedFields: FieldConfig[]
+  /**
+   * @deprecated Moved to `_internal.fieldOverrides`. The alias will be removed
+   * in the next minor release.
+   */
+  fieldOverrides: Record<string, unknown>
+  /**
+   * @deprecated Moved to `_internal.layoutSlots`. The alias will be removed in
+   * the next minor release.
+   */
+  layoutSlots?: LayoutSlots
+  /**
+   * @deprecated Moved to `_internal.setDynamicMeta`. The alias will be removed
+   * in the next minor release.
+   */
   setDynamicMeta: React.Dispatch<
     React.SetStateAction<Record<string, Partial<FieldDependencyResult>>>
   >
-  /** @internal Live row operations published by every mounted `ArrayField`. */
+  /**
+   * @deprecated Moved to `_internal.arrayFields`. The alias will be removed in
+   * the next minor release.
+   */
   arrayFields: ArrayFieldRegistry
+}
+
+/**
+ * Publishes the internals under `_internal` while keeping the deprecated
+ * top-level aliases pointing at the same objects.
+ */
+export function withInternals<TValues extends FieldValues>(
+  supported: Omit<
+    AutoFormContextValue<TValues>,
+    keyof AutoFormInternals | '_internal'
+  >,
+  internals: AutoFormInternals,
+): AutoFormContextValue<TValues> {
+  return { ...supported, ...internals, _internal: internals }
 }
 
 const AutoFormContext =

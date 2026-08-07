@@ -112,10 +112,12 @@ import { Button } from 'my-design-system'
 
 Resolution order: **specific slot → `base` → built-in default**.
 
+The **collapse** toggle is the one exception: it receives an extra `isCollapsed` prop, so it does not fall back to `base` — override or omit it explicitly.
+
 For array button slots, `undefined` means "use fallback/default" and `null` means "omit this button".
 
 ```tsx
-// Omit all unspecified array action buttons
+// Omit all unspecified array action buttons (the collapse toggle is separate)
 <AutoForm layout={{ arrayButtons: { base: null } }} ... />
 
 // Omit just Remove
@@ -249,7 +251,7 @@ z.array(memberSchema)
   .max(10, 'Maximum 10 members')
 ```
 
-The **Add** button is hidden when the max is reached.
+The **Add** button is disabled when the max is reached, and **Remove** is disabled at the minimum — both stay in the DOM so the layout does not jump.
 
 ## Conditional fields inside rows
 

@@ -23,19 +23,56 @@ const formRef = useRef<AutoFormHandle<typeof schema>>(null)
 
 `AutoFormHandle` is exactly [`FormMethods`](../api/types#formmethods):
 
-| Member        | Type                           | Description                                      |
-| ------------- | ------------------------------ | ------------------------------------------------ |
-| `setValue`    | `(field, value) => void`       | Set a specific field value                       |
-| `setValues`   | `(values: Partial<T>) => void` | Set multiple field values at once                |
-| `getValues`   | `() => T`                      | Get all current values                           |
-| `watch`       | `(field?) => T[field]`         | Subscribe to a field value (or all values)       |
-| `reset`       | `(values?) => void`            | Reset the form, optionally to new default values |
-| `resetField`  | `(field) => void`              | Reset a single field to its default value        |
-| `setError`    | `(field, message) => void`     | Set a manual validation error                    |
-| `setErrors`   | `(errors) => void`             | Set errors on multiple fields at once            |
-| `clearErrors` | `(fields?) => void`            | Clear one or all errors                          |
-| `submit`      | `() => void`                   | Programmatically trigger form submission         |
-| `focus`       | `(field) => void`              | Focus a specific field by name                   |
+| Member               | Type                                     | Description                                      |
+| -------------------- | ---------------------------------------- | ------------------------------------------------ |
+| `setValue`           | `(field, value, options?) => void`       | Set a specific field value                       |
+| `setValues`          | `(values: Partial<T>, options?) => void` | Set multiple field values in one update          |
+| `getValues`          | `() => T`                                | Get all current values                           |
+| `watch`              | `(field?) => T[field]`                   | Subscribe to a field value (or all values)       |
+| `reset`              | `(values?) => void`                      | Reset the form, optionally to new default values |
+| `resetField`         | `(field) => void`                        | Reset a single field to its default value        |
+| `setError`           | `(field, message) => void`               | Set a manual validation error                    |
+| `setErrors`          | `(errors) => void`                       | Set errors on multiple fields at once            |
+| `setIssues`          | `({ path, message }[]) => void`          | Anchor issues at any path, including non-fields  |
+| `clearErrors`        | `(fields?) => void`                      | Clear one or all errors                          |
+| `submit`             | `() => void`                             | Programmatically trigger form submission         |
+| `focus`              | `(field) => void`                        | Focus a specific field by name                   |
+| `clearPersistedData` | `() => void`                             | Discard the persisted draft                      |
+| `hasPersistedDraft`  | `() => boolean`                          | Whether a draft was restored on mount            |
+
+## Write options and batching
+
+`setValue` and `setValues` accept `SetValueOptions`:
+
+```ts
+type SetValueOptions = {
+  shouldValidate?: boolean // default: true
+  shouldDirty?: boolean // default: true
+  shouldTouch?: boolean
+}
+```
+
+Validation runs the **whole** schema, so for high-frequency writes — a container component pushing on every keystroke, a bulk import — skip it:
+
+```ts
+formRef.current?.setValue('lineItems', next, { shouldValidate: false })
+```
+
+`setValues` is a single logical update: it writes every key without validating, then revalidates **once**. Twenty keys means one schema pass, not twenty.
+
+```ts
+// One validation, not three
+formRef.current?.setValues({
+  firstName: 'Ada',
+  lastName: 'Lovelace',
+  role: 'admin',
+})
+
+// No validation at all
+formRef.current?.setValues(draft, { shouldValidate: false })
+```
+
+Programmatic writes also participate in the [dependency graph](./dependencies) — a `setValue` on a field others depend on re-resolves them.
 
 ## Live Example
 

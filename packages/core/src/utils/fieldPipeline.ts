@@ -6,6 +6,8 @@ import type {
   FieldRequirement,
   FormMethods,
   FieldDependencyResult,
+  GetOptionKey,
+  IsOptionEqual,
 } from '../types'
 import type { UniForm, UniFormContext } from '../UniForm'
 import { createRowScopedContext } from './createRowScopedContext'
@@ -257,6 +259,97 @@ export function injectConditions(
         if (newItemConfig !== updated.itemConfig)
           updated = { ...updated, itemConfig: newItemConfig }
       }
+    }
+
+    return updated
+  })
+}
+
+/**
+ * Applies form-wide option identity as a fallback on every field, so a select
+ * rendered anywhere — including one that replaces an object or array — can
+ * identify non-scalar option values. Per-field `meta` always wins.
+ */
+export function injectOptionIdentity(
+  fields: FieldConfig[],
+  getOptionKey?: GetOptionKey,
+  isOptionEqual?: IsOptionEqual,
+): FieldConfig[] {
+  if (!getOptionKey && !isOptionEqual) return fields
+
+  return fields.map((field) => {
+    let updated: FieldConfig = {
+      ...field,
+      meta: {
+        ...field.meta,
+        getOptionKey: field.meta.getOptionKey ?? getOptionKey,
+        isOptionEqual: field.meta.isOptionEqual ?? isOptionEqual,
+      },
+    }
+
+    if (updated.type === 'object') {
+      updated = {
+        ...updated,
+        children: injectOptionIdentity(
+          updated.children,
+          getOptionKey,
+          isOptionEqual,
+        ),
+      }
+    } else if (updated.type === 'array') {
+      updated = {
+        ...updated,
+        itemConfig: injectOptionIdentity(
+          [updated.itemConfig],
+          getOptionKey,
+          isOptionEqual,
+        )[0],
+      }
+    }
+
+    return updated
+  })
+}
+
+/**
+ * Wraps `meta.onChange` on every field that something else depends on, so a UI
+ * edit starts the same propagation a programmatic `setValue` does.
+ *
+ * Recurses into nested objects; dependency paths are absolute, so array rows
+ * are not addressed here.
+ */
+export function injectDependencyPropagation(
+  fields: FieldConfig[],
+  sources: Set<string>,
+  propagate: (name: string, value: unknown) => void,
+): FieldConfig[] {
+  if (!sources.size) return fields
+
+  return fields.map((field) => {
+    let updated: FieldConfig = field
+
+    if (sources.has(field.name)) {
+      const existing = field.meta.onChange
+      updated = {
+        ...field,
+        meta: {
+          ...field.meta,
+          onChange: (value: unknown, formMethods: FormMethods) => {
+            void existing?.(value, formMethods)
+            propagate(field.name, value)
+          },
+        },
+      }
+    }
+
+    if (updated.type === 'object') {
+      const newChildren = injectDependencyPropagation(
+        updated.children,
+        sources,
+        propagate,
+      )
+      if (newChildren !== updated.children)
+        updated = { ...updated, children: newChildren }
     }
 
     return updated

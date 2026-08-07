@@ -2,7 +2,7 @@ import type * as React from 'react'
 import type { RefCallBack } from 'react-hook-form'
 import type * as z from 'zod/v4/core'
 import type { FormMethods } from './form'
-import type { SelectOption } from './shared'
+import type { SelectOption, GetOptionKey, IsOptionEqual } from './shared'
 import type { ObjectWrapperProps, ArrayWrapperProps } from './layout'
 
 // ---------------------------------------------------------------------------
@@ -111,6 +111,17 @@ export type FieldMetaBase = {
   description?: string
   /** Static list of options for `select` / enum fields. */
   options?: SelectOption[]
+  /**
+   * Derive a stable string key for each option. Required when option values are
+   * not strings, numbers or booleans — the key is used for React keys and the
+   * DOM `value`, while `onChange` still receives the raw value.
+   */
+  getOptionKey?: GetOptionKey
+  /**
+   * Decide which option matches the current form value. Defaults to `Object.is`,
+   * then to key equality. Supply this for composite values.
+   */
+  isOptionEqual?: IsOptionEqual
   /** Group the field under a named section in the form layout. */
   section?: string
   /** Explicit render order within the form or section (lower numbers render first). */

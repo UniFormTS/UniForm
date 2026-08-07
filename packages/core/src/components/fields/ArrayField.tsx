@@ -120,8 +120,8 @@ function applyRowDynamicMeta(
 }
 
 export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
-  const { classNames, layout, labels, setDynamicMeta, arrayFields } =
-    useAutoFormContext()
+  const { classNames, layout, labels, _internal } = useAutoFormContext()
+  const { setDynamicMeta, arrayFields } = _internal
   const {
     fields: rows,
     append,
@@ -242,8 +242,8 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
           isCollapsed={isCollapsed}
         >
           {isCollapsed
-            ? (labels.arrayExpand ?? '▼')
-            : (labels.arrayCollapse ?? '▶')}{' '}
+            ? (labels.arrayExpand ?? '▶')
+            : (labels.arrayCollapse ?? '▼')}{' '}
           <CollapseSummary
             control={control}
             effectiveName={effectiveName}

@@ -42,12 +42,12 @@ export function FormErrorSummary({
   className,
   children,
 }: FormErrorSummaryProps) {
-  const { resolvedFields } = useAutoFormContext()
+  const { _internal } = useAutoFormContext()
   const all = useFieldErrors(path)
 
   const leafPaths = React.useMemo(
-    () => collectLeafPaths(resolvedFields),
-    [resolvedFields],
+    () => collectLeafPaths(_internal.resolvedFields),
+    [_internal.resolvedFields],
   )
 
   const issues = unanchoredOnly

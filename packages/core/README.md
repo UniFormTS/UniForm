@@ -51,6 +51,8 @@ function MyForm() {
 
 UniForm introspects the schema, renders appropriate inputs, validates with Zod, and calls `onSubmit` with fully typed values.
 
+> **No side-effect import needed.** `import '@uniform-ts/core'` on its own does nothing — the Zod `.meta()` autocomplete is a **type-only** augmentation, applied as soon as anything imports from the package (`import type` included). Delete the bare import; it only pulls the library into that entry chunk. For a module that does not otherwise reference UniForm, add `/// <reference types="@uniform-ts/core/zod-augmentation" />` — types only, zero runtime cost. The package is `sideEffects: false`.
+
 ## Key Concepts
 
 **`createForm(schema)`** — creates a typed form definition outside React. Use `.setOnChange(field, handler)` to attach async field-level side effects (e.g. cascading dropdowns).
@@ -103,6 +105,30 @@ const requisitionForm = createForm(schema).setRequired(
 
 See the [Dynamic Requiredness](https://uniformts.github.io/UniForm/docs/guides/dynamic-requiredness) and [Validation](https://uniformts.github.io/UniForm/docs/guides/validation) guides.
 
+### Reactivity, writes and drafts
+
+**`form.setDependency(field, { dependsOn, resolve })`** — declare each edge of a dependency graph once; UniForm walks the **transitive** closure in dependency order, for UI edits *and* programmatic `setValue`. Cycles are rejected at registration time, naming the path. `setDependencies(graph)` registers several at once.
+
+**`form.addOnChange(field, handler)`** — additive registration, so composed modules stop silently clobbering one another. `setOnChange` keeps its replace-one semantics.
+
+**`setValue(name, value, options?)` / `setValues(values, options?)`** — both accept `{ shouldValidate, shouldDirty, shouldTouch }`. `setValues` is one logical update: it writes every key, then revalidates **once**, so a twenty-key update runs the schema once rather than twenty times.
+
+**`getOptionKey` / `isOptionEqual`** — give select options a real identity, per field via `meta` or globally via `createAutoForm`. The key drives React keys and the DOM `value`; `onChange` always receives the option's **raw** value, so composite `{ col1, col2 }` values round-trip unchanged.
+
+**`persistVersion` / `persistMigrate`** — versioned drafts. A draft saved against an older shape is migrated, or discarded with a warning — never half-restored. `PersistStorage` may be async (IndexedDB, AsyncStorage), with restoration gated behind the loading fallback, and `clearPersistedData()` / `hasPersistedDraft()` are on the form methods. Create the store with `useUniForm` to give a draft a lifetime longer than one `<AutoForm>` — that is what makes multi-step flows work.
+
+See the [Dependencies](https://uniformts.github.io/UniForm/docs/guides/dependencies), [Programmatic Control](https://uniformts.github.io/UniForm/docs/guides/programmatic-control) and [Persistence](https://uniformts.github.io/UniForm/docs/guides/persistence) guides.
+
+### Reading the form context
+
+**`useAutoFormContext(form)`** is the load-bearing API for any non-trivial integration, so its surface is explicit. The supported members are `formMethods`, `control`, `registry`, `fieldConfigs`, `fieldWrapper`, `layout`, `classNames`, `disabled`, `coercions`, `messages`, `labels`, `getOptionKey` and `isOptionEqual`.
+
+Everything UniForm uses to render itself lives under **`_internal`** (`resolvedFields`, `fieldOverrides`, `layoutSlots`, `setDynamicMeta`, `arrayFields`) and is not covered by semver. Those five are still readable at the top level for one minor version, marked `@deprecated`.
+
+For **errors**, use `useFieldError` / `useFieldErrors` / `useFormErrors` rather than the context — they are reactive and scoped, where a context field would re-render every consumer on any error change.
+
+See the [`useAutoFormContext` API reference](https://uniformts.github.io/UniForm/docs/api/use-auto-form-context).
+
 **`components`** — a registry mapping Zod types (`string`, `number`, `boolean`, etc.) to your own input components. Pass a component directly on a field via `fields` for one-off overrides. For custom components, type field values precisely with `FieldProps<Value>` (for example, `FieldProps<number>` for a rating widget).
 
 **`fields`** — per-field overrides using dot-notated paths. Control labels, descriptions, ordering, sections, conditions, and custom components without touching the schema.
@@ -133,7 +159,7 @@ See the [Dynamic Requiredness](https://uniformts.github.io/UniForm/docs/guides/d
 | `layout`        | `LayoutSlots`                               | Replace form/section/object/array wrappers, submit button, array rows. Set `null` on omittable slots (submit/array buttons) to hide them |
 | `classNames`    | `FormClassNames`                            | CSS classes for form, fields, labels, errors, fieldset/legend wrappers                                                                   |
 | `ref`           | `React.Ref<AutoFormHandle>`                 | Imperative `reset`, `submit`, `setValues`, `getValues`                                                                                   |
-| `persistKey`    | `string`                                    | Auto-save form state to `localStorage` under this key                                                                                    |
+| `persistKey`    | `string`                                 | Auto-save form state to `sessionStorage` under this key (see `persistVersion` / `persistMigrate`)                                        |
 | `labels`        | `FormLabels`                                | Override built-in UI strings for i18n; import a ready-made locale pack from `@uniform-ts/core/locales/{en,he,es}`                        |
 
 ## Features
@@ -148,8 +174,11 @@ See the [Dynamic Requiredness](https://uniformts.github.io/UniForm/docs/guides/d
 - **Typed state access** — `useFormValue` / `useFormValues` / `useAutoFormContext(form)` infer value types straight from the schema, with no casts and no `react-hook-form` imports
 - **Runtime requiredness** — `setRequired(path, predicate)` drives the asterisk, `aria-required` and submit validation from one rule
 - **Error tree access** — `useFieldError` / `useFieldErrors` render `superRefine` issues anchored at array elements or the form root; `setIssues` anchors backend responses anywhere
+- **Dependency graph** — `setDependency` cascades transitively from UI edits *and* programmatic writes, with cycles rejected at registration
+- **Batched writes** — `setValues` validates once per logical update; `setValue(…, { shouldValidate: false })` skips it entirely
+- **Rich select values** — `getOptionKey` / `isOptionEqual` let options carry composite identities without conflating the key with the value
 - **Programmatic control** — `reset()`, `submit()`, `setValues()`, `getValues()`, `setErrors()`, `focus()` via ref
-- **Form persistence** — auto-save to `localStorage` (or custom storage) with configurable debounce
+- **Form persistence** — auto-save to `sessionStorage` (or any custom, optionally async storage) with configurable debounce, schema versioning and migrations
 - **Pluggable coercion** — automatic `string → number`, `string → Date` with customizable coercion map
 - **i18n** — override every hard-coded UI string (including aria labels) via `labels` prop; import a ready-made locale pack and optionally spread-override individual keys
 - **Tree-shakeable** — ESM + CJS builds via tsup

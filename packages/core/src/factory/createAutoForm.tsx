@@ -97,6 +97,8 @@ export function createAutoForm(config: AutoFormConfig) {
         coercions={mergedCoercions}
         messages={mergedMessages}
         labels={mergedLabels ?? {}}
+        getOptionKey={props.getOptionKey ?? config.getOptionKey}
+        isOptionEqual={props.isOptionEqual ?? config.isOptionEqual}
       />
     )
   }

@@ -11,7 +11,7 @@ export type {
   ConditionValues,
 } from './utils'
 
-export type { SelectOption } from './shared'
+export type { SelectOption, GetOptionKey, IsOptionEqual } from './shared'
 
 export type {
   FieldType,
