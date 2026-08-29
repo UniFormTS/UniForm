@@ -159,10 +159,9 @@ export function applyRequiredErrors(
 }
 
 /**
- * Moves issues whose Zod path was empty onto the `root` key.
+ * Moves issues whose Zod path was empty (`''`) onto {@link ROOT_ERROR_KEY}.
  *
- * `superRefine` issues raised with no path (cross-entity rules) otherwise land
- * under a `''` key that nothing can render.
+ * `superRefine` issues raised with no path otherwise land under a `''` key.
  */
 export function normalizeRootErrors(errors: FieldErrors): FieldErrors {
   const raw = errors as Record<string, unknown>
