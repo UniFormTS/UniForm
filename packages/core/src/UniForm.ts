@@ -6,7 +6,14 @@ import type {
   ConditionValues,
   FormMethods,
   FieldDependencyResult,
+  FieldRequirement,
 } from './types'
+import {
+  findCycle,
+  resolvePropagationOrder,
+  type DependencyArgs,
+  type DependencyEdge,
+} from './utils/dependencyGraph'
 
 /**
  * Context passed to UniForm `setOnChange` handlers. Extends `FormMethods` with
@@ -36,6 +43,22 @@ type Handler<TSchema extends z.$ZodObject, TValue> = (
 
 type Condition = (values: unknown) => boolean
 
+type Requirement = (values: unknown, allValues: unknown) => boolean
+
+/**
+ * Declares that `field` derives from one or more other fields.
+ *
+ * @template TSchema - The Zod object schema that defines the form shape.
+ */
+export type DependencyConfig<TSchema extends z.$ZodObject> = {
+  /** The field(s) whose change should re-resolve this one. */
+  dependsOn: DeepKeys<z.infer<TSchema>> | readonly DeepKeys<z.infer<TSchema>>[]
+  /** Called whenever any `dependsOn` field changes, directly or transitively. */
+  resolve: (
+    args: DependencyArgs<UniFormContext<TSchema>>,
+  ) => void | Promise<void>
+}
+
 /**
  * A type-safe form definition that lives outside React components.
  * Wraps a Zod schema and lets you attach typed `setOnChange` callbacks that fire
@@ -64,13 +87,22 @@ export class UniForm<
   TRegistered extends string = never,
 > {
   readonly schema: TSchema
-  private readonly _handlers: Map<string, Handler<TSchema, unknown>>
+  private readonly _handlers: Map<string, Handler<TSchema, unknown>[]>
   private readonly _conditions: Map<string, Condition>
+  private readonly _requirements: Map<string, Requirement>
+  private readonly _dependencies: Map<
+    string,
+    DependencyEdge<UniFormContext<TSchema>>
+  >
+  private readonly _dependents: Map<string, Set<string>>
 
   constructor(schema: TSchema) {
     this.schema = schema
     this._handlers = new Map()
     this._conditions = new Map()
+    this._requirements = new Map()
+    this._dependencies = new Map()
+    this._dependents = new Map()
   }
 
   /**
@@ -90,8 +122,33 @@ export class UniForm<
     field: K,
     handler: Handler<TSchema, DeepFieldValue<z.infer<TSchema>, K>>,
   ): UniForm<TSchema, TRegistered | K> {
-    this._handlers.set(field, handler as Handler<TSchema, unknown>)
+    this._handlers.set(field, [handler as Handler<TSchema, unknown>])
     return this as unknown as UniForm<TSchema, TRegistered | K>
+  }
+
+  /**
+   * Add an onChange handler for a field **without** replacing existing ones.
+   *
+   * Handlers fire in registration order. Use this when composed modules each
+   * attach behaviour to the same field — `setOnChange` would silently clobber
+   * whichever registered first.
+   *
+   * Returns `this` for fluent chaining.
+   *
+   * @example
+   * form.addOnChange('country', loadRegions)
+   * form.addOnChange('country', trackAnalytics) // both fire, in this order
+   */
+  addOnChange<K extends DeepKeysIndexed<z.infer<TSchema>>>(
+    field: K,
+    handler: Handler<TSchema, DeepFieldValue<z.infer<TSchema>, K>>,
+  ): this {
+    const existing = this._handlers.get(field) ?? []
+    this._handlers.set(field, [
+      ...existing,
+      handler as Handler<TSchema, unknown>,
+    ])
+    return this
   }
 
   /**
@@ -108,13 +165,148 @@ export class UniForm<
     return this
   }
 
+  /**
+   * Decide at runtime whether a field is required, based on the current values.
+   *
+   * The predicate drives the asterisk, `aria-required`, **and** submit
+   * validation — an empty value at a field the predicate marks required blocks
+   * submission with the configured required message. Mark the field
+   * `.optional()` in the schema and put the real rule here, so there is one
+   * rule rather than two that can drift.
+   *
+   * Array-item paths receive the **row** as the first argument (so row-local
+   * rules read naturally); everything else receives the full values. The second
+   * argument is always the full values.
+   *
+   * Empty means `undefined`, `null`, `''` or `[]`. `false` and `0` are values.
+   *
+   * Returns `this` for fluent chaining.
+   *
+   * @example
+   * requisitionForm.setRequired('sectors.orderReason', (row, values) =>
+   *   isReasonRequired(values.action, row.sector),
+   * )
+   */
+  setRequired<K extends DeepKeys<z.infer<TSchema>>>(
+    field: K,
+    predicate: FieldRequirement<
+      ConditionValues<z.infer<TSchema>, K>,
+      z.infer<TSchema>
+    >,
+  ): this {
+    this._requirements.set(field, predicate as Requirement)
+    return this
+  }
+
+  /**
+   * Declare that a field derives from one or more others.
+   *
+   * When any `dependsOn` field changes — from a UI edit **or** a programmatic
+   * `setValue` — `resolve` runs, and so does every dependency downstream of
+   * *this* field, transitively and in dependency order. Express the cascade
+   * once; UniForm walks the closure.
+   *
+   * Cycles are rejected here, at registration time, with the offending path —
+   * not discovered as a runtime loop.
+   *
+   * Returns `this` for fluent chaining.
+   *
+   * @example
+   * // country -> region -> city, each resetting and refetching the next
+   * form
+   *   .setDependency('region', {
+   *     dependsOn: 'country',
+   *     resolve: async ({ ctx }) => {
+   *       ctx.setValue('region', '')
+   *       ctx.setFieldMeta('region', { options: await loadRegions() })
+   *     },
+   *   })
+   *   .setDependency('city', {
+   *     dependsOn: 'region',
+   *     resolve: ({ ctx }) => ctx.setValue('city', ''),
+   *   })
+   */
+  setDependency<K extends DeepKeys<z.infer<TSchema>>>(
+    field: K,
+    config: DependencyConfig<TSchema>,
+  ): this {
+    const dependsOn = (
+      Array.isArray(config.dependsOn) ? config.dependsOn : [config.dependsOn]
+    ) as string[]
+
+    const previous = this._dependencies.get(field)
+    if (previous) {
+      for (const upstream of previous.dependsOn) {
+        this._dependents.get(upstream)?.delete(field)
+      }
+    }
+
+    this._dependencies.set(field, {
+      dependsOn,
+      resolve: config.resolve,
+    })
+    for (const upstream of dependsOn) {
+      const set = this._dependents.get(upstream) ?? new Set<string>()
+      set.add(field)
+      this._dependents.set(upstream, set)
+    }
+
+    const cycle = findCycle(this._dependents, field)
+    if (cycle) {
+      // Roll back so the instance stays usable after the throw.
+      this._dependencies.delete(field)
+      if (previous) this._dependencies.set(field, previous)
+      for (const upstream of dependsOn) {
+        this._dependents.get(upstream)?.delete(field)
+      }
+      for (const upstream of previous?.dependsOn ?? []) {
+        const set = this._dependents.get(upstream) ?? new Set<string>()
+        set.add(field)
+        this._dependents.set(upstream, set)
+      }
+      throw new Error(
+        `[UniForm] setDependency("${field}") would create a dependency cycle: ` +
+          `${cycle.join(' → ')}. Break the loop before registering.`,
+      )
+    }
+
+    return this
+  }
+
+  /**
+   * Register several dependencies at once. Equivalent to calling
+   * {@link setDependency} for each entry, and rejects cycles the same way.
+   *
+   * @example
+   * form.setDependencies({
+   *   region: { dependsOn: 'country', resolve: resetRegion },
+   *   city: { dependsOn: 'region', resolve: resetCity },
+   * })
+   */
+  setDependencies(
+    graph: Partial<
+      Record<DeepKeys<z.infer<TSchema>>, DependencyConfig<TSchema>>
+    >,
+  ): this {
+    for (const [field, config] of Object.entries(graph)) {
+      if (config)
+        this.setDependency(
+          field as DeepKeys<z.infer<TSchema>>,
+          config as DependencyConfig<TSchema>,
+        )
+    }
+    return this
+  }
+
   /** @internal Called by AutoForm to fire the handler registered for a field. */
   _fireHandler(
     field: string,
     value: unknown,
     ctx: UniFormContext<TSchema>,
   ): void | Promise<void> {
-    return this._handlers.get(field)?.(value, ctx)
+    const handlers = this._handlers.get(field)
+    if (!handlers?.length) return
+    for (const handler of handlers) void handler(value, ctx)
   }
 
   /** @internal Returns all field names that have registered onChange handlers. */
@@ -125,6 +317,39 @@ export class UniForm<
   /** @internal Returns a copy of the conditions map for AutoForm to inject into field meta. */
   _getConditions(): Map<string, Condition> {
     return new Map(this._conditions)
+  }
+
+  /** @internal Returns a copy of the requiredness predicates. */
+  _getRequirements(): Map<string, Requirement> {
+    return new Map(this._requirements)
+  }
+
+  /** @internal Fields downstream of `source`, transitively, in dependency order. */
+  _getPropagationOrder(source: string): string[] {
+    if (!this._dependencies.size) return []
+    return resolvePropagationOrder(
+      this._dependents,
+      this._dependencies as Map<string, DependencyEdge<unknown>>,
+      source,
+    )
+  }
+
+  /** @internal Runs the resolver registered for `field`. */
+  _resolveDependency(
+    field: string,
+    args: DependencyArgs<UniFormContext<TSchema>>,
+  ): void | Promise<void> {
+    return this._dependencies.get(field)?.resolve(args)
+  }
+
+  /** @internal Whether any dependency has been registered. */
+  _hasDependencies(): boolean {
+    return this._dependencies.size > 0
+  }
+
+  /** @internal Every field that something else depends on. */
+  _getDependencySources(): string[] {
+    return Array.from(this._dependents.keys())
   }
 }
 

@@ -26,12 +26,14 @@ List every field the form needs and the JavaScript type each should produce on s
 - Scalars: `z.string()`, `z.number()`, `z.boolean()`, `z.date()`.
 - Email/url/uuid: prefer the standalone formats `z.email()`, `z.url()`, `z.uuid()` (UniForm maps these to the right input type).
 - Fixed choice sets: `z.enum([...])` (renders as a select automatically).
-- Repeating rows: `z.array(z.object({ ... }))` — rows **must** be objects; arrays of primitives are not rendered as repeating fields.
+- Repeating rows: `z.array(z.object({ ... }))` for multi-field rows, or `z.array(z.string() | z.number() | z.enum([...]))` for single-value rows — primitive arrays render one input per row, so never wrap a scalar in `z.object({ value })` just to make it render.
 - Mutually exclusive field sets keyed by a tag: `z.discriminatedUnion('type', [...])` (UniForm flattens variants and shows only the active one — usually no conditions needed).
 
 ### Step 3: Encode every constraint in the schema
 
 Put `.min`, `.max`, `.email`, `.optional`, `.default`, and array bounds (`.min(n)`/`.max(n)`) on the schema — not in UI code. Array bounds drive the Add/Remove buttons; do not plan to enforce them in components.
+
+For requiredness that depends on **current values** (a lookup matrix, a backend rule, a sibling field), mark the field `.optional()` in the schema and hand the rule to `setRequired(path, predicate)` — never re-implement it in a top-level `superRefine`, which leaves the UI with no asterisk and two rules that drift. Keep genuinely static requiredness in the schema.
 
 ### Step 4: Author validation messages in the schema
 

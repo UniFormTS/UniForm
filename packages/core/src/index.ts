@@ -5,8 +5,11 @@ export type * from './zod-augmentation'
 export type {
   FieldType,
   SelectOption,
+  GetOptionKey,
+  IsOptionEqual,
   FieldDependencyResult,
   FieldCondition,
+  FieldRequirement,
   FieldMetaBase,
   FieldMeta,
   FieldOverride,
@@ -37,6 +40,10 @@ export type {
   CoercionMap,
   ValidationMessages,
   PersistStorage,
+  SetValueOptions,
+  ContainerFieldProps,
+  ObjectContainerProps,
+  ArrayContainerProps,
 } from './types'
 
 // Introspection
@@ -48,6 +55,12 @@ export {
 // Components
 export { AutoForm } from './components/AutoForm'
 export { FieldRenderer } from './components/FieldRenderer'
+export { Field } from './components/Field'
+export type { FieldComponentProps } from './components/Field'
+export { UniFormProvider } from './components/UniFormProvider'
+export type { UniFormProviderProps } from './components/UniFormProvider'
+export { FormErrorSummary } from './components/FormErrorSummary'
+export type { FormErrorSummaryProps } from './components/FormErrorSummary'
 
 // Default components
 export { DefaultInput } from './components/defaults/DefaultInput'
@@ -74,7 +87,8 @@ export { coerceValue, defaultCoercionMap } from './coercion/coerce'
 
 // UniForm
 export { UniForm, createForm } from './UniForm'
-export type { UniFormContext } from './UniForm'
+export type { UniFormContext, DependencyConfig } from './UniForm'
+export type { DependencyArgs } from './utils/dependencyGraph'
 
 // Hooks
 export { useConditionalFields } from './hooks/useConditionalFields'
@@ -82,7 +96,24 @@ export { useSectionGrouping } from './hooks/useSectionGrouping'
 export type { SectionGroup } from './hooks/useSectionGrouping'
 export { useFormPersistence } from './hooks/useFormPersistence'
 export { useArrayField } from './hooks/useArrayField'
+export type { ArrayFieldActions } from './hooks/arrayFieldRegistry'
+export { useUniForm, isUniFormInstance } from './hooks/useUniForm'
+export type { UniFormInstance, UseUniFormOptions } from './hooks/useUniForm'
+export { useFormValue, useFormValues } from './hooks/useFormValue'
+export { useField } from './hooks/useField'
+export type { UseFieldOptions, UseFieldResult } from './hooks/useField'
+export {
+  useFieldError,
+  useFieldErrors,
+  useFormErrors,
+} from './hooks/useFieldError'
+export type { FormIssue } from './hooks/useFieldError'
+export { isEmptyValue } from './validation/requiredResolver'
 
 // Context
 export { useAutoFormContext } from './context/AutoFormContext'
-export type { AutoFormContextValue } from './context/AutoFormContext'
+export type {
+  AutoFormContextValue,
+  AutoFormInternals,
+} from './context/AutoFormContext'
+export { useFieldPath } from './context/FieldPathContext'

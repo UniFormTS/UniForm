@@ -28,6 +28,9 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     },
+    "./zod-augmentation": {
+      "types": "./dist/zod-augmentation.d.ts"
+    },
     "./locales/en": {
       "types": "./dist/locales/en.d.ts",
       "import": "./dist/locales/en.mjs",
@@ -49,10 +52,11 @@
   ],
   "scripts": {
     "prepack": "rm -f README.md && cp ../../README.md README.md",
-    "build": "tsup",
+    "build": "tsup && node scripts/write-zod-augmentation.mjs",
     "dev": "tsup --watch",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:types": "tsc -p tests/types/zod-augmentation/tsconfig.json --noEmit",
     "lint": "eslint src --ext .ts,.tsx"
   },
   "peerDependencies": {

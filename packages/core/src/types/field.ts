@@ -2,7 +2,7 @@ import type * as React from 'react'
 import type { RefCallBack } from 'react-hook-form'
 import type * as z from 'zod/v4/core'
 import type { FormMethods } from './form'
-import type { SelectOption } from './shared'
+import type { SelectOption, GetOptionKey, IsOptionEqual } from './shared'
 import type { ObjectWrapperProps, ArrayWrapperProps } from './layout'
 
 // ---------------------------------------------------------------------------
@@ -39,6 +39,19 @@ export type FieldCondition<TValues = Record<string, unknown>> = (
   values: TValues,
 ) => boolean
 
+/**
+ * A predicate that decides whether a field is required, given the current
+ * values. Array-item paths receive the **row**; every other path receives the
+ * full form values. The second argument is always the full form values.
+ *
+ * @template TValues - The shape the predicate receives as its first argument.
+ * @template TAll - The shape of the whole form values object.
+ */
+export type FieldRequirement<
+  TValues = Record<string, unknown>,
+  TAll = Record<string, unknown>,
+> = (values: TValues, allValues: TAll) => boolean
+
 // ---------------------------------------------------------------------------
 // FieldDependencyResult
 // ---------------------------------------------------------------------------
@@ -55,6 +68,12 @@ export type FieldDependencyResult = {
   hidden?: boolean
   /** Dynamically enable or disable the field */
   disabled?: boolean
+  /**
+   * Dynamically mark the field required or optional. Drives the asterisk,
+   * `aria-required`, **and** submit validation — an empty value at a field
+   * marked required here blocks submission.
+   */
+  required?: boolean
   /** Override the field label */
   label?: string
   /** Override the placeholder text */
@@ -92,6 +111,17 @@ export type FieldMetaBase = {
   description?: string
   /** Static list of options for `select` / enum fields. */
   options?: SelectOption[]
+  /**
+   * Derive a stable string key for each option. Required when option values are
+   * not strings, numbers or booleans — the key is used for React keys and the
+   * DOM `value`, while `onChange` still receives the raw value.
+   */
+  getOptionKey?: GetOptionKey
+  /**
+   * Decide which option matches the current form value. Defaults to `Object.is`,
+   * then to key equality. Supply this for composite values.
+   */
+  isOptionEqual?: IsOptionEqual
   /** Group the field under a named section in the form layout. */
   section?: string
   /** Explicit render order within the form or section (lower numbers render first). */
@@ -104,6 +134,18 @@ export type FieldMetaBase = {
   disabled?: boolean
   /** Conditionally show or hide the field based on the current form values. */
   condition?: FieldCondition
+  /**
+   * Decide at runtime whether the field is required, based on the current
+   * values. Returning `true` shows the asterisk, sets `aria-required`, **and**
+   * blocks submit when the value is empty.
+   *
+   * Mark the field `.optional()` in the schema and put the real rule here —
+   * that way there is one rule, not two.
+   *
+   * Inside an array the predicate receives the **row**; elsewhere it receives
+   * the full form values. The second argument is always the full values.
+   */
+  requiredWhen?: FieldRequirement
   /**
    * Override the component used to render this field.
    *
@@ -128,10 +170,16 @@ export type FieldMetaBase = {
   // Array-specific options
   /** When `true`, rows in an array field can be reordered via move-up/move-down buttons. */
   movable?: boolean
-  /** When `true`, rows in an array field can be duplicated. */
+  /** When `true`, rows in an array field can be duplicated. Object rows only. */
   duplicable?: boolean
-  /** When `true`, rows in an array field can be individually collapsed. */
+  /** When `true`, rows in an array field can be individually collapsed. Object rows only. */
   collapsible?: boolean
+  /**
+   * Label rendered on each row of an array of primitives (e.g. `z.array(z.string())`).
+   * Scalar rows are unlabelled by default because the array's own label already
+   * describes the list.
+   */
+  itemLabel?: string
   /**
    * Override the wrapper component rendered around this specific object or array field.
    * Takes precedence over the global `layout.objectWrapper` / `layout.arrayWrapper` slots.
@@ -266,6 +314,76 @@ export interface FieldProps<Value = unknown> {
    * exposes — e.g. inspecting union variants, accessing custom Zod refinements, etc.
    */
   schema: z.$ZodType
+}
+
+// ---------------------------------------------------------------------------
+// Container field props (object / array component overrides)
+// ---------------------------------------------------------------------------
+
+/**
+ * Options accepted by targeted value writes. Mirrors the react-hook-form
+ * `setValue` config without leaking the peer dependency's types.
+ */
+export type SetValueOptions = {
+  /** Re-run validation after the write. */
+  shouldValidate?: boolean
+  /** Mark the field dirty. */
+  shouldDirty?: boolean
+  /** Mark the field touched. */
+  shouldTouch?: boolean
+}
+
+/**
+ * Props shared by custom components that replace an **object** or **array**
+ * field. A superset of {@link FieldProps} — everything a container needs to
+ * render its own layout while keeping UniForm's plumbing for the leaves inside.
+ */
+export interface ContainerFieldProps<
+  Value = unknown,
+> extends FieldProps<Value> {
+  /** Absolute dot-notated path of this container (identical to `name`). */
+  path: string
+  /**
+   * Write a value at a path **relative to this container**, without replacing
+   * the container's whole value.
+   *
+   * @example
+   * setPath('0.qty', 3)          // writes lineItems.0.qty
+   * setPath('street', 'Main St') // writes address.street
+   */
+  setPath: (subPath: string, value: unknown, options?: SetValueOptions) => void
+}
+
+/** Props passed to a custom component that replaces an object field. */
+export interface ObjectContainerProps<
+  Value = unknown,
+> extends ContainerFieldProps<Value> {
+  /** Field configs for the object's children. */
+  fields: FieldConfig[]
+}
+
+/** Props passed to a custom component that replaces an array field. */
+export interface ArrayContainerProps<
+  Value = unknown,
+> extends ContainerFieldProps<Value> {
+  /** Field config describing a single row. */
+  itemConfig: FieldConfig
+  /** Current number of rows. */
+  rowCount: number
+  /** Current rows, each carrying react-hook-form's generated `id`. */
+  rows: Record<string, unknown>[]
+  /** `false` once the schema's `.max(...)` is reached. */
+  canAdd: boolean
+  /** `true` at or below the schema's `.min(...)`. */
+  atMin: boolean
+  append: (value?: unknown) => void
+  prepend: (value?: unknown) => void
+  insert: (index: number, value?: unknown) => void
+  remove: (index?: number | number[]) => void
+  move: (from: number, to: number) => void
+  swap: (from: number, to: number) => void
+  update: (index: number, value: unknown) => void
+  replace: (values: unknown[]) => void
 }
 
 // ---------------------------------------------------------------------------

@@ -1,7 +1,8 @@
 import type { FieldPath, FieldPathValue, FieldValues } from 'react-hook-form'
 import type * as z from 'zod/v4/core'
 import type { DeepKeys, DeepFieldValue } from './utils'
-import type { FieldOverride } from './field'
+import type { FieldOverride, SetValueOptions } from './field'
+import type { GetOptionKey, IsOptionEqual } from './shared'
 import type { ComponentRegistry, FieldWrapperProps } from './registry'
 import type { LayoutSlots, FormClassNames } from './layout'
 
@@ -16,13 +17,26 @@ import type { LayoutSlots, FormClassNames } from './layout'
  * @template TValues - The inferred shape of the form values.
  */
 export type FormMethods<TValues extends FieldValues = FieldValues> = {
-  /** Set a single field value programmatically */
+  /**
+   * Set a single field value programmatically.
+   *
+   * Defaults to `{ shouldValidate: true, shouldDirty: true }`. Pass
+   * `{ shouldValidate: false }` to write without re-running the whole schema —
+   * useful for high-frequency writes.
+   */
   setValue: <K extends FieldPath<TValues>>(
     name: K,
     value: FieldPathValue<TValues, K>,
+    options?: SetValueOptions,
   ) => void
-  /** Set multiple field values at once */
-  setValues: (values: Partial<TValues>) => void
+  /**
+   * Set multiple field values in **one** logical update.
+   *
+   * Writes every key without validating, then revalidates once — so a 20-key
+   * update runs the schema once, not twenty times. Pass
+   * `{ shouldValidate: false }` to skip validation entirely.
+   */
+  setValues: (values: Partial<TValues>, options?: SetValueOptions) => void
   /** Get the current form values */
   getValues: () => TValues
   /** Reset a single field to its default value */
@@ -33,10 +47,29 @@ export type FormMethods<TValues extends FieldValues = FieldValues> = {
   setError: (name: FieldPath<TValues>, message: string) => void
   /** Set validation errors on multiple fields at once */
   setErrors: (errors: Partial<Record<FieldPath<TValues>, string>>) => void
+  /**
+   * Push an arbitrary list of issues into the error tree — including paths that
+   * are not rendered fields, array-element paths like `"lines.0"`, and the form
+   * root (`''` or `'root'`).
+   *
+   * Shaped for backend `/validate` responses, which rarely arrive as a flat map
+   * keyed by field name.
+   *
+   * @example
+   * formMethods.setIssues([
+   *   { path: 'lines.0', message: 'Duplicate SKU in this order' },
+   *   { path: '', message: 'Order total exceeds the customer credit limit' },
+   * ])
+   */
+  setIssues: (issues: { path: string; message: string }[]) => void
   /** Clear validation errors (all fields, or specific ones) */
   clearErrors: (names?: FieldPath<TValues> | FieldPath<TValues>[]) => void
   /** Programmatically trigger form submission */
   submit: () => void
+  /** Remove the persisted draft for this form's `persistKey`. */
+  clearPersistedData: () => void
+  /** Whether a persisted draft was found and restored on mount. */
+  hasPersistedDraft: () => boolean
   /** Focus a specific field by name (dot-notated for nested fields) */
   focus: (fieldName: FieldPath<TValues>) => void
   /** Watch field values reactively */
@@ -88,10 +121,17 @@ export type FormLabels = {
 // ---------------------------------------------------------------------------
 
 /**
- * A map of field names to coercion functions. Each function receives the raw
- * field value and returns the coerced value before Zod validation is applied.
- * Useful for transforming string inputs (e.g. from native `<input>`) into the
- * types expected by the schema (e.g. numbers, dates).
+ * A map of **field types** (`'string'`, `'number'`, `'boolean'`, `'date'`) to
+ * coercion functions. Each function receives the raw field value and returns
+ * the coerced value before Zod validation is applied — this is what turns the
+ * string a native `<input>` produces into the number or `Date` the schema
+ * expects.
+ *
+ * Keys are field **types**, not field names; an entry overrides the built-in
+ * coercion for every field of that type.
+ *
+ * @example
+ * coercions={{ number: (v) => (v === '' ? undefined : Number(v)) }}
  */
 export type CoercionMap = Record<string, (value: unknown) => unknown>
 
@@ -100,9 +140,13 @@ export type CoercionMap = Record<string, (value: unknown) => unknown>
 // ---------------------------------------------------------------------------
 
 /**
- * Custom validation error message overrides. Use `required` to override the
- * global "required field" message, or provide a field name key to override
- * messages for a specific field (supports nested dot-notated paths).
+ * Targeted overrides for validation error messages.
+ *
+ * This is **not** a second message system: Zod remains the source of every
+ * message (from the schema, or from a global `z.config({ localeError })`), and
+ * anything not listed here falls through untouched. Use `required` to override
+ * the global required message, or a field name key — a string to replace every
+ * error on that field, or an object mapping Zod error codes to strings.
  */
 export type ValidationMessages = {
   required?: string
@@ -116,12 +160,15 @@ export type ValidationMessages = {
 /**
  * A minimal storage adapter interface compatible with `localStorage` and
  * `sessionStorage`. Provide a custom implementation to persist form values
- * to any backing store (e.g. IndexedDB, AsyncStorage).
+ * to any backing store.
+ *
+ * Every method may return a promise, so IndexedDB / AsyncStorage adapters are
+ * first-class — restoration is gated behind the form's loading state.
  */
 export type PersistStorage = {
-  getItem: (key: string) => string | null
-  setItem: (key: string, value: string) => void
-  removeItem: (key: string) => void
+  getItem: (key: string) => string | null | Promise<string | null>
+  setItem: (key: string, value: string) => void | Promise<void>
+  removeItem: (key: string) => void | Promise<void>
 }
 
 // ---------------------------------------------------------------------------
@@ -163,6 +210,16 @@ export type AutoFormConfig = {
   messages?: ValidationMessages
   /** Default label strings; overridden per-instance by the `labels` prop */
   labels?: FormLabels
+  /**
+   * Default option-key derivation for every select in every form. Per-field
+   * `meta.getOptionKey` wins.
+   */
+  getOptionKey?: GetOptionKey
+  /**
+   * Default option equality for every select in every form. Per-field
+   * `meta.isOptionEqual` wins.
+   */
+  isOptionEqual?: IsOptionEqual
 }
 
 // ---------------------------------------------------------------------------
@@ -213,10 +270,36 @@ export type AutoFormProps<TSchema extends z.$ZodObject> = {
   persistKey?: string
   /** Debounce interval in ms for persistence writes (default: 300) */
   persistDebounce?: number
-  /** Custom storage adapter (default: localStorage) */
+  /** Custom storage adapter (default: `sessionStorage`) */
   persistStorage?: PersistStorage
+  /**
+   * Schema version stamped onto the persisted draft (default: `0`).
+   * Bump it whenever the shape of the form's values changes.
+   */
+  persistVersion?: number
+  /**
+   * Upgrade a draft saved at an older `persistVersion`. Return the migrated
+   * values, or `undefined` to discard the draft and start from defaults.
+   *
+   * Without this, a version mismatch discards the draft with a warning rather
+   * than half-restoring it.
+   */
+  persistMigrate?: (
+    persisted: unknown,
+    fromVersion: number,
+  ) => Partial<z.infer<TSchema>> | undefined
   /** Called on every value change with the current form values */
   onValuesChange?: (values: z.infer<TSchema>) => void
   /** Customize hard-coded UI text (submit button, array buttons, etc.) */
   labels?: FormLabels
+  /**
+   * Default option-key derivation for every select in this form. Per-field
+   * `meta.getOptionKey` wins.
+   */
+  getOptionKey?: GetOptionKey
+  /**
+   * Default option equality for every select in this form. Per-field
+   * `meta.isOptionEqual` wins.
+   */
+  isOptionEqual?: IsOptionEqual
 }

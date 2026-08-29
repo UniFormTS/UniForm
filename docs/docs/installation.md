@@ -35,6 +35,24 @@ import { createForm, AutoForm, createAutoForm } from '@uniform-ts/core'
 import type { FieldProps, AutoFormHandle } from '@uniform-ts/core'
 ```
 
+### You do **not** need a bare side-effect import
+
+```ts
+import '@uniform-ts/core' // ❌ delete this
+```
+
+UniForm's Zod `.meta()` autocomplete comes from a **type-only** module augmentation, which TypeScript applies as soon as anything in the file graph imports from the package — including `import type`. A bare runtime import does nothing except pull the whole library into that entry chunk, even on routes that never render a form.
+
+If you want `.meta()` autocomplete in a module that does not otherwise reference UniForm — a schema-only file, for instance — reference the types-only subpath instead. It has **zero** runtime cost:
+
+```ts
+/// <reference types="@uniform-ts/core/zod-augmentation" />
+```
+
+Put it in `vite-env.d.ts` (or any ambient `.d.ts`) to apply it project-wide.
+
+The package is marked `sideEffects: false`, so bundlers tree-shake everything you do not import.
+
 ## TypeScript Configuration
 
 UniForm requires TypeScript with `strict` mode and `moduleResolution: bundler` (or `node16` / `nodenext`). In `tsconfig.json`:

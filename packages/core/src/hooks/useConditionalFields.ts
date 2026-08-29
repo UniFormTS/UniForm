@@ -9,6 +9,8 @@ import type { FieldConfig } from '../types'
  * - Fields with `meta.hidden === true` are always excluded.
  * - Fields with a `meta.condition` function are included only when the
  *   function returns `true` for the current values.
+ * - Fields with a `meta.requiredWhen` predicate have their `required` flag
+ *   recomputed from the current values.
  * - Remaining fields are sorted ascending by `meta.order` (fields without an
  *   order appear last).
  *
@@ -42,6 +44,12 @@ export function useConditionalFields(
         }
         return true
       })
+      .map((field) => {
+        const requiredWhen = field.meta.requiredWhen
+        if (typeof requiredWhen !== 'function') return field
+        const required = requiredWhen(values, allValues)
+        return required === field.required ? field : { ...field, required }
+      })
       .sort((a, b) => {
         const orderA =
           typeof a.meta.order === 'number' ? a.meta.order : Infinity
@@ -49,5 +57,5 @@ export function useConditionalFields(
           typeof b.meta.order === 'number' ? b.meta.order : Infinity
         return orderA - orderB
       })
-  }, [fields, values])
+  }, [fields, values, allValues])
 }

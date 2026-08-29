@@ -24,6 +24,14 @@ import Example23 from './examples/Example23'
 import Example24 from './examples/Example24'
 import Example25 from './examples/Example25'
 import Example26 from './examples/Example26'
+import Example27 from './examples/Example27'
+import Example28 from './examples/Example28'
+import Example29 from './examples/Example29'
+import Example30 from './examples/Example30'
+import Example31 from './examples/Example31'
+import Example32 from './examples/Example32'
+import Example33 from './examples/Example33'
+import Example34 from './examples/Example34'
 
 const examples = [
   { id: 'ex1', label: '1. classNames + span' },
@@ -52,6 +60,14 @@ const examples = [
   { id: 'ex24', label: '24. External Array Buttons' },
   { id: 'ex25', label: '25. Per-Row Field Meta' },
   { id: 'ex26', label: '26. Row-Specific onChange' },
+  { id: 'ex27', label: '27. External Array Control' },
+  { id: 'ex28', label: '28. Arrays of Primitives' },
+  { id: 'ex29', label: '29. Headless useUniForm' },
+  { id: 'ex30', label: '30. Custom Layout with <Field>' },
+  { id: 'ex31', label: '31. Runtime Requiredness' },
+  { id: 'ex32', label: '32. Cross-field & Row Errors' },
+  { id: 'ex33', label: '33. Dependency Graph' },
+  { id: 'ex34', label: '34. Rich Option Identity' },
 ]
 
 export default function App() {
@@ -148,6 +164,22 @@ export default function App() {
       <Example25 />
       <hr style={{ margin: '2rem 0' }} />
       <Example26 />
+      <hr style={{ margin: '2rem 0' }} />
+      <Example27 />
+      <hr style={{ margin: '2rem 0' }} />
+      <Example28 />
+      <hr style={{ margin: '2rem 0' }} />
+      <Example29 />
+      <hr style={{ margin: '2rem 0' }} />
+      <Example30 />
+      <hr style={{ margin: '2rem 0' }} />
+      <Example31 />
+      <hr style={{ margin: '2rem 0' }} />
+      <Example32 />
+      <hr style={{ margin: '2rem 0' }} />
+      <Example33 />
+      <hr style={{ margin: '2rem 0' }} />
+      <Example34 />
     </main>
   )
 }

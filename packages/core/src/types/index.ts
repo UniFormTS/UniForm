@@ -11,20 +11,29 @@ export type {
   ConditionValues,
 } from './utils'
 
-export type { SelectOption } from './shared'
+export type { SelectOption, GetOptionKey, IsOptionEqual } from './shared'
 
 export type {
   FieldType,
   FieldCondition,
+  FieldRequirement,
   FieldDependencyResult,
   FieldMetaBase,
   FieldMeta,
   FieldConfig,
   FieldProps,
   FieldOverride,
+  SetValueOptions,
+  ContainerFieldProps,
+  ObjectContainerProps,
+  ArrayContainerProps,
 } from './field'
 
-export type { ComponentRegistry, FieldWrapperProps } from './registry'
+export type {
+  ComponentRegistry,
+  RegisterableComponent,
+  FieldWrapperProps,
+} from './registry'
 
 export type {
   ArrayButtonProps,

@@ -5,6 +5,7 @@ Read this when customising how array rows render, where the Add button sits, whi
 ## Table of contents
 
 - [Row controls and `fields` flags](#row-controls-and-fields-flags)
+- [Arrays of primitives](#arrays-of-primitives)
 - [Custom row layout (`arrayRowLayout`)](#custom-row-layout-arrayrowlayout)
 - [Add-button position (`arrayFieldLayout`)](#add-button-position-arrayfieldlayout)
 - [Swapping array buttons (`arrayButtons`)](#swapping-array-buttons-arraybuttons)
@@ -13,7 +14,7 @@ Read this when customising how array rows render, where the Add button sits, whi
 
 ## Row controls and `fields` flags
 
-Every row gets Remove and Move Up / Move Down by default. Enable Duplicate and Collapse per array via the `fields` prop:
+Every row gets Remove and Move Up / Move Down by default. Enable Duplicate and Collapse per array via the `fields` prop (object rows only):
 
 ```tsx
 <AutoForm
@@ -22,7 +23,33 @@ Every row gets Remove and Move Up / Move Down by default. Enable Duplicate and C
 />
 ```
 
-`.min(n)` / `.max(n)` on the array drive the UI: the Add button hides at max, and Remove is suppressed below min. Keep these bounds in the **schema** so validation and UI stay in agreement.
+`.min(n)` / `.max(n)` on the array drive the UI: the Add button is **disabled** at max, and Remove is **disabled** at min (both stay in the DOM). Keep these bounds in the **schema** so validation and UI stay in agreement.
+
+## Arrays of primitives
+
+Item schemas do not have to be objects. Primitive item types render one registered input per row, resolved through the component registry exactly like any other leaf:
+
+```tsx
+const schema = z.object({
+  tags: z.array(z.string().min(2)).min(1).max(5),
+  scores: z.array(z.number().min(0).max(10)),
+  audiences: z.array(z.enum(['public', 'members', 'staff'])),
+})
+
+<AutoForm
+  form={createForm(schema)}
+  defaultValues={{ tags: ['zod'], scores: [5], audiences: ['public'] }}
+  fields={{ scores: { label: 'Scores', itemLabel: 'Score' } }}
+  onSubmit={save}
+/>
+```
+
+- Each row registers at the bare index path (`tags.0`), so item-level constraints validate and report per row.
+- Add, Remove and Move work; `duplicable` and `collapsible` are object-row only and render no button for scalar rows.
+- Scalar rows carry no label by default — the array's own label describes the list. `itemLabel` opts into a per-row label.
+- `append()` with no argument inserts a typed empty item (`''`, `0`, `false`, the first enum option).
+
+Keep the storage shape flat: never model a tag list as `z.array(z.object({ value: z.string() }))` just to make it render.
 
 ## Custom row layout (`arrayRowLayout`)
 
@@ -68,6 +95,8 @@ const RowsOnly = ({ rows }: ArrayFieldLayoutProps) => <>{rows}</>
 
 Swap the button component for every array action at once with `layout.arrayButtons`. Set `base` as the fallback and override individual slots as needed. Resolution: **specific slot → `base` → built-in default**. `undefined` means "use fallback/default"; `null` means "omit this button".
 
+The **collapse** toggle is the exception: it takes an extra `isCollapsed` prop, so it does **not** fall back to `base` — override or omit it explicitly.
+
 ```tsx
 import { Button } from 'my-design-system'
 
@@ -93,7 +122,9 @@ const MyCollapse = ({ isCollapsed, ...props }: ArrayCollapseButtonProps) => (
 
 ## External controls with `useArrayField`
 
-Call `useArrayField(path)` from any component rendered inside `<AutoForm>` to drive array actions from outside the array block (a toolbar, a sticky footer). It returns every `useFieldArray` action (`append`, `remove`, `move`, `swap`, `replace`, …) plus:
+Call `useArrayField(path)` from any component rendered inside `<AutoForm>` to drive array actions from outside the array block (a toolbar, a sticky footer). The hook **delegates to the field array that renders the rows** — it does not create a competing one — so `append()` immediately adds a visible row. When UniForm does not render the array (it is `hidden`, or replaced by a custom component) the operations fall back to writing the array value directly.
+
+It returns every `useFieldArray` action (`fields`, `append`, `prepend`, `insert`, `remove`, `move`, `swap`, `update`, `replace`) plus:
 
 - `rowCount` — current number of rows
 - `canAdd` — `false` when the array reached its `.max(...)`
@@ -130,7 +161,9 @@ const RowsOnly = ({ rows }: ArrayFieldLayoutProps) => <>{rows}</>
 />
 ```
 
-Use dot paths for nested arrays too, e.g. `useArrayField('profile.contacts')`.
+Use dot paths for nested arrays too, e.g. `useArrayField('profile.contacts')`. Primitive arrays work the same way — `append('draft')` adds a visible string row.
+
+In development the hook warns when the path is neither a mounted array field nor an array in the schema, so a typo fails loudly instead of silently doing nothing.
 
 ## Conditional fields inside rows
 

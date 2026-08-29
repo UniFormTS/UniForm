@@ -73,15 +73,103 @@ Common Zod error codes: `too_small`, `too_big`, `invalid_type`, `invalid_string`
 
 ## Resolution order
 
+There is **one** source of validation messages — Zod — and `messages` is a targeted override on top of its result, not a second message system. Anything you do not list falls through to Zod untouched, so a global `z.config({ localeError })` keeps working exactly as it does everywhere else in your app.
+
 `messages[fieldName]` accepts **either** a `string` (replaces all errors on that field) **or** an object (maps individual Zod error codes to strings). These are two alternative shapes — you choose one per field.
 
 For each field error, UniForm resolves the message in this priority:
 
 1. **Per-field string** — if `messages[fieldName]` is a `string`, it replaces every error on that field regardless of error code
 2. **Per-field per-code** — if `messages[fieldName]` is an object, the matching `messages[fieldName][error.code]` string is used
-3. **Global `messages.required`** — when the error is a required-field error (`too_small` or `invalid_type`) and no per-field override matched
+3. **Global `messages.required`** — when the error is a required-field error (`too_small`, `invalid_type`, or a `setRequired` predicate) and no per-field override matched
 4. **Schema message** — the message passed directly in the schema (e.g. `z.string().min(3, 'Too short!')`)
-5. **Zod's default English message**
+5. **Zod's configured locale** — including a global `z.config({ localeError })`
+6. **Zod's default English message**
+
+:::tip Where to put a message
+Author messages in the **schema** first, and set a **global Zod locale** for language. Reach for `messages` only when one form needs different wording from everywhere else — that keeps the number of message layers at one plus exceptions, rather than two parallel systems.
+:::
+
+## Cross-field and array-index errors
+
+Cross-field rules belong in `superRefine`, and their issues are often anchored somewhere no leaf field can render them — an array element, a whole container, or the form as a whole.
+
+You do **not** need to validate twice. Read the issue where it was anchored:
+
+```tsx
+const orderSchema = z
+  .object({ customer: z.string(), lines: z.array(lineSchema) })
+  .superRefine((value, ctx) => {
+    value.lines.forEach((line, index) => {
+      if (isDuplicate(value.lines, index)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['lines', index], // an array element — no leaf owns it
+          message: 'Duplicate SKU in this order',
+        })
+      }
+    })
+    if (overCreditLimit(value)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: [], // the form as a whole
+        message: 'Order exceeds the customer credit limit',
+      })
+    }
+  })
+```
+
+```tsx
+import { useFieldError } from '@uniform-ts/core'
+
+// Render the row-level issue from the array row layout:
+function RowLayout({ children, index }: ArrayRowLayoutProps) {
+  const error = useFieldError(`lines.${index}`)
+  return (
+    <div>
+      {error && <p role='alert'>{error}</p>}
+      {children}
+    </div>
+  )
+}
+
+// Render the form-level issue anywhere:
+const rootError = useFieldError('')
+```
+
+| Hook                                             | Returns                                                                             |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| [`useFieldError(path)`](../api/use-field-error)  | The message at any path — leaf, container, array element, or `''` for the form root |
+| [`useFieldErrors(path)`](../api/use-field-error) | Every issue at or beneath `path`, as `{ path, message, code }[]`                    |
+| [`useFormErrors()`](../api/use-field-error)      | The whole typed error tree                                                          |
+
+All three are reactive, and none require the path to be a rendered field.
+
+### Issues with nowhere to sit
+
+`<FormErrorSummary>` lists exactly the issues that no field renders — the form root and container/array-element paths — so nothing is silently swallowed:
+
+```tsx
+<FormErrorSummary title='Please fix the following' />
+```
+
+Pass `unanchoredOnly={false}` to list every issue in the subtree, `path` to scope it, or a render function for custom markup.
+
+### Backend validation responses
+
+`setIssues` pushes an arbitrary list of issues into the same tree, including paths that are not fields:
+
+```ts
+const { issues } = await api.validate(values)
+formMethods.setIssues(issues)
+// [{ path: 'lines.0', message: '…' }, { path: '', message: '…' }]
+```
+
+`setError` / `setErrors` continue to work for the flat, field-keyed case.
+
+## Requiredness decided at runtime
+
+When whether a field is required depends on the current values, do **not** encode the rule twice. Mark the field `.optional()` in the schema and use `setRequired`, which drives the asterisk, `aria-required` **and** submit validation from one predicate. See the [Dynamic Requiredness guide](./dynamic-requiredness).
 
 ## Using with `createAutoForm`
 
