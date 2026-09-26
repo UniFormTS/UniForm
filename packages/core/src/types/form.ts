@@ -186,8 +186,7 @@ export type AutoFormProps<TSchema extends z.$ZodObject> = {
    * promise resolves, then resets the form with the loaded values.
    */
   defaultValues?:
-    | Partial<z.infer<TSchema>>
-    | (() => Promise<Partial<z.infer<TSchema>>>)
+    Partial<z.infer<TSchema>> | (() => Promise<Partial<z.infer<TSchema>>>)
   /** Component registry overrides for this form instance. */
   components?: ComponentRegistry
   /** Per-field UI metadata overrides (label, placeholder, options, etc.). */

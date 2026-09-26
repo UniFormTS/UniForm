@@ -1,8 +1,21 @@
 # UniForm — Claude Guidance
 
+## Superpowers skills (mandatory)
+
+Superpowers skills are installed in `.agents/skills/`. **Before any response or action** — including clarifying questions, exploring the codebase, or reading files — read `.agents/skills/using-superpowers/SKILL.md` and follow it exactly:
+
+- If there is even a 1% chance a skill applies, invoke it (read its `SKILL.md`) and follow it. This is not optional.
+- Announce `Using [skill] to [purpose]`, and create a todo per checklist item the skill defines.
+- Process skills come first, then implementation skills:
+  - New features / behavior changes → `brainstorming` (then `writing-plans`).
+  - Bugs, test failures, unexpected behavior → `systematic-debugging`.
+  - Any implementation code → `test-driven-development`.
+  - Before claiming work is done or passing → `verification-before-completion`.
+- Explicit user instructions override skills; skip a skill workflow only when the user says so.
+
 ## Repo structure
 
-```
+```text
 packages/core/       — library source (published as @uniform-ts/core)
 apps/playground/     — Vite dev app with live examples (Example1.tsx … ExampleN.tsx)
 docs/                — Docusaurus site (uniformts.github.io/UniForm)

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import * as React from 'react'
-import { useFieldArray, useWatch } from 'react-hook-form'
+import { useWatch } from 'react-hook-form'
 import type { Control } from 'react-hook-form'
 import type {
   FieldConfig,
@@ -11,7 +11,7 @@ import type {
 import { useAutoFormContext } from '../../context/AutoFormContext'
 import { FieldRenderer } from '../FieldRenderer'
 import { getDefaultValue } from './getDefaultValue'
-import { reindexDynamicMeta } from '../../utils/reindexDynamicMeta'
+import { useRegisteredFieldArray } from '../../hooks/useRegisteredFieldArray'
 import type { RowAwareOnChange } from '../../utils/createRowScopedContext'
 import type { ArrayFieldConfigWithRowMeta } from '../../utils/fieldPipeline'
 
@@ -119,19 +119,16 @@ function applyRowDynamicMeta(
 }
 
 export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
-  const { classNames, layout, labels, setDynamicMeta } = useAutoFormContext()
+  const { classNames, layout, labels } = useAutoFormContext()
   const {
     fields: rows,
     append,
     remove,
     move,
-    insert,
-  } = useFieldArray({
-    control,
-    name: effectiveName,
-  })
+    duplicate,
+  } = useRegisteredFieldArray(effectiveName)
 
-  const [collapsed, setCollapsed] = useState<Set<number>>(() => new Set())
+  const [collapsed, setCollapsed] = useState(() => new Set<number>())
 
   const itemConfig = field.itemConfig
   const isObjectItems = itemConfig.type === 'object'
@@ -141,7 +138,7 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
   const atMax = maxItems != null && rows.length >= maxItems
 
   const showMove = field.meta.movable === true
-  const showDuplicate = field.meta.duplicable === true
+  const showDuplicate = field.meta.duplicable === true && isObjectItems
   const showCollapse = field.meta.collapsible === true && isObjectItems
 
   const toggleCollapse = (index: number) => {
@@ -165,6 +162,22 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
           meta: { ...itemConfig.meta, section: field.meta.section },
         }
       : itemConfig
+
+  const primitiveItemLabel = field.meta.itemLabel ?? itemConfig.label
+  const getRowConfig = (index: number): FieldConfig => {
+    if (isObjectItems) return effectiveItemConfig
+    if (primitiveItemLabel) {
+      return { ...effectiveItemConfig, label: primitiveItemLabel }
+    }
+    return {
+      ...effectiveItemConfig,
+      label: '',
+      meta: {
+        ...effectiveItemConfig.meta,
+        ariaLabel: `${field.label} ${index + 1}`,
+      },
+    }
+  }
 
   const {
     add: AddBtn,
@@ -215,16 +228,7 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
         <MoveUpBtn
           type='button'
           className={classNames.arrayMove}
-          onClick={() => {
-            move(index, index - 1)
-            setDynamicMeta((prev) =>
-              reindexDynamicMeta(prev, effectiveName, {
-                type: 'move',
-                from: index,
-                to: index - 1,
-              }),
-            )
-          }}
+          onClick={() => move(index, index - 1)}
           disabled={index === 0}
           aria-label={
             labels.arrayAriaMoveUp?.(index) ?? `Move item ${index + 1} up`
@@ -239,16 +243,7 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
         <MoveDownBtn
           type='button'
           className={classNames.arrayMove}
-          onClick={() => {
-            move(index, index + 1)
-            setDynamicMeta((prev) =>
-              reindexDynamicMeta(prev, effectiveName, {
-                type: 'move',
-                from: index,
-                to: index + 1,
-              }),
-            )
-          }}
+          onClick={() => move(index, index + 1)}
           disabled={index === rows.length - 1}
           aria-label={
             labels.arrayAriaMoveDown?.(index) ?? `Move item ${index + 1} down`
@@ -263,18 +258,7 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
         <DuplicateBtn
           type='button'
           className={classNames.arrayDuplicate}
-          onClick={() => {
-            const values = Object.fromEntries(
-              Object.entries(row).filter(([k]) => k !== 'id'),
-            )
-            insert(index + 1, values as Record<string, unknown>)
-            setDynamicMeta((prev) =>
-              reindexDynamicMeta(prev, effectiveName, {
-                type: 'duplicate',
-                index,
-              }),
-            )
-          }}
+          onClick={() => duplicate(index)}
           aria-label={
             labels.arrayAriaDuplicate?.(index) ?? `Duplicate item ${index + 1}`
           }
@@ -287,15 +271,7 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
       <RemoveBtn
         type='button'
         className={classNames.arrayRemove}
-        onClick={() => {
-          remove(index)
-          setDynamicMeta((prev) =>
-            reindexDynamicMeta(prev, effectiveName, {
-              type: 'remove',
-              index,
-            }),
-          )
-        }}
+        onClick={() => remove(index)}
         disabled={atMin}
         aria-label={
           labels.arrayAriaRemove?.(index) ?? `Remove item ${index + 1}`
@@ -309,8 +285,8 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
       <FieldRenderer
         field={bindRowIndexToItemConfig(
           rowDynamicMeta?.[index]
-            ? applyRowDynamicMeta(effectiveItemConfig, rowDynamicMeta[index])
-            : effectiveItemConfig,
+            ? applyRowDynamicMeta(getRowConfig(index), rowDynamicMeta[index])
+            : getRowConfig(index),
           index,
         )}
         control={control}
@@ -341,16 +317,7 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
       type='button'
       className={classNames.arrayAdd}
       disabled={atMax}
-      onClick={() => {
-        const newIndex = rows.length
-        append(getDefaultValue(itemConfig) as Record<string, unknown>)
-        setDynamicMeta((prev) =>
-          reindexDynamicMeta(prev, effectiveName, {
-            type: 'add',
-            index: newIndex,
-          }),
-        )
-      }}
+      onClick={() => append(getDefaultValue(itemConfig))}
     >
       {labels.arrayAdd ?? 'Add'}
     </AddBtn>
@@ -371,8 +338,7 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
 
   const ArrayWrapper =
     (field.meta.wrapper as
-      | React.ComponentType<ArrayWrapperProps>
-      | undefined) ?? layout.arrayWrapper
+      React.ComponentType<ArrayWrapperProps> | undefined) ?? layout.arrayWrapper
   return (
     <ArrayWrapper
       label={field.label}
@@ -402,8 +368,7 @@ function CollapseSummary({
   const fallback = labels.arrayItemSummary?.(index) ?? `Item ${index + 1}`
 
   const rowValues = useWatch({ control, name: `${effectiveName}.${index}` }) as
-    | Record<string, unknown>
-    | undefined
+    Record<string, unknown> | undefined
 
   const summary = useMemo(() => {
     if (!isCollapsed) return fallback

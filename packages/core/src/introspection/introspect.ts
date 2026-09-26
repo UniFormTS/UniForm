@@ -60,8 +60,7 @@ export function introspectSchema(
         // Handle standalone format schemas: z.email(), z.url(), z.uuid()
         // These are ZodStringFormat types with def.format set directly.
         const defFormat = (def as z.$ZodStringFormatDef).format as
-          | string
-          | undefined
+          string | undefined
         if (defFormat === 'email') {
           mergedMeta['inputType'] = 'email'
         } else if (defFormat === 'url') {

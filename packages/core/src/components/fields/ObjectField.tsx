@@ -41,8 +41,8 @@ export function ObjectField({
 
   const ObjectWrapper =
     (field.meta.wrapper as
-      | React.ComponentType<ObjectWrapperProps>
-      | undefined) ?? layout.objectWrapper
+      React.ComponentType<ObjectWrapperProps> | undefined) ??
+    layout.objectWrapper
   return (
     <ObjectWrapper
       label={field.label}
