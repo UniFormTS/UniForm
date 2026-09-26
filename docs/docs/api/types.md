@@ -154,6 +154,8 @@ type FieldOverride = {
   movable?: boolean // Enable move-up/move-down row controls
   duplicable?: boolean // Enable duplicate row button
   collapsible?: boolean // Enable collapse/expand per row
+  itemLabel?: string // Visible label on each row of a primitive array (none by default)
+  ariaLabel?: string // Accessible name when there is no visible label (auto-set for primitive rows)
 }
 ```
 

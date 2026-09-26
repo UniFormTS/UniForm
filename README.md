@@ -98,8 +98,8 @@ UniForm introspects the schema, renders appropriate inputs, validates with Zod, 
 - **react-hook-form** under the hood — performant, uncontrolled forms with `zodResolver`
 - **Section grouping** — group fields into named sections via `meta.section`
 - **Conditional fields** — show/hide fields based on form values; `hidden` and row-local sibling conditions work inside array rows too
-- **Array fields** — movable, duplicable, collapsible rows; `minItems`/`maxItems` from Zod schema; per-row conditional fields
-- **External array controls** — use `useArrayField('path.to.array')` to place Add/Remove controls outside the default array block while staying in sync with schema limits
+- **Array fields** — arrays of objects and of primitives (`z.array(z.string())`, numbers, enums); movable, duplicable, collapsible rows; `minItems`/`maxItems` from Zod schema; per-row conditional fields
+- **External array controls** — use `useArrayField('path.to.array')` to place Add/Remove controls outside the default array block; it drives the rendered rows directly and stays in sync with schema limits
 - **Programmatic control** — `reset()`, `submit()`, `setValues()`, `getValues()`, `setErrors()`, `focus()` via ref
 - **Form persistence** — auto-save to `localStorage` (or custom storage) with configurable debounce
 - **Pluggable coercion** — automatic `string → number`, `string → Date` with customizable coercion map

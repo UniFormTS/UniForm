@@ -7,7 +7,10 @@ export type MutationType =
   | { type: 'remove'; index: number }
   | { type: 'move'; from: number; to: number }
   | { type: 'add'; index: number }
+  | { type: 'insert'; index: number; count: number }
+  | { type: 'swap'; a: number; b: number }
   | { type: 'duplicate'; index: number }
+  | { type: 'clear' }
 
 /**
  * Regex to match row-indexed keys: "{arrayName}.{index}.{childField}"
@@ -77,7 +80,23 @@ export function reindexDynamicMeta(
       applyDuplicate(matched, mutation.index, arrayName, result)
       break
     case 'add':
-      applyAdd(matched, mutation.index, arrayName, result)
+      applyAdd(matched, mutation.index, 1, arrayName, result)
+      break
+    case 'insert':
+      applyAdd(matched, mutation.index, mutation.count, arrayName, result)
+      break
+    case 'swap':
+      for (const entry of matched) {
+        const index =
+          entry.index === mutation.a
+            ? mutation.b
+            : entry.index === mutation.b
+              ? mutation.a
+              : entry.index
+        result[buildKey(arrayName, index, entry.childField)] = entry.value
+      }
+      break
+    case 'clear':
       break
   }
 
@@ -97,6 +116,12 @@ function isValidMutation(
       return mutation.index >= 0
     case 'add':
       return mutation.index >= 0
+    case 'insert':
+      return mutation.index >= 0 && mutation.count >= 0
+    case 'swap':
+      return mutation.a >= 0 && mutation.b >= 0
+    case 'clear':
+      return true
   }
 }
 
@@ -220,7 +245,7 @@ function applyDuplicate(
 }
 
 /**
- * Add: increment indices >= new index to make room for the new row.
+ * Add / insert: shift indices >= new index up by `count` to make room.
  */
 function applyAdd(
   entries: Array<{
@@ -229,13 +254,13 @@ function applyAdd(
     value: Partial<FieldDependencyResult>
   }>,
   newIndex: number,
+  count: number,
   arrayName: string,
   result: Record<string, Partial<FieldDependencyResult>>,
 ): void {
   for (const entry of entries) {
     if (entry.index >= newIndex) {
-      // Increment index to make room
-      result[buildKey(arrayName, entry.index + 1, entry.childField)] =
+      result[buildKey(arrayName, entry.index + count, entry.childField)] =
         entry.value
     } else {
       // Index < newIndex — unchanged

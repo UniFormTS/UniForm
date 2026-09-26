@@ -12,6 +12,7 @@ import type {
   FormLabels,
   FormMethods,
 } from '../types'
+import type { ArrayRegistry } from './arrayRegistry'
 
 export type AutoFormContextValue = {
   registry: ComponentRegistry
@@ -29,6 +30,7 @@ export type AutoFormContextValue = {
   setDynamicMeta: React.Dispatch<
     React.SetStateAction<Record<string, Partial<FieldDependencyResult>>>
   >
+  arrayRegistry: ArrayRegistry
 }
 
 const AutoFormContext = React.createContext<AutoFormContextValue | null>(null)

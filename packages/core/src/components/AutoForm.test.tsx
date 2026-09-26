@@ -3762,6 +3762,40 @@ describe('z.string() rendered as select via meta', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Context stability
+// ---------------------------------------------------------------------------
+
+import { useAutoFormContext } from '../context/AutoFormContext'
+import type { FormWrapperProps } from '../types'
+
+describe('AutoForm context stability', () => {
+  it('keeps the context value stable while typing when optional props are omitted', async () => {
+    let renders = 0
+    const Consumer = React.memo(function Consumer() {
+      useAutoFormContext()
+      renders++
+      return null
+    })
+    const FormWrapper = ({ children }: FormWrapperProps) => (
+      <>
+        <Consumer />
+        {children}
+      </>
+    )
+    const { user } = setup(
+      <AutoForm
+        form={createForm(z.object({ name: z.string() }))}
+        layout={{ formWrapper: FormWrapper }}
+        onSubmit={vi.fn()}
+      />,
+    )
+    const before = renders
+    await user.type(screen.getByRole('textbox'), 'abc')
+    expect(renders - before).toBe(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // useArrayField hook
 // ---------------------------------------------------------------------------
 

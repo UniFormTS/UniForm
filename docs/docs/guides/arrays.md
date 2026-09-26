@@ -6,11 +6,7 @@ description: Render and manage repeating groups of fields from z.array() schemas
 
 # Array Fields
 
-`z.array(z.object(...))` fields are automatically rendered as a repeating group. Each row is an independent nested form segment rendered below an **Add** button.
-
-:::note Object arrays only
-UniForm renders array fields whose item schema is a `z.object(...)`. Arrays of primitives (e.g. `z.array(z.string())`) are not rendered as repeating fields — use a custom component for those cases.
-:::
+`z.array(...)` fields are automatically rendered as a repeating group. Each row is an independent nested form segment rendered below an **Add** button.
 
 ```ts
 const schema = z.object({
@@ -23,6 +19,30 @@ const schema = z.object({
   ),
 })
 ```
+
+## Arrays of primitives
+
+`z.array(z.string())`, `z.array(z.number())` and `z.array(z.enum([...]))` render one input per row — a text input, a number input, or a select — and submit plain values (`string[]`, `number[]`, enum values).
+
+```ts
+const schema = z.object({
+  tags: z.array(z.string().min(2)).max(5),
+  scores: z.array(z.number()),
+  colors: z
+    .array(z.enum(['red', 'green', 'blue']))
+    .meta({ itemLabel: 'Color' }),
+})
+```
+
+- **Add** appends the type's empty value: `''` for strings, `0` for numbers, the first option for enums.
+- Remove, move and `minItems` / `maxItems` behave as for object rows. Duplicate and collapse are not rendered for primitive rows.
+- Rows have **no visible label** by default. Set `meta.itemLabel` to show one on every row. Unlabelled rows still get an accessible name — `aria-label="<array label> <n>"` (for example `"Tags 1"`) — via `meta.ariaLabel`, which the default input and select render.
+- Validation errors for an item appear on the failing row.
+- Primitive arrays work nested inside object rows too.
+
+:::tip Custom components
+If you replace the default input or select with your own component, render `aria-label={meta.ariaLabel}` so unlabelled rows stay accessible.
+:::
 
 ## Row controls
 
@@ -176,7 +196,13 @@ const RowsOnly = ({ rows }: ArrayFieldLayoutProps) => <>{rows}</>
 />
 ```
 
-Use dot paths for nested arrays too (for example `"profile.contacts"`).
+Use dot paths for nested arrays too, including row indices (for example `"profile.contacts"` or `"groups.0.emails"`).
+
+The hook drives the rendered array's own rows, so rows added from a toolbar appear immediately, and rows added with the built-in **Add** button are reflected in `rowCount`. When nothing renders the array (for example it is `hidden`), the operations write the array value directly instead; each call reads the current value, so several calls in one handler all apply.
+
+## Per-row overrides follow their row
+
+Overrides set with `ctx.setFieldMeta('items.1.name', …)` are keyed by row index. When rows are removed, inserted, moved, swapped or duplicated — from the built-in buttons or from `useArrayField` — the overrides move with their rows. `replace()` and `remove()` with no argument clear the array's row overrides; `append` and `update` leave them unchanged.
 
 See [`useArrayField()` API](/docs/api/use-array-field) for the full contract.
 

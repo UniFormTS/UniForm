@@ -456,10 +456,7 @@ describe('array min/max constraints', () => {
 
 describe('plain union (z.or / z.union)', () => {
   it('collapses z.number().or(z.literal("")) to type "number"', () => {
-    const result = introspectSchema(
-      z.number().or(z.literal('')),
-      'amount',
-    )
+    const result = introspectSchema(z.number().or(z.literal('')), 'amount')
     expect(result.type).toBe('number')
     expect(result.name).toBe('amount')
   })
@@ -537,17 +534,25 @@ describe('schema field (escape hatch)', () => {
 
 describe('z.string() with meta select', () => {
   it('produces type "select" when meta.component is "select" and options are provided', () => {
-    const schema = z
-      .string()
-      .meta({ component: 'select', options: [{ label: 'User', value: 'user' }, { label: 'Admin', value: 'admin' }] })
+    const schema = z.string().meta({
+      component: 'select',
+      options: [
+        { label: 'User', value: 'user' },
+        { label: 'Admin', value: 'admin' },
+      ],
+    })
     const result = introspectSchema(schema, 'role')
     expect(result.type).toBe('select')
   })
 
   it('populates field.options from meta.options', () => {
-    const schema = z
-      .string()
-      .meta({ component: 'select', options: [{ label: 'User', value: 'user' }, { label: 'Admin', value: 'admin' }] })
+    const schema = z.string().meta({
+      component: 'select',
+      options: [
+        { label: 'User', value: 'user' },
+        { label: 'Admin', value: 'admin' },
+      ],
+    })
     const result = introspectSchema(schema, 'role')
     assert(result.type === 'select')
     expect(result.options).toHaveLength(2)

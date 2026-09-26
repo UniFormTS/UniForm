@@ -39,9 +39,9 @@ function useArrayField(fieldName: string): UseFieldArrayReturn & {
 
 ## Parameters
 
-| Name        | Type     | Description                                                                    |
-| ----------- | -------- | ------------------------------------------------------------------------------ |
-| `fieldName` | `string` | Dot-notated array field path (for example `"lineItems"`, `"profile.contacts"`) |
+| Name        | Type     | Description                                                                                         |
+| ----------- | -------- | --------------------------------------------------------------------------------------------------- |
+| `fieldName` | `string` | Dot-notated array field path (for example `"lineItems"`, `"profile.contacts"`, `"groups.0.emails"`) |
 
 ## Returns
 
@@ -67,12 +67,19 @@ And it adds UniForm-specific derived flags:
 
 `canAdd` and `atMin` are computed from the introspected array field config, so they stay aligned with schema min/max constraints.
 
+## How operations are applied
+
+- **Array rendered** — the operations drive the array renderer's own field array, so rows update in the DOM immediately and rows added with the built-in buttons are reflected in `rowCount` and `fields`.
+- **Array not rendered** (for example `hidden`, or replaced by a component override) — the operations write the whole array value with `setValue`. Each call reads the current array at call time, so two `append` calls in one handler both land.
+
+Either way, per-row overrides set with `ctx.setFieldMeta('<array>.<index>.<field>', …)` follow their rows (see [Array Fields](../guides/arrays#per-row-overrides-follow-their-row)).
+
+Arrays of primitives are supported: `append('new tag')`.
+
 ## Requirements
 
 - Must be called from a component rendered under `<AutoForm>`.
-- `fieldName` must point to an array field rendered by UniForm.
-
-If either condition is not met, React Hook Form / context usage will fail at runtime.
+- `fieldName` should point to an array field in the schema. Otherwise the hook logs a warning once and `canAdd` / `atMin` fall back to unconstrained values.
 
 ## Example: external toolbar + hidden built-in Add button
 

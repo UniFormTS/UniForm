@@ -9,6 +9,8 @@ import type {
   FieldMeta,
   FormMethods,
   FieldDependencyResult,
+  FormClassNames,
+  FormLabels,
   ResolvedLayoutSlots,
 } from '../types'
 import type { UniForm, UniFormContext } from '../UniForm'
@@ -27,6 +29,7 @@ import { DefaultArrayWrapper } from './defaults/DefaultArrayWrapper'
 import { DefaultArrayButton } from './defaults/DefaultArrayButton'
 import { DefaultArrayCollapseButton } from './defaults/DefaultArrayCollapseButton'
 import { AutoFormContextProvider } from '../context/AutoFormContext'
+import { createArrayRegistry } from '../context/arrayRegistry'
 import { FieldRenderer } from './FieldRenderer'
 import { useConditionalFields } from '../hooks/useConditionalFields'
 import { useSectionGrouping } from '../hooks/useSectionGrouping'
@@ -40,6 +43,11 @@ import {
   buildDefaults,
 } from '../utils/fieldPipeline'
 import { resolveNullableSlot } from '../utils/resolveNullableSlot'
+
+// Shared defaults keep the context value stable across re-renders
+const EMPTY_FIELDS = {}
+const EMPTY_CLASS_NAMES: FormClassNames = {}
+const EMPTY_LABELS: FormLabels = {}
 
 /**
  * The core auto-form component. Introspects the provided Zod `schema`,
@@ -67,10 +75,10 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     onSubmit,
     defaultValues,
     components,
-    fields: fieldOverridesProp = {},
+    fields: fieldOverridesProp = EMPTY_FIELDS,
     fieldWrapper,
     layout,
-    classNames = {},
+    classNames = EMPTY_CLASS_NAMES,
     disabled = false,
     coercions,
     messages,
@@ -78,7 +86,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     persistDebounce = 300,
     persistStorage,
     onValuesChange,
-    labels = {},
+    labels = EMPTY_LABELS,
     ref,
   } = props
 
@@ -212,6 +220,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   const [dynamicMeta, setDynamicMeta] = React.useState<
     Record<string, Partial<FieldDependencyResult>>
   >({})
+  const [arrayRegistry] = React.useState(createArrayRegistry)
 
   const onSubmitRef = useLatestRef(onSubmit)
   const onValuesChangeRef = useLatestRef(onValuesChange)
@@ -411,6 +420,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       formMethods: formMethods as unknown as FormMethods,
       control,
       setDynamicMeta,
+      arrayRegistry,
     }),
     [
       registry,
@@ -426,6 +436,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       formMethods,
       control,
       setDynamicMeta,
+      arrayRegistry,
     ],
   )
 

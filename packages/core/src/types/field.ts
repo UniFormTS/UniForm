@@ -133,6 +133,16 @@ export type FieldMetaBase = {
   /** When `true`, rows in an array field can be individually collapsed. */
   collapsible?: boolean
   /**
+   * Visible label for each row of an array of primitives (e.g. `z.array(z.string())`).
+   * Rows have no visible label by default.
+   */
+  itemLabel?: string
+  /**
+   * Accessible name for the input when it has no visible label. Set
+   * automatically to `"<array label> <n>"` for unlabelled primitive array rows.
+   */
+  ariaLabel?: string
+  /**
    * Override the wrapper component rendered around this specific object or array field.
    * Takes precedence over the global `layout.objectWrapper` / `layout.arrayWrapper` slots.
    *

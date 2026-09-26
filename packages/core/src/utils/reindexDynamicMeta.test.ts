@@ -297,4 +297,68 @@ describe('reindexDynamicMeta', () => {
       })
     })
   })
+
+  describe('insert mutation', () => {
+    it('shifts rows at or after the index up by count', () => {
+      const meta = {
+        'items.0.note': { label: 'row0' },
+        'items.1.note': { label: 'row1' },
+        'items.2.note': { label: 'row2' },
+      }
+
+      const result = reindexDynamicMeta(meta, 'items', {
+        type: 'insert',
+        index: 1,
+        count: 2,
+      })
+
+      expect(result).toEqual({
+        'items.0.note': { label: 'row0' },
+        'items.3.note': { label: 'row1' },
+        'items.4.note': { label: 'row2' },
+      })
+    })
+  })
+
+  describe('swap mutation', () => {
+    it('exchanges the overrides of two rows', () => {
+      const meta = {
+        'items.0.note': { label: 'row0' },
+        'items.1.note': { label: 'row1' },
+        'items.2.note': { label: 'row2' },
+        'items.2.type': { disabled: true },
+      }
+
+      const result = reindexDynamicMeta(meta, 'items', {
+        type: 'swap',
+        a: 0,
+        b: 2,
+      })
+
+      expect(result).toEqual({
+        'items.0.note': { label: 'row2' },
+        'items.0.type': { disabled: true },
+        'items.1.note': { label: 'row1' },
+        'items.2.note': { label: 'row0' },
+      })
+    })
+  })
+
+  describe('clear mutation', () => {
+    it('drops every row override of this array and keeps other keys', () => {
+      const meta = {
+        items: { label: 'Items' },
+        'items.0.note': { label: 'row0' },
+        'items.3.note': { label: 'row3' },
+        'other.0.note': { label: 'other' },
+      }
+
+      const result = reindexDynamicMeta(meta, 'items', { type: 'clear' })
+
+      expect(result).toEqual({
+        items: { label: 'Items' },
+        'other.0.note': { label: 'other' },
+      })
+    })
+  })
 })

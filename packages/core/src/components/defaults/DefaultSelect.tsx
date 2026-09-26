@@ -9,6 +9,7 @@ export function DefaultSelect(props: FieldProps) {
     ref,
     required,
     disabled,
+    meta,
     options = [],
   } = props
 
@@ -24,6 +25,7 @@ export function DefaultSelect(props: FieldProps) {
       disabled={disabled}
       aria-required={required}
       aria-disabled={disabled}
+      aria-label={meta.ariaLabel}
       data-required={required || undefined}
       data-disabled={disabled || undefined}
     >
