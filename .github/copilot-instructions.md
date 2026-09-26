@@ -1,4 +1,4 @@
-# UniForm — Claude Guidance
+# UniForm — Copilot Guidance
 
 ## Superpowers skills (mandatory)
 
