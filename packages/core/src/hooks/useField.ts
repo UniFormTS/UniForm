@@ -3,9 +3,9 @@ import { useController } from 'react-hook-form'
 import type { FieldConfig, FieldProps } from '../types'
 import { useAutoFormContext } from '../context/AutoFormContext'
 import { useFieldPath, joinFieldPath } from '../context/FieldPathContext'
-import { resolveFieldAt } from '../utils/resolveFieldAt'
 import { resolveErrorMessage } from '../utils/resolveErrorMessage'
 import { coerceValue } from '../coercion/coerce'
+import { useResolvedField } from './useResolvedField'
 
 export type UseFieldOptions = {
   /** Override the resolved label. */
@@ -47,7 +47,6 @@ export function useField<TValue = unknown>(
 ): UseFieldResult<TValue> {
   const {
     control,
-    _internal,
     messages,
     coercions,
     disabled: contextDisabled,
@@ -56,8 +55,7 @@ export function useField<TValue = unknown>(
   const basePath = useFieldPath()
   const path = joinFieldPath(basePath, name)
 
-  const resolved = resolveFieldAt(_internal.resolvedFields, path)
-  const config = resolved?.config
+  const config = useResolvedField(path)?.config
 
   React.useEffect(() => {
     if (config) return

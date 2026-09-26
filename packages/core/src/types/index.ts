@@ -62,4 +62,6 @@ export type {
   AutoFormHandle,
   AutoFormConfig,
   AutoFormProps,
+  AutoFormOwnStateProps,
+  AutoFormInstanceProps,
 } from './form'

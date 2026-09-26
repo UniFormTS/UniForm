@@ -53,7 +53,7 @@ form.setDependencies({
 ## What the resolver receives
 
 ```ts
-resolve({ source, value, field, ctx })
+resolve({ source, value, field, ctx, signal })
 ```
 
 | Argument | Meaning                                                                                    |
@@ -62,8 +62,25 @@ resolve({ source, value, field, ctx })
 | `value`  | The value at `source` when the propagation started                                         |
 | `field`  | The field being resolved (this one)                                                        |
 | `ctx`    | Full programmatic control: `setValue`, `setValues`, `getValues`, `setFieldMeta`, …         |
+| `signal` | An `AbortSignal`, aborted when a newer change supersedes this run                          |
 
 `source` is the origin of the cascade, so a resolver can behave differently depending on what kicked it off.
+
+### Async resolvers and stale responses
+
+When `country` changes twice in quick succession, the first run is **superseded**: its `signal` aborts, and any `ctx.setValue` / `ctx.setValues` / `ctx.setFieldMeta` it makes afterwards is dropped. A slow response for the old value can never overwrite the new one. Pass the signal on to cancel the request itself:
+
+```ts
+form.setDependency('region', {
+  dependsOn: 'country',
+  resolve: async ({ ctx, value, signal }) => {
+    const res = await fetch(`/regions?country=${value}`, { signal })
+    ctx.setFieldMeta('region', { options: await res.json() })
+  },
+})
+```
+
+An async resolver is **awaited** before the fields downstream of it resolve, so `city` sees the `region` its resolver wrote. Synchronous graphs still resolve inline, before `setValue` returns. A rejected resolver is logged, and its downstream fields are not resolved.
 
 ## Programmatic writes participate
 
@@ -87,7 +104,7 @@ The instance stays usable after the throw — the rejected edge is rolled back.
 
 ## The propagation model
 
-One pass over the topologically-sorted closure per logical change. A resolver that writes a value does **not** start a second cascade, so propagation is bounded no matter how the graph is shaped. If a resolver writes a field that has its own dependents, declare that edge — do not rely on re-entrancy.
+One pass over the topologically-sorted closure per logical change. Writes a resolver makes through `ctx` do **not** start a second cascade, so propagation is bounded no matter how the graph is shaped. If a resolver writes a field that has its own dependents, declare that edge — do not rely on re-entrancy.
 
 ## Several handlers on one field
 

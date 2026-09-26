@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Controller, useFieldArray } from 'react-hook-form'
+import { Controller } from 'react-hook-form'
 import type { Control } from 'react-hook-form'
 import type {
   ArrayContainerProps,
@@ -9,6 +9,7 @@ import type {
 } from '../../types'
 import { useAutoFormContext } from '../../context/AutoFormContext'
 import { FieldPathProvider } from '../../context/FieldPathContext'
+import { useRegisteredFieldArray } from '../../hooks/useRegisteredFieldArray'
 import { resolveComponent } from '../resolveComponent'
 
 type ContainerFieldProps = {
@@ -74,52 +75,16 @@ export function ArrayContainerField({
   effectiveName,
   shouldUnregister,
 }: ContainerFieldProps) {
-  const { registry, _internal } = useAutoFormContext()
-  const { arrayFields } = _internal
+  const { registry } = useAutoFormContext()
   const Component = resolveComponent(field, registry)
   const setPath = useSetPath(effectiveName)
   const base = useContainerBase(field, effectiveName)
 
   // A custom component still gets a *real* field array, so row operations keep
   // react-hook-form's row identity, error reindexing and leaf notifications.
-  const {
-    fields: rows,
-    append,
-    prepend,
-    insert,
-    remove,
-    move,
-    swap,
-    update,
-    replace,
-  } = useFieldArray({ control, name: effectiveName })
-
-  React.useEffect(
-    () =>
-      arrayFields.register(effectiveName, {
-        fields: rows,
-        append,
-        prepend,
-        insert,
-        remove,
-        move,
-        swap,
-        update,
-        replace,
-      }),
-    [
-      arrayFields,
-      effectiveName,
-      rows,
-      append,
-      prepend,
-      insert,
-      remove,
-      move,
-      swap,
-      update,
-      replace,
-    ],
+  const { rows, actions, replaceValues } = useRegisteredFieldArray(
+    control,
+    effectiveName,
   )
 
   const minItems = field.type === 'array' ? field.minItems : undefined
@@ -140,7 +105,10 @@ export function ArrayContainerField({
           <Typed
             {...base}
             value={rhfField.value as unknown}
-            onChange={rhfField.onChange}
+            // Through the field array, so `rows` and `rowCount` stay in step.
+            onChange={(next: unknown) =>
+              replaceValues((Array.isArray(next) ? next : []) as never)
+            }
             onBlur={rhfField.onBlur}
             ref={rhfField.ref}
             error={fieldState.error?.message}
@@ -153,14 +121,14 @@ export function ArrayContainerField({
             rowCount={rowCount}
             canAdd={maxItems == null || rowCount < maxItems}
             atMin={minItems != null && rowCount <= minItems}
-            append={append}
-            prepend={prepend}
-            insert={insert}
-            remove={remove}
-            move={move}
-            swap={swap}
-            update={update}
-            replace={replace}
+            append={actions.append}
+            prepend={actions.prepend}
+            insert={actions.insert}
+            remove={actions.remove}
+            move={actions.move}
+            swap={actions.swap}
+            update={actions.update}
+            replace={actions.replace}
           />
         )}
       />

@@ -1,19 +1,17 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import * as React from 'react'
-import { useFieldArray, useWatch } from 'react-hook-form'
+import { useWatch } from 'react-hook-form'
 import type { Control } from 'react-hook-form'
-import type {
-  FieldConfig,
-  ArrayWrapperProps,
-  FormMethods,
-  FieldDependencyResult,
-} from '../../types'
+import type { FieldConfig, ArrayWrapperProps } from '../../types'
 import { useAutoFormContext } from '../../context/AutoFormContext'
 import { FieldRenderer } from '../FieldRenderer'
 import { getDefaultValue } from './getDefaultValue'
-import { reindexDynamicMeta } from '../../utils/reindexDynamicMeta'
-import type { RowAwareOnChange } from '../../utils/createRowScopedContext'
 import type { ArrayFieldConfigWithRowMeta } from '../../utils/fieldPipeline'
+import {
+  applyRowDynamicMeta,
+  bindRowIndexToItemConfig,
+} from '../../utils/rowItemConfig'
+import { useRegisteredFieldArray } from '../../hooks/useRegisteredFieldArray'
 
 type ArrayFieldProps = {
   field: Extract<FieldConfig, { type: 'array' }>
@@ -55,117 +53,13 @@ function getRowSummary(
   return itemSummary?.(index) ?? `Item ${index + 1}`
 }
 
-/**
- * Creates a copy of the item config with each child's `meta.onChange` wrapped
- * to inject the `rowIndex` as the third argument. This bridges the gap between
- * field components (which call onChange with 2 args) and the `RowAwareOnChange`
- * handlers injected by `injectOnChangeHandlers`.
- */
-function bindRowIndexToItemConfig(
-  itemConfig: FieldConfig,
-  rowIndex: number,
-): FieldConfig {
-  if (itemConfig.type !== 'object') return itemConfig
-
-  const children = itemConfig.children.map((child) => {
-    if (!child.meta.onChange) return child
-    const originalOnChange = child.meta.onChange as RowAwareOnChange
-    return {
-      ...child,
-      meta: {
-        ...child.meta,
-        onChange: (value: unknown, formMethods: FormMethods) => {
-          void originalOnChange(value, formMethods, rowIndex)
-        },
-      },
-    }
-  })
-
-  return { ...itemConfig, children }
-}
-
-/**
- * Merges per-row dynamic meta overrides into the child field configs of an
- * array item. For each child field that has an override in `rowOverrides`,
- * applies the override properties (hidden, disabled, label, placeholder,
- * description, options) to the child's config.
- */
-function applyRowDynamicMeta(
-  itemConfig: FieldConfig,
-  rowOverrides: Record<string, Partial<FieldDependencyResult>>,
-): FieldConfig {
-  if (itemConfig.type !== 'object') return itemConfig
-
-  const children = itemConfig.children.map((child) => {
-    const override = rowOverrides[child.name]
-    if (!override) return child
-
-    const { options, label, required, ...metaOverrides } = override
-    let updated: FieldConfig = {
-      ...child,
-      ...(label !== undefined ? { label } : {}),
-      ...(required !== undefined ? { required } : {}),
-      meta: { ...child.meta, ...metaOverrides },
-    }
-
-    // For select fields, override options if provided
-    if (options !== undefined && updated.type === 'select') {
-      updated = { ...updated, options }
-    }
-
-    return updated
-  })
-
-  return { ...itemConfig, children }
-}
-
 export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
-  const { classNames, layout, labels, _internal } = useAutoFormContext()
-  const { setDynamicMeta, arrayFields } = _internal
-  const {
-    fields: rows,
-    append,
-    prepend,
-    remove,
-    move,
-    swap,
-    insert,
-    update,
-    replace,
-  } = useFieldArray({
+  const { classNames, layout, labels } = useAutoFormContext()
+  const { rows, actions, duplicate } = useRegisteredFieldArray(
     control,
-    name: effectiveName,
-  })
-
-  // Publish the live row operations so `useArrayField` can drive *this*
-  // field array instead of mounting a second, desynchronised one.
-  useEffect(
-    () =>
-      arrayFields.register(effectiveName, {
-        fields: rows,
-        append,
-        prepend,
-        insert,
-        remove,
-        move,
-        swap,
-        update,
-        replace,
-      }),
-    [
-      arrayFields,
-      effectiveName,
-      rows,
-      append,
-      prepend,
-      insert,
-      remove,
-      move,
-      swap,
-      update,
-      replace,
-    ],
+    effectiveName,
   )
+  const { append, remove, move } = actions
 
   const [collapsed, setCollapsed] = useState<Set<number>>(() => new Set())
 
@@ -259,16 +153,7 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
         <MoveUpBtn
           type='button'
           className={classNames.arrayMove}
-          onClick={() => {
-            move(index, index - 1)
-            setDynamicMeta((prev) =>
-              reindexDynamicMeta(prev, effectiveName, {
-                type: 'move',
-                from: index,
-                to: index - 1,
-              }),
-            )
-          }}
+          onClick={() => move(index, index - 1)}
           disabled={index === 0}
           aria-label={
             labels.arrayAriaMoveUp?.(index) ?? `Move item ${index + 1} up`
@@ -283,16 +168,7 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
         <MoveDownBtn
           type='button'
           className={classNames.arrayMove}
-          onClick={() => {
-            move(index, index + 1)
-            setDynamicMeta((prev) =>
-              reindexDynamicMeta(prev, effectiveName, {
-                type: 'move',
-                from: index,
-                to: index + 1,
-              }),
-            )
-          }}
+          onClick={() => move(index, index + 1)}
           disabled={index === rows.length - 1}
           aria-label={
             labels.arrayAriaMoveDown?.(index) ?? `Move item ${index + 1} down`
@@ -311,13 +187,7 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
             const values = Object.fromEntries(
               Object.entries(row).filter(([k]) => k !== 'id'),
             )
-            insert(index + 1, values as Record<string, unknown>)
-            setDynamicMeta((prev) =>
-              reindexDynamicMeta(prev, effectiveName, {
-                type: 'duplicate',
-                index,
-              }),
-            )
+            duplicate(index, values)
           }}
           aria-label={
             labels.arrayAriaDuplicate?.(index) ?? `Duplicate item ${index + 1}`
@@ -331,15 +201,7 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
       <RemoveBtn
         type='button'
         className={classNames.arrayRemove}
-        onClick={() => {
-          remove(index)
-          setDynamicMeta((prev) =>
-            reindexDynamicMeta(prev, effectiveName, {
-              type: 'remove',
-              index,
-            }),
-          )
-        }}
+        onClick={() => remove(index)}
         disabled={atMin}
         aria-label={
           labels.arrayAriaRemove?.(index) ?? `Remove item ${index + 1}`
@@ -385,16 +247,7 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
       type='button'
       className={classNames.arrayAdd}
       disabled={atMax}
-      onClick={() => {
-        const newIndex = rows.length
-        append(getDefaultValue(itemConfig) as Record<string, unknown>)
-        setDynamicMeta((prev) =>
-          reindexDynamicMeta(prev, effectiveName, {
-            type: 'add',
-            index: newIndex,
-          }),
-        )
-      }}
+      onClick={() => append(getDefaultValue(itemConfig))}
     >
       {labels.arrayAdd ?? 'Add'}
     </AddBtn>

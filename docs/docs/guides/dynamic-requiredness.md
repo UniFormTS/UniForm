@@ -78,7 +78,11 @@ const form = createForm(schema).setOnChange('trigger', (value, ctx) => {
 })
 ```
 
-**Precedence:** `setFieldMeta({ required })` is applied last and wins over both `setRequired` and the schema. `setRequired` and `requiredWhen` target the same slot — registering both for one path keeps the last one registered.
+**Precedence:** `setFieldMeta({ required })` is applied last and wins over both `setRequired` and the schema — for the asterisk **and** for submit. `required: true` blocks an empty value; `required: false` lifts a `setRequired` rule at that path. `setRequired` and `requiredWhen` target the same slot — registering both for one path keeps the last one registered.
+
+## Hidden fields never block submit
+
+A required field that is currently hidden by a `condition` (its own, or an ancestor's), or that belongs to an inactive discriminated-union variant, is skipped. Nobody can fill in a field that is not on screen, so it cannot hold up the form.
 
 ## What counts as empty
 

@@ -15,9 +15,14 @@ Add `persistKey` to auto-save the form values to storage whenever they change. O
 ## How it works
 
 1. On mount, UniForm looks for a value in storage under `persistKey`.
-2. If found, those values are merged over `defaultValues` and passed to `reset()`.
-3. On every field change (debounced by `persistDebounce` ms), the current values are written back.
-4. After a successful submit, the stored value is **removed** automatically.
+2. If found, those values are merged over `defaultValues` and passed to `reset()`. With async `defaultValues`, the draft is merged over the loaded values too, whichever arrives first.
+3. After that, every field change (debounced by `persistDebounce` ms) writes the current values back, minus `persistExclude`.
+4. After a successful submit, the stored value is **removed** automatically — and any pending debounced write is cancelled, so it never comes back.
+5. When `persistKey` changes (for example `draft-${recordId}`), the new key's draft is restored; nothing is written under the new key until the user edits.
+
+:::caution Default storage
+The default adapter is `sessionStorage`. Earlier versions used `localStorage`, so drafts saved by those versions are not picked up after upgrading. Pass `persistStorage={localStorage}` to keep the old behaviour.
+:::
 
 ## Options
 
@@ -28,6 +33,22 @@ Add `persistKey` to auto-save the form values to storage whenever they change. O
 | `persistStorage`  | `sessionStorage` | Any object implementing `getItem / setItem / removeItem`. Pass `localStorage` to survive tab closes |
 | `persistVersion`  | `0`              | Schema version stamped onto the draft. Bump it when the shape of the values changes                 |
 | `persistMigrate`  | `undefined`      | Upgrade a draft saved at an older version. Return `undefined` to discard it                         |
+| `persistExclude`  | `[]`             | Dot paths never written to (or restored from) storage — passwords, card numbers, tokens             |
+
+## Keeping sensitive fields out of storage
+
+Storage is readable by any script on the page and outlives the form. Exclude anything you would not want left behind:
+
+```tsx
+<AutoForm
+  form={signupForm}
+  persistKey='signup-draft'
+  persistExclude={['password', 'payment.cardNumber']}
+  onSubmit={save}
+/>
+```
+
+Paths address object fields; array rows are not addressed individually.
 
 ## Versioning and migrations
 
@@ -51,7 +72,7 @@ Drafts are written inside a versioned envelope, so a draft saved before a schema
 - When the stored version matches `persistVersion`, the draft is restored as-is.
 - When it differs and `persistMigrate` returns values, those are restored.
 - When it differs and there is no `persistMigrate`, or the migration returns `undefined`, the draft is **discarded with a console warning** and the form starts from `defaultValues`.
-- Corrupt or unreadable data is discarded the same way — never silently swallowed.
+- Corrupt or unreadable data is discarded the same way — never silently swallowed. So is a draft whose values are not an object.
 - Drafts written before versioning existed are read as version `0`.
 
 ## Custom storage adapter
@@ -94,10 +115,7 @@ function CheckoutFlow() {
   return (
     <UniFormProvider form={form}>
       <Routes>
-        <Route
-          path='details'
-          element={<AutoForm form={form} onSubmit={placeOrder} />}
-        />
+        <Route path='details' element={<AutoForm form={form} />} />
         <Route path='payment' element={<PaymentStep />} />
         <Route path='review' element={<ReviewStep onConfirm={form.submit} />} />
       </Routes>

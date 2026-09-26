@@ -32,39 +32,44 @@ function toPayload(value: unknown): unknown[] {
 function createFallbackActions(
   fieldName: string,
   rows: unknown[],
+  readRows: () => unknown[],
   setValue: (name: string, value: unknown) => void,
 ): ArrayFieldActions {
   const write = (next: unknown[]) => setValue(fieldName, next)
+  // Read the store on every call, so two operations in one handler compose.
+  const edit = (fn: (current: unknown[]) => unknown[]) => write(fn(readRows()))
   return {
     fields: rows.map((row, index) => ({
       ...(row && typeof row === 'object' ? row : {}),
       id: `${fieldName}-${index}`,
     })),
-    append: (value) => write([...rows, ...toPayload(value)]),
-    prepend: (value) => write([...toPayload(value), ...rows]),
+    append: (value) => edit((current) => [...current, ...toPayload(value)]),
+    prepend: (value) => edit((current) => [...toPayload(value), ...current]),
     insert: (index, value) =>
-      write([
-        ...rows.slice(0, index),
+      edit((current) => [
+        ...current.slice(0, index),
         ...toPayload(value),
-        ...rows.slice(index),
+        ...current.slice(index),
       ]),
     remove: (index) => {
       if (index == null) return write([])
       const drop = new Set(Array.isArray(index) ? index : [index])
-      write(rows.filter((_, i) => !drop.has(i)))
+      edit((current) => current.filter((_, i) => !drop.has(i)))
     },
-    move: (from, to) => {
-      const next = [...rows]
-      next.splice(to, 0, ...next.splice(from, 1))
-      write(next)
-    },
-    swap: (from, to) => {
-      const next = [...rows]
-      ;[next[from], next[to]] = [next[to], next[from]]
-      write(next)
-    },
+    move: (from, to) =>
+      edit((current) => {
+        const next = [...current]
+        next.splice(to, 0, ...next.splice(from, 1))
+        return next
+      }),
+    swap: (from, to) =>
+      edit((current) => {
+        const next = [...current]
+        ;[next[from], next[to]] = [next[to], next[from]]
+        return next
+      }),
     update: (index, value) =>
-      write(rows.map((row, i) => (i === index ? value : row))),
+      edit((current) => current.map((row, i) => (i === index ? value : row))),
     replace: (values) => write([...values]),
   }
 }
@@ -116,10 +121,18 @@ export function useArrayField(fieldName: string) {
     name: string,
     value: unknown,
   ) => void
-  const fallback = React.useMemo(
-    () => createFallbackActions(fieldName, rows, setValue),
-    [fieldName, rows, setValue],
-  )
+  const getValues = formMethods.getValues
+  const fallback = React.useMemo(() => {
+    const readRows = () => {
+      let cursor: unknown = getValues()
+      for (const segment of fieldName.split('.')) {
+        if (cursor == null || typeof cursor !== 'object') return []
+        cursor = (cursor as Record<string, unknown>)[segment]
+      }
+      return Array.isArray(cursor) ? (cursor as unknown[]) : []
+    }
+    return createFallbackActions(fieldName, rows, readRows, setValue)
+  }, [fieldName, rows, getValues, setValue])
 
   const actions = live ?? fallback
   const config = findArrayConfig(resolvedFields, fieldName)

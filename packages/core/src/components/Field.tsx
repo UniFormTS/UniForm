@@ -2,7 +2,7 @@ import * as React from 'react'
 import type { FieldConfig, FieldMeta } from '../types'
 import { useAutoFormContext } from '../context/AutoFormContext'
 import { useFieldPath, joinFieldPath } from '../context/FieldPathContext'
-import { resolveFieldAt } from '../utils/resolveFieldAt'
+import { useResolvedField } from '../hooks/useResolvedField'
 import { FieldRenderer } from './FieldRenderer'
 
 export type FieldComponentProps = {
@@ -49,11 +49,11 @@ export function Field({
   disabled,
   className,
 }: FieldComponentProps) {
-  const { _internal, control } = useAutoFormContext()
+  const { control } = useAutoFormContext()
   const basePath = useFieldPath()
   const path = joinFieldPath(basePath, name)
 
-  const resolved = resolveFieldAt(_internal.resolvedFields, path)
+  const resolved = useResolvedField(path)
 
   React.useEffect(() => {
     if (resolved) return
@@ -63,9 +63,9 @@ export function Field({
     )
   }, [path, resolved])
 
-  if (!resolved) return null
+  if (!resolved?.visible) return null
 
-  const { config, namePrefix } = resolved
+  const { config, namePrefix, conditional } = resolved
   const overridden: FieldConfig =
     component === undefined &&
     label === undefined &&
@@ -79,7 +79,13 @@ export function Field({
             ...config.meta,
             ...(component !== undefined ? { component } : {}),
             ...(disabled !== undefined ? { disabled } : {}),
-            ...(className !== undefined ? { className } : {}),
+            ...(className !== undefined
+              ? {
+                  className: [config.meta.className, className]
+                    .filter(Boolean)
+                    .join(' '),
+                }
+              : {}),
           },
         }
 
@@ -88,6 +94,7 @@ export function Field({
       field={overridden}
       control={control as never}
       namePrefix={namePrefix || undefined}
+      shouldUnregister={conditional || undefined}
     />
   )
 }

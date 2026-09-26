@@ -59,7 +59,9 @@ Use [`useFieldPath()`](./use-field#usefieldpath) to read the current base path e
 
 - Works for every field type — scalars, selects, booleans, nested objects and arrays.
 - The leaf registers with react-hook-form, so validation and errors work normally.
-- Rendering a field with `<Field>` **and** letting `<AutoForm>` render it too would register the same path twice; hide it from the auto-rendered form with `fields={{ notes: { hidden: true } }}` when you place it yourself.
+- Rendering a field with `<Field>` **and** letting `<AutoForm>` render it too would register the same path twice; hide it from the auto-rendered form with `fields={{ notes: { hidden: true } }}` when you place it yourself. `<Field>` ignores `hidden` for exactly this reason.
+- `<Field>` follows `condition` / `setCondition` like the auto-rendered form: it renders nothing while any condition on its path is false, and unregisters its value when hidden.
+- Inside array rows (`'lines.0.sku'`, or `'0.sku'` inside a container), row-scoped `setOnChange` handlers and per-row `setFieldMeta` output apply exactly as they do in the built-in array renderer.
 - An unknown path logs a `console.warn` naming the path and renders nothing.
 
 See also: [`useField()`](./use-field), [`<UniFormProvider>`](./uniform-provider), [Headless Mode guide](/docs/guides/headless).

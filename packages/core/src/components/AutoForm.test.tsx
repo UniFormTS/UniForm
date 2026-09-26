@@ -3852,7 +3852,7 @@ describe('useArrayField', () => {
   })
 
   // -------------------------------------------------------------------------
-  // W1 regression (REVIEW-1 P1): the hook must drive the *rendered* array,
+  // Regression: the hook must drive the *rendered* array,
   // not a detached useFieldArray copy. Assert the DOM, not just rowCount.
   // -------------------------------------------------------------------------
 

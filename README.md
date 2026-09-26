@@ -80,7 +80,7 @@ const form = useUniForm(ticketForm, { defaultValues, onSubmit: save })
 
 <UniFormProvider form={form}>
   <PageHeader title={useFormValue(ticketForm, 'title')} onSave={form.submit} />
-  <AutoForm form={form} onSubmit={save} />
+  <AutoForm form={form} />
 </UniFormProvider>
 ```
 
@@ -107,15 +107,15 @@ See the [Dynamic Requiredness](https://uniformts.github.io/UniForm/docs/guides/d
 
 ### Reactivity, writes and drafts
 
-**`form.setDependency(field, { dependsOn, resolve })`** — declare each edge of a dependency graph once; UniForm walks the **transitive** closure in dependency order, for UI edits _and_ programmatic `setValue`. Cycles are rejected at registration time, naming the path. `setDependencies(graph)` registers several at once.
+**`form.setDependency(field, { dependsOn, resolve })`** — declare each edge of a dependency graph once; UniForm walks the **transitive** closure in dependency order, for UI edits _and_ programmatic `setValue`. Cycles are rejected at registration time, naming the path. Async resolvers are awaited before the fields below them, and receive an `AbortSignal`; writes from a run superseded by a newer change are dropped, so a slow response can never overwrite a fresh one. `setDependencies(graph)` registers several at once.
 
 **`form.addOnChange(field, handler)`** — additive registration, so composed modules stop silently clobbering one another. `setOnChange` keeps its replace-one semantics.
 
-**`setValue(name, value, options?)` / `setValues(values, options?)`** — both accept `{ shouldValidate, shouldDirty, shouldTouch }`. `setValues` is one logical update: it writes every key, then revalidates **once**, so a twenty-key update runs the schema once rather than twenty times.
+**`setValue(name, value, options?)` / `setValues(values, options?)`** — both accept `{ shouldValidate, shouldDirty, shouldTouch }`. `setValues` is one logical update: it writes every key, then revalidates **those keys once**, so a twenty-key update runs the schema once rather than twenty times, and untouched fields stay error-free.
 
 **`getOptionKey` / `isOptionEqual`** — give select options a real identity, per field via `meta` or globally via `createAutoForm`. The key drives React keys and the DOM `value`; `onChange` always receives the option's **raw** value, so composite `{ col1, col2 }` values round-trip unchanged.
 
-**`persistVersion` / `persistMigrate`** — versioned drafts. A draft saved against an older shape is migrated, or discarded with a warning — never half-restored. `PersistStorage` may be async (IndexedDB, AsyncStorage), with restoration gated behind the loading fallback, and `clearPersistedData()` / `hasPersistedDraft()` are on the form methods. Create the store with `useUniForm` to give a draft a lifetime longer than one `<AutoForm>` — that is what makes multi-step flows work.
+**`persistVersion` / `persistMigrate` / `persistExclude`** — versioned drafts. A draft saved against an older shape is migrated, or discarded with a warning — never half-restored. `persistExclude` keeps passwords and card numbers out of storage. `PersistStorage` may be async (IndexedDB, AsyncStorage), with restoration gated behind the loading fallback, and `clearPersistedData()` / `hasPersistedDraft()` are on the form methods. Create the store with `useUniForm` to give a draft a lifetime longer than one `<AutoForm>` — that is what makes multi-step flows work.
 
 See the [Dependencies](https://uniformts.github.io/UniForm/docs/guides/dependencies), [Programmatic Control](https://uniformts.github.io/UniForm/docs/guides/programmatic-control) and [Persistence](https://uniformts.github.io/UniForm/docs/guides/persistence) guides.
 

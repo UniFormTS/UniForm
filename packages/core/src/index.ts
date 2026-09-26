@@ -34,6 +34,8 @@ export type {
   FormClassNames,
   FormLabels,
   AutoFormProps,
+  AutoFormOwnStateProps,
+  AutoFormInstanceProps,
   AutoFormConfig,
   AutoFormHandle,
   FormMethods,

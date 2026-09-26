@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as z from 'zod/v4'
 import { AutoForm } from './AutoForm'
@@ -9,11 +9,22 @@ import { createForm } from '../UniForm'
 import { useUniForm } from '../hooks/useUniForm'
 import { createAutoForm } from '../factory/createAutoForm'
 import { createOptionIdentity } from '../registry/optionIdentity'
-import type { AutoFormHandle, FieldProps, PersistStorage } from '../types'
+import type {
+  AutoFormHandle,
+  FieldProps,
+  FormMethods,
+  PersistStorage,
+} from '../types'
 
 function setup(ui: React.ReactElement) {
   return { user: userEvent.setup(), ...render(ui) }
 }
+
+/** Lets pending resolver passes and effects run before a negative assertion. */
+const settle = () =>
+  act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 20))
+  })
 
 // ---------------------------------------------------------------------------
 // W8 — setValue options and batched setValues
@@ -79,6 +90,7 @@ describe('setValue options / batched setValues (W8)', () => {
 
     ctx.handle.setValue('a', 'x', { shouldValidate: false })
     await waitFor(() => expect(ctx.handle.getValues().a).toBe('x'))
+    await settle()
     expect(ctx.validations).not.toHaveBeenCalled()
   })
 
@@ -95,7 +107,9 @@ describe('setValue options / batched setValues (W8)', () => {
     ctx.validations.mockClear()
 
     ctx.handle.setValues({ a: '1', b: '2', c: '3' })
-    await waitFor(() => expect(ctx.validations).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(ctx.validations).toHaveBeenCalled())
+    await settle()
+    expect(ctx.validations).toHaveBeenCalledTimes(1)
     expect(ctx.handle.getValues()).toMatchObject({ a: '1', b: '2', c: '3' })
   })
 
@@ -105,7 +119,30 @@ describe('setValue options / batched setValues (W8)', () => {
 
     ctx.handle.setValues({ a: '1', b: '2' }, { shouldValidate: false })
     await waitFor(() => expect(ctx.handle.getValues().a).toBe('1'))
+    await settle()
     expect(ctx.validations).not.toHaveBeenCalled()
+  })
+
+  it('setValues only surfaces errors for the keys it wrote', async () => {
+    const scoped = createForm(
+      z.object({ a: z.string().min(1, 'A is required'), b: z.string() }),
+    )
+    const ref = React.createRef<AutoFormHandle<typeof scoped.schema>>()
+    render(
+      <AutoForm
+        ref={ref}
+        form={scoped}
+        defaultValues={{ a: '', b: '' }}
+        onSubmit={vi.fn()}
+      />,
+    )
+
+    act(() => ref.current!.setValues({ b: 'x' }))
+    await settle()
+    expect(screen.queryByText('A is required')).not.toBeInTheDocument()
+
+    act(() => ref.current!.setValues({ a: '' }))
+    expect(await screen.findByText('A is required')).toBeInTheDocument()
   })
 })
 
@@ -508,6 +545,25 @@ describe('option identity (W10)', () => {
     ).toThrowError(/role[\s\S]*same key "dupe"/)
   })
 
+  it('logs instead of throwing on a duplicate key in production', () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      expect(() =>
+        createOptionIdentity('role', [
+          { label: 'A', value: 'dupe' },
+          { label: 'B', value: 'dupe' },
+        ] as unknown as { label: string; value: never }[]),
+      ).not.toThrow()
+      expect(error).toHaveBeenCalledWith(
+        expect.stringMatching(/role[\s\S]*same key "dupe"/),
+      )
+    } finally {
+      error.mockRestore()
+      vi.unstubAllEnvs()
+    }
+  })
+
   it('accepts factory-level option identity', async () => {
     const Configured = createAutoForm({ getOptionKey: keyOf })
     const onSubmit = vi.fn()
@@ -766,24 +822,252 @@ describe('persistence (W11)', () => {
     expect(stored.values.name).toBe('Ada')
   })
 
-  it('defaults to sessionStorage, not localStorage', async () => {
-    const sessionSpy = vi.spyOn(Storage.prototype, 'setItem')
+  it('restores from an async adapter under StrictMode', async () => {
+    const inner = makeStorage({
+      draft: JSON.stringify({
+        __uniformVersion: 0,
+        values: { name: 'Strict' },
+      }),
+    })
+    const asyncStorage: PersistStorage = {
+      getItem: (k) => Promise.resolve(inner.getItem(k) as string | null),
+      setItem: (k, v) => Promise.resolve(inner.setItem(k, v) as void),
+      removeItem: (k) => Promise.resolve(inner.removeItem(k) as void),
+    }
+
+    render(
+      <React.StrictMode>
+        <AutoForm
+          form={form}
+          persistKey='draft'
+          persistStorage={asyncStorage}
+          layout={{ loadingFallback: <p>restoring…</p> }}
+          defaultValues={{ name: '', nickname: '' }}
+          onSubmit={vi.fn()}
+        />
+      </React.StrictMode>,
+    )
+
+    await waitFor(() => expect(nameInput()).toHaveValue('Strict'))
+    expect(screen.queryByText('restoring…')).not.toBeInTheDocument()
+  })
+
+  it('does not write the draft back after a quick submit', async () => {
+    const storage = makeStorage()
+    const onSubmit = vi.fn()
     const { user } = setup(
       <AutoForm
         form={form}
-        persistKey='default-store'
+        persistKey='draft'
+        persistStorage={storage}
+        persistDebounce={50}
+        defaultValues={{ name: '', nickname: '' }}
+        onSubmit={onSubmit}
+      />,
+    )
+
+    await user.type(nameInput(), 'A')
+    await user.click(screen.getByRole('button', { name: /submit/i }))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled())
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    })
+    expect(storage.dump().draft).toBeUndefined()
+  })
+
+  it('restores the new draft when persistKey changes, without overwriting it', async () => {
+    const storage = makeStorage({
+      'draft-1': JSON.stringify({
+        __uniformVersion: 0,
+        values: { name: 'One' },
+      }),
+      'draft-2': JSON.stringify({
+        __uniformVersion: 0,
+        values: { name: 'Two' },
+      }),
+    })
+    const App = ({ id }: { id: number }) => (
+      <AutoForm
+        form={form}
+        persistKey={`draft-${id}`}
+        persistStorage={storage}
         persistDebounce={0}
         defaultValues={{ name: '', nickname: '' }}
         onSubmit={vi.fn()}
+      />
+    )
+
+    const { rerender } = render(<App id={1} />)
+    await waitFor(() => expect(nameInput()).toHaveValue('One'))
+
+    rerender(<App id={2} />)
+    await waitFor(() => expect(nameInput()).toHaveValue('Two'))
+    await settle()
+    const second = JSON.parse(storage.dump()['draft-2']) as {
+      values: { name: string }
+    }
+    expect(second.values.name).toBe('Two')
+  })
+
+  it('discards a draft that is not an object of values', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const storage = makeStorage({
+      draft: JSON.stringify({ __uniformVersion: 0, values: 'oops' }),
+    })
+
+    render(
+      <AutoForm
+        form={form}
+        persistKey='draft'
+        persistStorage={storage}
+        defaultValues={{ name: 'Fresh', nickname: '' }}
+        onSubmit={vi.fn()}
       />,
     )
-    await user.type(nameInput(), 'A')
+
     await waitFor(() =>
-      expect(sessionStorage.getItem('default-store')).not.toBeNull(),
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('not an object'),
+      ),
     )
-    expect(localStorage.getItem('default-store')).toBeNull()
-    sessionSpy.mockRestore()
-    sessionStorage.clear()
+    expect(nameInput()).toHaveValue('Fresh')
+    expect(storage.dump().draft).toBeUndefined()
+    warn.mockRestore()
+  })
+
+  it('never writes persistExclude paths', async () => {
+    const storage = makeStorage()
+    const { user } = setup(
+      <AutoForm
+        form={form}
+        persistKey='draft'
+        persistStorage={storage}
+        persistDebounce={0}
+        persistExclude={['nickname']}
+        defaultValues={{ name: '', nickname: 'secret' }}
+        onSubmit={vi.fn()}
+      />,
+    )
+
+    await user.type(nameInput(), 'Ada')
+    await waitFor(() => expect(storage.dump().draft).toBeDefined())
+    const stored = JSON.parse(storage.dump().draft) as {
+      values: Record<string, unknown>
+    }
+    expect(stored.values).toEqual({ name: 'Ada' })
+  })
+
+  it('keeps a restored draft when async defaultValues resolve', async () => {
+    const storage = makeStorage({
+      draft: JSON.stringify({ __uniformVersion: 0, values: { name: 'Draft' } }),
+    })
+    const nicknameInput = () =>
+      screen
+        .getAllByRole('textbox')
+        .find((el) => el.getAttribute('name') === 'nickname')!
+
+    render(
+      <AutoForm
+        form={form}
+        persistKey='draft'
+        persistStorage={storage}
+        defaultValues={() =>
+          Promise.resolve({ name: 'Server', nickname: 'Nick' })
+        }
+        onSubmit={vi.fn()}
+      />,
+    )
+
+    await waitFor(() => expect(nicknameInput()).toHaveValue('Nick'))
+    expect(nameInput()).toHaveValue('Draft')
+  })
+
+  it('leaves the loading state when async defaultValues reject', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    render(
+      <AutoForm
+        form={form}
+        layout={{ loadingFallback: <p>loading…</p> }}
+        defaultValues={() => Promise.reject(new Error('offline'))}
+        onSubmit={vi.fn()}
+      />,
+    )
+
+    await waitFor(() => expect(nameInput()).toBeInTheDocument())
+    expect(screen.queryByText('loading…')).not.toBeInTheDocument()
+    expect(error).toHaveBeenCalledWith(
+      expect.stringContaining('defaultValues loader rejected'),
+      expect.any(Error),
+    )
+    error.mockRestore()
+  })
+})
+
+describe('async dependency resolvers', () => {
+  const depSchema = z.object({
+    country: z.string(),
+    region: z.string(),
+    city: z.string(),
+  })
+  type DepValues = z.infer<typeof depSchema>
+
+  function mountDeps(depForm: ReturnType<typeof createForm<typeof depSchema>>) {
+    let methods!: FormMethods<DepValues>
+    function App() {
+      const uniform = useUniForm(depForm, {
+        defaultValues: { country: '', region: '', city: '' },
+      })
+      methods = uniform.methods
+      return null
+    }
+    render(<App />)
+    return () => methods
+  }
+
+  it('drops writes from a superseded run and aborts its signal', async () => {
+    const pending: { resolve: () => void; signal: AbortSignal }[] = []
+    const depForm = createForm(depSchema).setDependency('region', {
+      dependsOn: 'country',
+      resolve: async ({ value, ctx, signal }) => {
+        await new Promise<void>((resolve) => pending.push({ resolve, signal }))
+        ctx.setValue('region', `region-of-${String(value)}`)
+      },
+    })
+    const methods = mountDeps(depForm)
+
+    act(() => methods().setValue('country', 'A'))
+    act(() => methods().setValue('country', 'B'))
+    expect(pending[0].signal.aborted).toBe(true)
+    expect(pending[1].signal.aborted).toBe(false)
+
+    act(() => pending[1].resolve())
+    await waitFor(() =>
+      expect(methods().getValues().region).toBe('region-of-B'),
+    )
+
+    act(() => pending[0].resolve())
+    await settle()
+    expect(methods().getValues().region).toBe('region-of-B')
+  })
+
+  it('awaits an async resolver before resolving the fields below it', async () => {
+    const depForm = createForm(depSchema)
+      .setDependency('region', {
+        dependsOn: 'country',
+        resolve: async ({ ctx }) => {
+          await Promise.resolve()
+          ctx.setValue('region', 'R')
+        },
+      })
+      .setDependency('city', {
+        dependsOn: 'region',
+        resolve: ({ ctx }) =>
+          ctx.setValue('city', `${ctx.getValues().region}-city`),
+      })
+    const methods = mountDeps(depForm)
+
+    act(() => methods().setValue('country', 'X'))
+    await waitFor(() => expect(methods().getValues().city).toBe('R-city'))
   })
 })
 

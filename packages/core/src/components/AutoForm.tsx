@@ -1,6 +1,12 @@
 import * as React from 'react'
 import type * as z from 'zod/v4/core'
-import type { AutoFormProps, AutoFormHandle, FieldMeta } from '../types'
+import type {
+  AutoFormProps,
+  AutoFormHandle,
+  AutoFormInstanceProps,
+  AutoFormOwnStateProps,
+  FieldMeta,
+} from '../types'
 import {
   useUniForm,
   isUniFormInstance,
@@ -13,10 +19,14 @@ import { mergeRegistries } from '../registry/mergeRegistries'
 import { UniFormProvider } from './UniFormProvider'
 import { AutoFormRenderer } from './AutoFormRenderer'
 
-type AutoFormComponentProps<TSchema extends z.$ZodObject> =
-  AutoFormProps<TSchema> & {
-    ref?: React.Ref<AutoFormHandle<TSchema>>
-  }
+type WithRef<TSchema extends z.$ZodObject, TProps> = TProps & {
+  ref?: React.Ref<AutoFormHandle<TSchema>>
+}
+
+type AutoFormComponentProps<TSchema extends z.$ZodObject> = WithRef<
+  TSchema,
+  AutoFormProps<TSchema>
+>
 
 /**
  * The core auto-form component. Introspects the provided Zod `schema`,
@@ -43,7 +53,7 @@ type AutoFormComponentProps<TSchema extends z.$ZodObject> =
  * const form = useUniForm(myForm, { defaultValues })
  *
  * <PageChrome onSave={form.submit}>
- *   <AutoForm form={form} onSubmit={save} />
+ *   <AutoForm form={form} />
  * </PageChrome>
  */
 export function AutoForm<TSchema extends z.$ZodObject>(
@@ -52,18 +62,18 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   // Two sibling components — never a conditional hook call.
   return isUniFormInstance(props.form) ? (
     <AutoFormWithInstance
-      {...(props as AutoFormComponentProps<TSchema> & {
-        form: UniFormInstance<TSchema>
-      })}
+      {...(props as WithRef<TSchema, AutoFormInstanceProps<TSchema>>)}
     />
   ) : (
-    <AutoFormWithOwnState {...props} />
+    <AutoFormWithOwnState
+      {...(props as WithRef<TSchema, AutoFormOwnStateProps<TSchema>>)}
+    />
   )
 }
 
 /** `<AutoForm form={createForm(schema)}>` — AutoForm owns the store. */
 function AutoFormWithOwnState<TSchema extends z.$ZodObject>(
-  props: AutoFormComponentProps<TSchema>,
+  props: WithRef<TSchema, AutoFormOwnStateProps<TSchema>>,
 ) {
   const { form, onSubmit, ref, ...options } = props
   const instance = useUniForm(form, { ...options, onSubmit })
@@ -84,7 +94,7 @@ function AutoFormWithOwnState<TSchema extends z.$ZodObject>(
 
 /** `<AutoForm form={useUniForm(...)}>` — renders into the provided store. */
 function AutoFormWithInstance<TSchema extends z.$ZodObject>(
-  props: AutoFormComponentProps<TSchema> & { form: UniFormInstance<TSchema> },
+  props: WithRef<TSchema, AutoFormInstanceProps<TSchema>>,
 ) {
   const {
     form: instance,
@@ -101,33 +111,56 @@ function AutoFormWithInstance<TSchema extends z.$ZodObject>(
     coercions,
   } = props
 
-  // `<AutoForm onSubmit>` wins over the handler given to useUniForm, so an
-  // external submit button and the rendered one always agree.
-  instance._onSubmitRef.current = onSubmit
+  // `<AutoForm onSubmit>` wins over the handler given to useUniForm while this
+  // form is mounted, so an external submit button and the rendered one agree.
+  const onSubmitRef = instance._onSubmitRef
+  React.useLayoutEffect(() => {
+    if (!onSubmit) return
+    onSubmitRef.current = onSubmit
+    return () => {
+      if (onSubmitRef.current === onSubmit) onSubmitRef.current = undefined
+    }
+  }, [onSubmitRef, onSubmit])
 
   React.useImperativeHandle(ref, () => instance.methods, [instance.methods])
 
   const base = instance._context
+  const runPipeline = instance._runPipeline
   const context = React.useMemo<AutoFormContextValue<z.infer<TSchema>>>(() => {
+    // Overrides go in *beneath* UniForm's handlers, conditions and dynamic
+    // meta, exactly as they would on useUniForm itself.
+    const fieldConfigs = fields
+      ? applyFieldOverrides(
+          base.fieldConfigs,
+          fields as Record<string, Partial<FieldMeta>>,
+        )
+      : base.fieldConfigs
     const internals = {
       ...base._internal,
       ...(fields
         ? {
-            resolvedFields: applyFieldOverrides(
-              base._internal.resolvedFields,
-              fields as Record<string, Partial<FieldMeta>>,
-            ),
+            resolvedFields: runPipeline(fieldConfigs),
             fieldOverrides: { ...base._internal.fieldOverrides, ...fields },
           }
         : {}),
-      ...(layout ? { layoutSlots: layout } : {}),
+      ...(layout
+        ? { layoutSlots: { ...base._internal.layoutSlots, ...layout } }
+        : {}),
     }
 
     return {
       ...base,
       ...internals,
+      fieldConfigs,
       _internal: internals,
-      ...(layout ? { layout: resolveLayoutSlots(layout) } : {}),
+      ...(layout
+        ? {
+            layout: resolveLayoutSlots({
+              ...base._internal.layoutSlots,
+              ...layout,
+            }),
+          }
+        : {}),
       ...(classNames
         ? { classNames: { ...base.classNames, ...classNames } }
         : {}),
@@ -144,6 +177,7 @@ function AutoFormWithInstance<TSchema extends z.$ZodObject>(
     }
   }, [
     base,
+    runPipeline,
     fields,
     layout,
     classNames,

@@ -32,8 +32,8 @@ export type OptionIdentity = {
  * `meta.getOptionKey` / `meta.isOptionEqual` and the factory-level defaults.
  *
  * Throws in development when an object-valued option has no key function, and
- * when two options collapse onto the same key — both are silent-selection bugs
- * otherwise.
+ * when two options collapse onto the same key (logged instead in production) —
+ * both are silent-selection bugs otherwise.
  */
 export function createOptionIdentity(
   fieldName: string,
@@ -100,12 +100,28 @@ function assertUniqueKeys(
   for (const option of options) {
     const key = keyOf(option)
     if (seen.has(key)) {
-      throw new Error(
+      const message =
         `[UniForm] Field "${fieldName}" has two options with the same key "${key}". ` +
-          'Option keys must be unique — selection is ambiguous otherwise. ' +
-          'Provide a `getOptionKey` that distinguishes them.',
-      )
+        'Option keys must be unique — selection is ambiguous otherwise. ' +
+        'Provide a `getOptionKey` that distinguishes them.'
+      // Loud in development; in production, bad API data must not unmount the form.
+      if (isProduction()) {
+        console.error(message)
+        return
+      }
+      throw new Error(message)
     }
     seen.add(key)
+  }
+}
+
+declare const process: { env: { NODE_ENV?: string } }
+
+function isProduction(): boolean {
+  // Written literally so bundlers can inline it; throws where `process` is absent.
+  try {
+    return process.env.NODE_ENV === 'production'
+  } catch {
+    return false
   }
 }

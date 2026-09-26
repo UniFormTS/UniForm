@@ -32,3 +32,7 @@ jobs:
 
       - name: Typecheck
         run: pnpm -r exec tsc --noEmit
+
+      # Runs against dist/, so it must follow Build.
+      - name: Type tests
+        run: pnpm --filter @uniform-ts/core test:types

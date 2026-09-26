@@ -46,19 +46,23 @@ function isErrorNode(
 function collectIssues(node: unknown, prefix: string, into: FormIssue[]) {
   if (node == null || typeof node !== 'object') return
 
-  if (isErrorNode(node) && typeof node.message === 'string') {
+  const isLeaf = isErrorNode(node) && typeof node.message === 'string'
+  if (isLeaf) {
     into.push({
       path: prefix === ROOT_ERROR_KEY ? '' : prefix,
-      message: node.message,
+      message: node.message as string,
       code: node.type,
     })
   }
 
   for (const [key, child] of Object.entries(node)) {
-    if (key === 'message' || key === 'type' || key === 'ref') continue
+    // Only a leaf's own bookkeeping is skipped — a *field* may be named `type`.
+    if (isLeaf && LEAF_KEYS.has(key)) continue
     collectIssues(child, prefix ? `${prefix}.${key}` : key, into)
   }
 }
+
+const LEAF_KEYS = new Set(['message', 'type', 'types', 'ref'])
 
 /**
  * The whole typed error tree, reactively.

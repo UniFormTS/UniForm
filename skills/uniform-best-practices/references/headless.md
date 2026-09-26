@@ -39,13 +39,13 @@ Options mirror the state-level `<AutoForm>` props: `defaultValues`, `onSubmit`, 
 ```tsx
 <UniFormProvider form={form}>
   <PageHeader onSave={form.submit} busy={form.isSubmitting} />
-  <AutoForm form={form} onSubmit={save} />
+  <AutoForm form={form} />
 </UniFormProvider>
 ```
 
 - `<AutoForm form={instance}>` renders **into** the instance's store. It never creates a second one.
-- When both `useUniForm({ onSubmit })` and `<AutoForm onSubmit>` are given, the `<AutoForm>` prop wins — so an external button and the rendered one always run the same handler.
-- In instance mode `<AutoForm>` still honours `fields`, `layout`, `classNames`, `fieldWrapper`, `components`, `disabled`, `labels`, `messages`, `coercions`, merging them over the instance's config. Register `condition` predicates on the `UniForm` definition (or in `useUniForm`'s `fields`) so they run before defaults are computed.
+- `onSubmit` is optional on `<AutoForm>` in instance mode. When given, it wins over `useUniForm({ onSubmit })` while that `<AutoForm>` is mounted — so an external button and the rendered one run the same handler.
+- In instance mode `<AutoForm>` still honours `fields`, `layout`, `classNames`, `fieldWrapper`, `components`, `disabled`, `labels`, `messages`, `coercions`, merging them over the instance's config; its `fields` sit beneath `setOnChange` / `setCondition` / `setFieldMeta`. Store-level props (`defaultValues`, `persist*`, `onValuesChange`, option identity) and `condition` / `requiredWhen` overrides are type errors there — put them on `useUniForm`.
 - Persistence belongs to the **instance**, not to a mounted `<AutoForm>`.
 - While `form.isLoading` is `true`, an async `defaultValues` loader is still pending — render your own placeholder.
 

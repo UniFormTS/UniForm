@@ -771,4 +771,263 @@ describe('container component overrides (W5)', () => {
     )
     expect(screen.getByTestId('toolbar-count')).toHaveTextContent('2')
   })
+
+  it('keeps rowCount in step when the container calls onChange', async () => {
+    function ReplaceTable({ rowCount, onChange }: ArrayContainerProps) {
+      return (
+        <div>
+          <span data-testid='rc'>{rowCount}</span>
+          <button
+            type='button'
+            onClick={() =>
+              onChange([
+                { sku: 'AAA', qty: 1 },
+                { sku: 'BBB', qty: 2 },
+                { sku: 'CCC', qty: 3 },
+              ])
+            }
+          >
+            replace-all
+          </button>
+        </div>
+      )
+    }
+    const { user } = setup(
+      <AutoForm
+        form={orderForm}
+        components={{ replaceTable: ReplaceTable }}
+        fields={{ lines: { component: 'replaceTable' } }}
+        defaultValues={{ reference: '', lines: [{ sku: 'AAA', qty: 1 }] }}
+        onSubmit={vi.fn()}
+      />,
+    )
+    expect(screen.getByTestId('rc')).toHaveTextContent('1')
+    await user.click(screen.getByRole('button', { name: 'replace-all' }))
+    await waitFor(() => expect(screen.getByTestId('rc')).toHaveTextContent('3'))
+  })
+})
+
+describe('headless resolution matches the auto-rendered form', () => {
+  function Cell(props: FieldProps) {
+    return (
+      <input
+        data-testid={props.name}
+        name={props.name}
+        value={typeof props.value === 'string' ? props.value : ''}
+        onChange={(e) => props.onChange(e.target.value)}
+        onBlur={props.onBlur}
+        ref={props.ref}
+      />
+    )
+  }
+
+  it('binds row handlers for a <Field> inside an array row', async () => {
+    const seen = vi.fn()
+    const rowForm = createForm(orderSchema).setOnChange(
+      'lines.sku',
+      (value, ctx) => {
+        seen(value, ctx.getValues())
+      },
+    )
+    function App() {
+      const form = useUniForm(rowForm, {
+        components: { string: Cell },
+        defaultValues: {
+          reference: '',
+          lines: [
+            { sku: 'AAA', qty: 1 },
+            { sku: 'BBB', qty: 2 },
+          ],
+        },
+      })
+      return (
+        <UniFormProvider form={form}>
+          <Field name='lines.1.sku' />
+        </UniFormProvider>
+      )
+    }
+
+    const { user } = setup(<App />)
+    await user.type(screen.getByTestId('lines.1.sku'), 'Z')
+    expect(seen).toHaveBeenLastCalledWith(
+      'BBBZ',
+      expect.objectContaining({ qty: 2 }),
+    )
+  })
+
+  it('<Field> follows setCondition', async () => {
+    const condForm = createForm(
+      z.object({ hasCity: z.boolean(), city: z.string() }),
+    ).setCondition('city', (values) => values.hasCity)
+    function App() {
+      const form = useUniForm(condForm, {
+        defaultValues: { hasCity: false, city: '' },
+      })
+      return (
+        <UniFormProvider form={form}>
+          <Field name='hasCity' />
+          <Field name='city' />
+        </UniFormProvider>
+      )
+    }
+
+    const { user } = setup(<App />)
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('checkbox'))
+    expect(await screen.findByRole('textbox')).toBeInTheDocument()
+  })
+
+  it('useField().required reflects setRequired', async () => {
+    const reqForm = createForm(
+      z.object({ kind: z.string(), reason: z.string().optional() }),
+    ).setRequired('reason', (values) => values.kind === 'x')
+    function Probe() {
+      const { required } = useField('reason')
+      return <span data-testid='req'>{String(required)}</span>
+    }
+    function App() {
+      const form = useUniForm(reqForm, {
+        defaultValues: { kind: '', reason: '' },
+      })
+      return (
+        <UniFormProvider form={form}>
+          <Probe />
+          <button
+            type='button'
+            onClick={() => form.methods.setValue('kind', 'x')}
+          >
+            make-required
+          </button>
+        </UniFormProvider>
+      )
+    }
+
+    const { user } = setup(<App />)
+    expect(screen.getByTestId('req')).toHaveTextContent('false')
+    await user.click(screen.getByRole('button', { name: 'make-required' }))
+    await waitFor(() =>
+      expect(screen.getByTestId('req')).toHaveTextContent('true'),
+    )
+  })
+})
+
+describe('<AutoForm form={instance}>', () => {
+  const defaults = { firstName: 'Ada', lastName: '', address: { city: '' } }
+
+  it("falls back to useUniForm's onSubmit, and releases its own on unmount", async () => {
+    const optionSubmit = vi.fn()
+    const renderedSubmit = vi.fn()
+    function App() {
+      const [mounted, setMounted] = React.useState(true)
+      const form = useUniForm(profileForm, {
+        defaultValues: defaults,
+        onSubmit: optionSubmit,
+      })
+      return (
+        <div>
+          <button type='button' onClick={() => form.submit()}>
+            ext-submit
+          </button>
+          <button type='button' onClick={() => setMounted(false)}>
+            unmount
+          </button>
+          {mounted && <AutoForm form={form} onSubmit={renderedSubmit} />}
+        </div>
+      )
+    }
+
+    const { user } = setup(<App />)
+    await user.click(screen.getByRole('button', { name: 'ext-submit' }))
+    await waitFor(() => expect(renderedSubmit).toHaveBeenCalledTimes(1))
+
+    await user.click(screen.getByRole('button', { name: 'unmount' }))
+    await user.click(screen.getByRole('button', { name: 'ext-submit' }))
+    await waitFor(() => expect(optionSubmit).toHaveBeenCalledTimes(1))
+    expect(renderedSubmit).toHaveBeenCalledTimes(1)
+  })
+
+  it('accepts no onSubmit and rejects store-level props at the type level', () => {
+    function TypeOnly() {
+      const form = useUniForm(profileForm, { onSubmit: vi.fn() })
+      return (
+        <>
+          <AutoForm form={form} />
+          {/* @ts-expect-error persistence belongs to useUniForm in instance mode */}
+          <AutoForm form={form} persistKey='draft' />
+        </>
+      )
+    }
+    expectTypeOf(TypeOnly).toBeFunction()
+  })
+
+  it('applies instance-level fields beneath dynamic meta', async () => {
+    const metaForm = createForm(
+      z.object({ country: z.string(), region: z.string() }),
+    ).setOnChange('country', (_value, ctx) => {
+      ctx.setFieldMeta('region', { label: 'Dynamic' })
+    })
+    function App() {
+      const form = useUniForm(metaForm, {
+        defaultValues: { country: '', region: '' },
+      })
+      return <AutoForm form={form} fields={{ region: { label: 'Static' } }} />
+    }
+
+    const { user } = setup(<App />)
+    expect(screen.getByText(/Static/)).toBeInTheDocument()
+    const country = screen
+      .getAllByRole('textbox')
+      .find((el) => el.getAttribute('name') === 'country')!
+    await user.type(country, 'x')
+    expect(await screen.findByText(/Dynamic/)).toBeInTheDocument()
+  })
+
+  it('moves per-row dynamic meta with an external remove()', async () => {
+    const rowsForm = createForm(
+      z.object({ lines: z.array(z.object({ sku: z.string() })) }),
+    )
+    function RemoveFirst() {
+      const { remove } = useArrayField('lines')
+      return (
+        <button type='button' onClick={() => remove(0)}>
+          ext-remove
+        </button>
+      )
+    }
+    function App() {
+      const form = useUniForm(rowsForm, {
+        defaultValues: { lines: [{ sku: 'a' }, { sku: 'b' }] },
+      })
+      return (
+        <div>
+          <button
+            type='button'
+            onClick={() =>
+              form._context._internal.setDynamicMeta({
+                'lines.1.sku': { label: 'Second' },
+              })
+            }
+          >
+            label-second
+          </button>
+          <UniFormProvider form={form}>
+            <RemoveFirst />
+          </UniFormProvider>
+          <AutoForm form={form} />
+        </div>
+      )
+    }
+
+    const { user } = setup(<App />)
+    await user.click(screen.getByRole('button', { name: 'label-second' }))
+    expect(await screen.findByText(/Second/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'ext-remove' }))
+    await waitFor(() =>
+      expect(document.querySelectorAll('input[name^="lines."]')).toHaveLength(
+        1,
+      ),
+    )
+    expect(screen.getByText(/Second/)).toBeInTheDocument()
+  })
 })

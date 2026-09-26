@@ -5,6 +5,7 @@ import type { FieldOverride, SetValueOptions } from './field'
 import type { GetOptionKey, IsOptionEqual } from './shared'
 import type { ComponentRegistry, FieldWrapperProps } from './registry'
 import type { LayoutSlots, FormClassNames } from './layout'
+import type { UniFormInstance } from '../hooks/useUniForm'
 
 // ---------------------------------------------------------------------------
 // FormMethods
@@ -230,11 +231,56 @@ export type AutoFormConfig = {
  * Props for the `<AutoForm>` component. Drives schema introspection, field
  * rendering, validation, and submission.
  *
+ * Pass a `createForm(schema)` definition and `<AutoForm>` owns the store, or a
+ * `useUniForm` instance and it renders into yours (see
+ * {@link AutoFormInstanceProps}).
+ *
  * @template TSchema - A `ZodObject` schema that defines the form shape.
  */
-export type AutoFormProps<TSchema extends z.$ZodObject> = {
+export type AutoFormProps<TSchema extends z.$ZodObject> =
+  | AutoFormOwnStateProps<TSchema>
+  | AutoFormInstanceProps<TSchema>
+
+/** Props that shape the store, and so belong to `useUniForm` in instance mode. */
+type StoreLevelProp =
+  | 'defaultValues'
+  | 'persistKey'
+  | 'persistDebounce'
+  | 'persistStorage'
+  | 'persistVersion'
+  | 'persistMigrate'
+  | 'persistExclude'
+  | 'onValuesChange'
+  | 'getOptionKey'
+  | 'isOptionEqual'
+
+/**
+ * `<AutoForm form={useUniForm(...)}>` — renders into an existing store.
+ *
+ * Store-level props (`defaultValues`, `persist*`, `onValuesChange`, option
+ * identity) and behavioural overrides (`condition`, `requiredWhen`) are set on
+ * `useUniForm`; here they are type errors rather than silently ignored.
+ */
+export type AutoFormInstanceProps<TSchema extends z.$ZodObject> = Omit<
+  AutoFormOwnStateProps<TSchema>,
+  'form' | 'onSubmit' | 'fields' | StoreLevelProp
+> & {
+  form: UniFormInstance<TSchema>
+  /** Overrides `useUniForm`'s `onSubmit` while this `<AutoForm>` is mounted. */
+  onSubmit?: (values: z.infer<TSchema>) => void | Promise<void>
+  /** Presentational per-field overrides, applied beneath UniForm's own handlers. */
+  fields?: {
+    [K in DeepKeys<z.infer<TSchema>>]?: FieldOverride<
+      TSchema,
+      DeepFieldValue<z.infer<TSchema>, K>
+    > & { condition?: never; requiredWhen?: never }
+  }
+} & { [P in StoreLevelProp]?: never }
+
+/** `<AutoForm form={createForm(schema)}>` — AutoForm owns the store. */
+export type AutoFormOwnStateProps<TSchema extends z.$ZodObject> = {
   /** A UniForm instance carrying the schema and typed onChange handlers. */
-  form: { readonly schema: TSchema }
+  form: { readonly schema: TSchema; readonly _context?: never }
   /** Called with the validated form values when the form is submitted successfully. */
   onSubmit: (values: z.infer<TSchema>) => void | Promise<void>
   /**
@@ -288,6 +334,8 @@ export type AutoFormProps<TSchema extends z.$ZodObject> = {
     persisted: unknown,
     fromVersion: number,
   ) => Partial<z.infer<TSchema>> | undefined
+  /** Dot paths never written to storage — passwords, card numbers, tokens. */
+  persistExclude?: readonly DeepKeys<z.infer<TSchema>>[]
   /** Called on every value change with the current form values */
   onValuesChange?: (values: z.infer<TSchema>) => void
   /** Customize hard-coded UI text (submit button, array buttons, etc.) */

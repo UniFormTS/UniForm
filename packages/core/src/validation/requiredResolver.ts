@@ -121,13 +121,15 @@ function getAt(source: unknown, path: string): unknown {
  * predicate says required and whose value is empty.
  *
  * An error Zod already reported at a path is never overwritten — the schema
- * remains the more specific source of truth.
+ * remains the more specific source of truth. Paths `shouldEnforce` rejects are
+ * skipped (hidden fields, or ones explicitly made optional at runtime).
  */
 export function applyRequiredErrors(
   errors: FieldErrors,
   values: unknown,
   requirements: RequirementEntry[],
   message: string,
+  shouldEnforce: (path: string) => boolean = () => true,
 ): FieldErrors {
   if (!requirements.length) return errors
 
@@ -135,6 +137,7 @@ export function applyRequiredErrors(
 
   for (const { path, predicate } of requirements) {
     for (const target of expandRequirementPath(path, values)) {
+      if (!isEmptyValue(target.value)) continue
       if (
         !predicate(
           target.scope as Record<string, unknown>,
@@ -143,7 +146,7 @@ export function applyRequiredErrors(
       ) {
         continue
       }
-      if (!isEmptyValue(target.value)) continue
+      if (!shouldEnforce(target.path)) continue
 
       const existing = getAt(merged ?? errors, target.path)
       if (existing && typeof existing === 'object' && 'message' in existing) {

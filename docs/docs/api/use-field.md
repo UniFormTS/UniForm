@@ -47,6 +47,8 @@ function useField<TValue = unknown>(
 
 Everything in [`FieldProps`](/docs/api/types#fieldprops) — `name`, `value`, `onChange`, `onBlur`, `ref`, `label`, `placeholder`, `description`, `error`, `required`, `disabled`, `options`, `meta`, `schema` — plus `config`, the resolved `FieldConfig`.
 
+`required` is live: it follows `setRequired` / `requiredWhen` as values change, not just the schema.
+
 `onChange` applies the same coercion `<AutoForm>` applies (`string → number`, `string → Date`, …) and fires any `onChange` handler registered for the field.
 
 ## Paths

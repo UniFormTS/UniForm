@@ -6,6 +6,7 @@ import type {
   ComponentRegistry,
   CoercionMap,
   FieldCondition,
+  FieldConfig,
   FieldMeta,
   FieldOverride,
   FieldRequirement,
@@ -16,6 +17,7 @@ import type {
   LayoutSlots,
   PersistStorage,
   ResolvedLayoutSlots,
+  SetValueOptions,
   ValidationMessages,
   FieldWrapperProps,
   GetOptionKey,
@@ -51,9 +53,24 @@ import {
   ROOT_ERROR_KEY,
   type RequirementEntry,
 } from '../validation/requiredResolver'
+import { isChainVisible, resolveFieldAt } from '../utils/resolveFieldAt'
 
 /** Brand identifying a `useUniForm` result at runtime and at compile time. */
 const UNIFORM_INSTANCE = Symbol.for('uniform.instance')
+
+// Stable fallbacks, so an omitted prop does not rebuild the pipeline each render.
+const NO_OVERRIDES = {}
+const NO_CLASSNAMES: FormClassNames = {}
+const NO_LABELS: FormLabels = {}
+const ALWAYS_REQUIRED = () => true
+
+function isThenable(value: unknown): value is PromiseLike<unknown> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { then?: unknown }).then === 'function'
+  )
+}
 
 /**
  * Options accepted by {@link useUniForm}. Mirrors the state-level half of
@@ -88,6 +105,8 @@ export type UseUniFormOptions<TSchema extends z.$ZodObject> = {
     persisted: unknown,
     fromVersion: number,
   ) => Partial<z.infer<TSchema>> | undefined
+  /** Dot paths never written to storage — passwords, card numbers, tokens. */
+  persistExclude?: readonly DeepKeys<z.infer<TSchema>>[]
   onValuesChange?: (values: z.infer<TSchema>) => void
   labels?: FormLabels
   getOptionKey?: GetOptionKey
@@ -120,6 +139,8 @@ export type UniFormInstance<TSchema extends z.$ZodObject = z.$ZodObject> = {
   readonly _onSubmitRef: React.RefObject<
     ((values: z.infer<TSchema>) => void | Promise<void>) | undefined
   >
+  /** @internal Runs handlers, conditions, requirements and dynamic meta over `fields`. */
+  readonly _runPipeline: (fields: FieldConfig[]) => FieldConfig[]
   /** @internal */
   readonly _loadingFallback: React.ReactNode
 }
@@ -167,10 +188,10 @@ export function useUniForm<TSchema extends z.$ZodObject>(
     defaultValues,
     onSubmit,
     components,
-    fields: fieldOverridesProp = {},
+    fields: fieldOverridesProp = NO_OVERRIDES,
     fieldWrapper,
     layout,
-    classNames = {},
+    classNames = NO_CLASSNAMES,
     disabled = false,
     coercions,
     messages,
@@ -179,8 +200,9 @@ export function useUniForm<TSchema extends z.$ZodObject>(
     persistStorage,
     persistVersion,
     persistMigrate,
+    persistExclude,
     onValuesChange,
-    labels = {},
+    labels = NO_LABELS,
     getOptionKey,
     isOptionEqual,
   } = options
@@ -274,15 +296,37 @@ export function useUniForm<TSchema extends z.$ZodObject>(
 
   const requiredMessage = messages?.required ?? 'This field is required'
 
+  // Read by the resolver at validation time, so dynamic requiredness and the
+  // current visibility apply without rebuilding the resolver.
+  const resolverStateRef = React.useRef<{
+    requirements: RequirementEntry[]
+    optional: ReadonlySet<string>
+    fields: FieldConfig[]
+    message: string
+  }>({
+    requirements,
+    optional: new Set(),
+    fields: [],
+    message: requiredMessage,
+  })
+
   const resolver = React.useMemo<Resolver>(() => {
     const base = zodResolver(schema) as unknown as Resolver
     return async (values, context, options) => {
       const result = await base(values, context, options)
+      const state = resolverStateRef.current
       const errors = applyRequiredErrors(
         normalizeRootErrors(result.errors),
         values,
-        requirements,
-        requiredMessage,
+        state.requirements,
+        state.message,
+        // A field hidden by a condition, or outside the active union variant,
+        // can never be filled in — it must not block submit.
+        (path) => {
+          if (state.optional.has(path)) return false
+          const resolved = resolveFieldAt(state.fields, path)
+          return !!resolved && isChainVisible(resolved.chain, values)
+        },
       )
       // A dynamically-required empty field must block submit, so drop `values`
       // whenever we introduce an error the schema did not report.
@@ -290,7 +334,7 @@ export function useUniForm<TSchema extends z.$ZodObject>(
         ? { errors, values: {} }
         : { errors: {}, values: result.values }
     }
-  }, [schema, requirements, requiredMessage])
+  }, [schema])
 
   const rhf = useForm({
     resolver,
@@ -344,14 +388,34 @@ export function useUniForm<TSchema extends z.$ZodObject>(
     [activeFields, fieldOverridesProp, getOptionKey, isOptionEqual],
   )
 
+  // Async `defaultValues` and a restored draft can land in either order; each
+  // re-applies the other so neither wipes the other out.
+  const computedDefaultsRef = useLatestRef(computedDefaults)
+  const loadedValuesRef = React.useRef<Record<string, unknown>>({})
+  const draftRef = React.useRef<Record<string, unknown>>({})
+
+  const restoreDraft = React.useCallback(
+    (draft: Record<string, unknown>) => {
+      draftRef.current = draft
+      reset({
+        ...computedDefaultsRef.current,
+        ...loadedValuesRef.current,
+        ...draft,
+      })
+    },
+    [reset, computedDefaultsRef],
+  )
+
   const { clearPersistedData, hasPersistedDraft, isRestoring } =
     useFormPersistence({
-      control,
+      watch: watch as unknown as Parameters<
+        typeof useFormPersistence
+      >[0]['watch'],
+      getValues,
       key: persistKey,
       debounceMs: persistDebounce,
       storage: persistStorage,
-      reset: rhf.reset as (values: Record<string, unknown>) => void,
-      defaultValues: computedDefaults,
+      restore: restoreDraft,
       version: persistVersion,
       migrate: persistMigrate as
         | ((
@@ -359,6 +423,7 @@ export function useUniForm<TSchema extends z.$ZodObject>(
             fromVersion: number,
           ) => Record<string, unknown> | undefined)
         | undefined,
+      exclude: persistExclude as readonly string[] | undefined,
     })
 
   // Dynamic field meta — updated by setFieldMeta inside UniForm onChange handlers
@@ -370,7 +435,7 @@ export function useUniForm<TSchema extends z.$ZodObject>(
   const onValuesChangeRef = useLatestRef(onValuesChange)
   const generatedDefaultsRef = useLatestRef(generatedDefaults)
 
-  // `<AutoForm onSubmit>` writes here during render and always wins, so the
+  // `<AutoForm onSubmit>` sets this after commit and always wins, so the
   // rendered submit button and an external one run the same handler.
   const overrideOnSubmitRef = React.useRef<
     ((values: z.infer<TSchema>) => void | Promise<void>) | undefined
@@ -382,13 +447,54 @@ export function useUniForm<TSchema extends z.$ZodObject>(
   onSubmitRef.current = (values) =>
     (overrideOnSubmitRef.current ?? optionOnSubmitRef.current)?.(values)
 
+  const writeValue = React.useCallback(
+    (name: string, value: unknown, options?: SetValueOptions) => {
+      setValue(name, value, {
+        shouldValidate: true,
+        shouldDirty: true,
+        ...options,
+      })
+    },
+    [setValue],
+  )
+
+  const writeValues = React.useCallback(
+    (values: Record<string, unknown>, options?: SetValueOptions) => {
+      const { shouldValidate = true, ...rest } = options ?? {}
+      const entries = Object.entries(values)
+      for (const [key, val] of entries) {
+        setValue(key, val, {
+          shouldDirty: true,
+          ...rest,
+          shouldValidate: false,
+        })
+      }
+      // One validation pass for the keys written, not one per key and not the
+      // whole form (which would surface errors on untouched fields).
+      if (shouldValidate && entries.length) {
+        void trigger(entries.map(([key]) => key) as never)
+      }
+      return entries
+    },
+    [setValue, trigger],
+  )
+
   // Dependency propagation. One pass over the topologically-sorted closure per
-  // logical change: a resolver writing a value does not start a new cascade,
-  // so the model stays bounded no matter how the graph is shaped.
+  // logical change: writes made by resolvers do not start a new cascade, so
+  // the model stays bounded no matter how the graph is shaped.
   const uniFormCtxRef = React.useRef<UniFormContext<TSchema>>(
     undefined as never,
   )
   const isPropagatingRef = React.useRef(false)
+  // The latest run that owns each dependent field; a newer run aborts it.
+  const runsRef = React.useRef(new Map<string, AbortController>())
+
+  React.useEffect(() => {
+    const runs = runsRef.current
+    return () => {
+      for (const controller of runs.values()) controller.abort()
+    }
+  }, [])
 
   const propagate = React.useCallback(
     (source: string, value: unknown) => {
@@ -397,31 +503,96 @@ export function useUniForm<TSchema extends z.$ZodObject>(
       const order = form._getPropagationOrder(source)
       if (!order.length) return
 
-      isPropagatingRef.current = true
-      try {
-        for (const field of order) {
-          void form._resolveDependency(field, {
+      const controller = new AbortController()
+      const { signal } = controller
+      for (const field of order) {
+        runsRef.current.get(field)?.abort()
+        runsRef.current.set(field, controller)
+      }
+
+      // Writes from a superseded run are dropped, so a slow response for an
+      // old value can never overwrite the state for the new one.
+      const live =
+        <A extends unknown[]>(fn: (...args: A) => unknown) =>
+        (...args: A) => {
+          if (!signal.aborted) fn(...args)
+        }
+      const base = uniFormCtxRef.current
+      const ctx = {
+        ...base,
+        setValue: live(writeValue),
+        setValues: live(writeValues),
+        setFieldMeta: live(base.setFieldMeta),
+      } as UniFormContext<TSchema>
+
+      // Synchronous resolvers run inline; an async one is awaited before the
+      // fields downstream of it resolve.
+      const run = (from: number): void => {
+        for (let i = from; i < order.length; i++) {
+          if (signal.aborted) return
+          const field = order[i]
+          const result = form._resolveDependency(field, {
             source,
             value,
             field,
-            ctx: uniFormCtxRef.current,
+            ctx,
+            signal,
           })
+          if (isThenable(result)) {
+            result.then(
+              () => run(i + 1),
+              (error: unknown) => {
+                if (signal.aborted) return
+                console.error(
+                  `[UniForm] The dependency resolver for "${field}" failed; ` +
+                    'fields downstream of it were not resolved.',
+                  error,
+                )
+              },
+            )
+            return
+          }
         }
+      }
+
+      isPropagatingRef.current = true
+      try {
+        run(0)
       } finally {
         isPropagatingRef.current = false
       }
     },
-    [uniForm],
+    [uniForm, writeValue, writeValues],
   )
 
   // Load async defaultValues once on mount
   React.useEffect(() => {
     if (!isAsyncDefaults) return
     let cancelled = false
-    void (defaultValues as () => Promise<Partial<z.infer<TSchema>>>)().then(
+    let pending: Promise<Partial<z.infer<TSchema>>>
+    try {
+      pending = (defaultValues as () => Promise<Partial<z.infer<TSchema>>>)()
+    } catch (error) {
+      pending = Promise.reject(error as Error)
+    }
+    pending.then(
       (vals) => {
         if (cancelled) return
-        rhf.reset({ ...generatedDefaultsRef.current, ...vals })
+        loadedValuesRef.current = vals as Record<string, unknown>
+        reset({
+          ...generatedDefaultsRef.current,
+          ...vals,
+          ...draftRef.current,
+        })
+        setIsLoadingDefaults(false)
+      },
+      (error: unknown) => {
+        if (cancelled) return
+        console.error(
+          '[UniForm] The async defaultValues loader rejected; the form is ' +
+            'shown with its generated defaults.',
+          error,
+        )
         setIsLoadingDefaults(false)
       },
     )
@@ -434,25 +605,11 @@ export function useUniForm<TSchema extends z.$ZodObject>(
   const formMethods = React.useMemo<FormMethods<z.infer<TSchema>>>(
     () => ({
       setValue: (name, value, options) => {
-        setValue(name as string, value, {
-          shouldValidate: true,
-          shouldDirty: true,
-          ...options,
-        })
+        writeValue(name as string, value, options)
         propagate(name as string, value)
       },
       setValues: (values, options) => {
-        const { shouldValidate = true, ...rest } = options ?? {}
-        const entries = Object.entries(values)
-        for (const [key, val] of entries) {
-          setValue(key, val, {
-            shouldDirty: true,
-            ...rest,
-            shouldValidate: false,
-          })
-        }
-        // One validation pass for the whole logical update, not one per key.
-        if (shouldValidate && entries.length) void trigger()
+        const entries = writeValues(values as Record<string, unknown>, options)
         for (const [key, val] of entries) propagate(key, val)
       },
       getValues: () => getValues() as z.infer<TSchema>,
@@ -497,11 +654,11 @@ export function useUniForm<TSchema extends z.$ZodObject>(
       handleSubmit,
       reset,
       resetField,
-      setValue,
       setError,
       setFocus,
-      trigger,
       watch,
+      writeValue,
+      writeValues,
       propagate,
       clearPersistedData,
       hasPersistedDraft,
@@ -529,62 +686,79 @@ export function useUniForm<TSchema extends z.$ZodObject>(
   )
   uniFormCtxRef.current = uniFormCtx
 
-  // Inject UniForm handlers into field.meta.onChange so they fire as real event handlers
-  const fieldsWithHandlers = React.useMemo(
+  const requirementMap = React.useMemo(
     () =>
-      injectOnChangeHandlers(
-        mergedFields,
-        uniForm as UniForm<TSchema>,
-        uniFormCtx,
+      new Map<string, FieldRequirement>(
+        requirements.map((r) => [r.path, r.predicate as FieldRequirement]),
       ),
-    [mergedFields, uniForm, uniFormCtx],
+    [requirements],
   )
 
-  // Inject UniForm conditions into field.meta.condition
-  const fieldsWithConditions = React.useMemo(
-    () =>
-      injectConditions(
-        fieldsWithHandlers,
-        (uniForm as UniForm<TSchema>)._getConditions() as Map<
-          string,
-          FieldCondition
-        >,
-      ),
-    [fieldsWithHandlers, uniForm],
-  )
-
-  // Inject UniForm requiredness predicates into field.meta.requiredWhen
-  const fieldsWithRequirements = React.useMemo(() => {
-    const map = new Map<string, FieldRequirement>(
-      requirements.map((r) => [r.path, r.predicate as FieldRequirement]),
-    )
-    return injectRequirements(fieldsWithConditions, map)
-  }, [fieldsWithConditions, requirements])
-
-  // Make a UI edit of a dependency source start the same cascade a
-  // programmatic setValue does.
-  const fieldsWithDependencies = React.useMemo(
-    () =>
-      injectDependencyPropagation(
-        fieldsWithRequirements,
-        new Set((uniForm as UniForm<TSchema>)._getDependencySources?.() ?? []),
+  // Everything after `fields` overrides: UniForm handlers, conditions and
+  // requiredness, dependency propagation, then event-driven dynamic meta.
+  // `<AutoForm form={instance} fields>` re-runs it so those keep precedence.
+  const runPipeline = React.useCallback(
+    (fields: FieldConfig[]) => {
+      const typedForm = uniForm as UniForm<TSchema>
+      const withHandlers = injectOnChangeHandlers(fields, typedForm, uniFormCtx)
+      const withConditions = injectConditions(
+        withHandlers,
+        typedForm._getConditions() as Map<string, FieldCondition>,
+      )
+      const withRequirements = injectRequirements(
+        withConditions,
+        requirementMap,
+      )
+      const withDependencies = injectDependencyPropagation(
+        withRequirements,
+        new Set(typedForm._getDependencySources?.() ?? []),
         propagate,
-      ),
-    [fieldsWithRequirements, uniForm, propagate],
+      )
+      return applyDynamicMeta(withDependencies, dynamicMeta)
+    },
+    [uniForm, uniFormCtx, requirementMap, propagate, dynamicMeta],
   )
 
-  // Apply event-driven dynamic meta overrides (from setFieldMeta calls)
   const resolvedFields = React.useMemo(
-    () => applyDynamicMeta(fieldsWithDependencies, dynamicMeta),
-    [fieldsWithDependencies, dynamicMeta],
+    () => runPipeline(mergedFields),
+    [runPipeline, mergedFields],
   )
 
-  const allValues = useWatch({ control, disabled: !onValuesChange })
+  // `setFieldMeta(path, { required })` drives submit exactly as it drives the
+  // marker: `true` blocks like `setRequired`, `false` lifts a `setRequired`.
+  const dynamicRequiredness = React.useMemo(() => {
+    const required: RequirementEntry[] = []
+    const optional = new Set<string>()
+    for (const [path, meta] of Object.entries(dynamicMeta)) {
+      if (meta.required === true) {
+        required.push({ path, predicate: ALWAYS_REQUIRED })
+      } else if (meta.required === false) {
+        optional.add(path)
+      }
+    }
+    return { required, optional }
+  }, [dynamicMeta])
 
+  resolverStateRef.current = {
+    requirements: dynamicRequiredness.required.length
+      ? [...requirements, ...dynamicRequiredness.required]
+      : requirements,
+    optional: dynamicRequiredness.optional,
+    fields: resolvedFields,
+    message: requiredMessage,
+  }
+
+  // Subscribe instead of `useWatch`, so the host does not re-render (and
+  // re-publish its context) on every keystroke.
+  const hasValuesListener = onValuesChange !== undefined
   React.useEffect(() => {
-    if (!onValuesChangeRef.current) return
-    onValuesChangeRef.current(allValues as z.infer<TSchema>)
-  }, [onValuesChangeRef, allValues])
+    if (!hasValuesListener) return
+    onValuesChangeRef.current?.(getValues() as z.infer<TSchema>)
+    const subscription = watch((values) =>
+      onValuesChangeRef.current?.(values as z.infer<TSchema>),
+    )
+    return () => subscription.unsubscribe()
+  }, [hasValuesListener, watch, getValues, onValuesChangeRef])
 
   const resolvedLayout = React.useMemo(
     (): ResolvedLayoutSlots => resolveLayoutSlots(layout),
@@ -664,6 +838,7 @@ export function useUniForm<TSchema extends z.$ZodObject>(
       clearPersistedData,
       _context: context,
       _onSubmitRef: overrideOnSubmitRef,
+      _runPipeline: runPipeline,
       _loadingFallback: resolvedLayout.loadingFallback,
     } as UniFormInstance<TSchema>
     Object.defineProperty(value, UNIFORM_INSTANCE, {
@@ -682,6 +857,7 @@ export function useUniForm<TSchema extends z.$ZodObject>(
     clearPersistedData,
     context,
     overrideOnSubmitRef,
+    runPipeline,
     resolvedLayout.loadingFallback,
   ])
 

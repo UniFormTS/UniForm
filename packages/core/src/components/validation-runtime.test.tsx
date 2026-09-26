@@ -508,4 +508,106 @@ describe('error tree access (W7)', () => {
     )
     expect(screen.queryByText('Fix these')).not.toBeInTheDocument()
   })
+
+  it('collects errors on fields named like error-node keys', async () => {
+    const typedForm = createForm(
+      z.object({
+        address: z.object({
+          type: z.string().min(1, 'Type required'),
+          message: z.string().min(1, 'Message required'),
+        }),
+      }),
+    )
+    function Issues() {
+      const issues = useFieldErrors('')
+      return (
+        <ul>
+          {issues.map((issue) => (
+            <li key={issue.path}>{issue.path}</li>
+          ))}
+        </ul>
+      )
+    }
+    function App() {
+      const form = useUniForm(typedForm, {
+        defaultValues: { address: { type: '', message: '' } },
+      })
+      return (
+        <UniFormProvider form={form}>
+          <Issues />
+          <button type='button' onClick={() => form.submit()}>
+            go
+          </button>
+        </UniFormProvider>
+      )
+    }
+
+    const { user } = setup(<App />)
+    await user.click(screen.getByRole('button', { name: 'go' }))
+    expect(await screen.findByText('address.type')).toBeInTheDocument()
+    expect(screen.getByText('address.message')).toBeInTheDocument()
+  })
+})
+
+describe('requiredness and visibility', () => {
+  const buildShipForm = () =>
+    createForm(z.object({ ship: z.boolean(), address: z.string().optional() }))
+      .setCondition('address', (values) => values.ship)
+      .setRequired('address', () => true)
+
+  it('does not block submit on a required field hidden by a condition', async () => {
+    const onSubmit = vi.fn()
+    const { user } = setup(
+      <AutoForm
+        form={buildShipForm()}
+        defaultValues={{ ship: false }}
+        onSubmit={onSubmit}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: /submit/i }))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled())
+  })
+
+  it('still blocks once the condition shows the field', async () => {
+    const onSubmit = vi.fn()
+    const { user } = setup(
+      <AutoForm
+        form={buildShipForm()}
+        defaultValues={{ ship: true, address: '' }}
+        onSubmit={onSubmit}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: /submit/i }))
+    expect(
+      await screen.findByText('This field is required'),
+    ).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('setFieldMeta({ required: true }) blocks submit', async () => {
+    const noteForm = createForm(
+      z.object({ kind: z.string(), note: z.string().optional() }),
+    ).setOnChange('kind', (_value, ctx) => {
+      ctx.setFieldMeta('note', { required: true })
+    })
+    const onSubmit = vi.fn()
+
+    const { user } = setup(
+      <AutoForm
+        form={noteForm}
+        defaultValues={{ kind: '', note: '' }}
+        onSubmit={onSubmit}
+      />,
+    )
+    const kind = screen
+      .getAllByRole('textbox')
+      .find((el) => el.getAttribute('name') === 'kind')!
+    await user.type(kind, 'x')
+    await user.click(screen.getByRole('button', { name: /submit/i }))
+
+    expect(
+      await screen.findByText('This field is required'),
+    ).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
 })

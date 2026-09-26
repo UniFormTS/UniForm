@@ -3,10 +3,12 @@ import type * as z from 'zod/v4/core'
 import type {
   AutoFormConfig,
   AutoFormProps,
+  AutoFormOwnStateProps,
   AutoFormHandle,
   FormLabels,
 } from '../types'
 import { AutoForm } from '../components/AutoForm'
+import { isUniFormInstance } from '../hooks/useUniForm'
 import { mergeRegistries } from '../registry/mergeRegistries'
 
 /**
@@ -85,22 +87,32 @@ export function createAutoForm(config: AutoFormConfig) {
       [props.labels],
     )
 
-    return (
-      <AutoForm
-        {...props}
-        ref={props.ref}
-        components={mergedComponents}
-        fieldWrapper={props.fieldWrapper ?? config.fieldWrapper}
-        layout={mergedLayout}
-        classNames={mergedClassNames}
-        disabled={props.disabled || config.disabled || false}
-        coercions={mergedCoercions}
-        messages={mergedMessages}
-        labels={mergedLabels ?? {}}
-        getOptionKey={props.getOptionKey ?? config.getOptionKey}
-        isOptionEqual={props.isOptionEqual ?? config.isOptionEqual}
-      />
-    )
+    // Option identity is store-level: an instance already carries its own.
+    const identity = isUniFormInstance(props.form)
+      ? {}
+      : {
+          getOptionKey:
+            (props as AutoFormOwnStateProps<TSchema>).getOptionKey ??
+            config.getOptionKey,
+          isOptionEqual:
+            (props as AutoFormOwnStateProps<TSchema>).isOptionEqual ??
+            config.isOptionEqual,
+        }
+
+    const merged = {
+      ...props,
+      components: mergedComponents,
+      fieldWrapper: props.fieldWrapper ?? config.fieldWrapper,
+      layout: mergedLayout,
+      classNames: mergedClassNames,
+      disabled: props.disabled || config.disabled || false,
+      coercions: mergedCoercions,
+      messages: mergedMessages,
+      labels: mergedLabels ?? {},
+      ...identity,
+    } as AutoFormProps<TSchema>
+
+    return <AutoForm {...merged} ref={props.ref} />
   }
 
   ConfiguredAutoForm.displayName = 'AutoForm(configured)'

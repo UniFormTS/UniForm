@@ -13,6 +13,11 @@ export type DependencyArgs<TCtx> = {
   field: string
   /** Full programmatic control of the form, plus `setFieldMeta`. */
   ctx: TCtx
+  /**
+   * Aborted when a newer change supersedes this run. Pass it to `fetch`; writes
+   * through `ctx` after it aborts are dropped automatically.
+   */
+  signal: AbortSignal
 }
 
 export type DependencyEdge<TCtx> = {
