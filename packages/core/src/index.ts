@@ -12,6 +12,11 @@ export type {
   FieldOverride,
   FieldConfig,
   FieldProps,
+  SetValueOptions,
+  ContainerFieldProps,
+  ObjectContainerProps,
+  ArrayContainerProps,
+  FieldComponentProps,
   ComponentRegistry,
   FieldWrapperProps,
   ArrayButtonProps,
@@ -47,6 +52,7 @@ export {
 
 // Components
 export { AutoForm } from './components/AutoForm'
+export { Field } from './components/Field'
 export { FieldRenderer } from './components/FieldRenderer'
 
 // Default components

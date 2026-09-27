@@ -144,6 +144,7 @@ type FieldOverride = {
   section?: string // Group into a named section
   hidden?: boolean // Hard-hide (never renders, never validates)
   disabled?: boolean
+  className?: string // Extra class name(s) on the field wrapper
   component?: string | React.ComponentType<FieldProps> // Registry key or inline component
   options?: Array<{ label: string; value: string | number }>
   condition?: (values: z.infer<TSchema>) => boolean // Inline conditional visibility
@@ -428,12 +429,16 @@ type ComponentRegistry = {
   date?: React.ComponentType<FieldProps>
   select?: React.ComponentType<FieldProps> // z.enum() / z.nativeEnum() fields
   textarea?: React.ComponentType<FieldProps> // opt-in via component: 'textarea'
-  [key: string]: React.ComponentType<FieldProps> | undefined
+  [key: string]:
+    | React.ComponentType<FieldProps>
+    | React.ComponentType<ObjectContainerProps>
+    | React.ComponentType<ArrayContainerProps>
+    | undefined
 }
 ```
 
 :::note
-Enum fields use the `select` key, not `enum`. There are no dedicated `array`/`object` type keys — those field types are handled internally. You can still render an object or array field with a single component by pointing it at a `component` override (a direct component or a custom registry key) via `fields` or schema `meta` — see [Custom Components](/docs/guides/custom-components#rendering-an-object-or-array-as-a-single-field).
+Enum fields use the `select` key, not `enum`. There are no dedicated `array`/`object` type keys — those field types are handled internally. You can still render an object or array field with your own component by pointing it at a `component` override (a direct component or a custom registry key) via `fields` or schema `meta`. The component then renders in place of the whole subtree as a [container component](/docs/guides/custom-components#container-components).
 :::
 
 ---
@@ -467,6 +472,77 @@ Use the generic type parameter to strongly type custom field values:
 const StarRating = ({ value, onChange }: FieldProps<number>) => {
   // value is number
   return <button onClick={() => onChange(value + 1)}>+1</button>
+}
+```
+
+---
+
+## `ContainerFieldProps`
+
+Props passed to a component set on an `object` or `array` field (a [container component](../guides/custom-components#container-components)). Extends `FieldProps`.
+
+```ts
+interface ContainerFieldProps<Value = unknown> extends FieldProps<Value> {
+  path: string // the container's absolute path
+  // Write relative to the container: '0.qty' → `${path}.0.qty`; '' → the container
+  setPath: (subPath: string, value: unknown, options?: SetValueOptions) => void
+}
+
+type SetValueOptions = {
+  shouldValidate?: boolean // default: true
+  shouldDirty?: boolean // default: true
+  shouldTouch?: boolean // default: false
+}
+```
+
+## `ObjectContainerProps`
+
+```ts
+interface ObjectContainerProps<
+  Value = Record<string, unknown>,
+> extends ContainerFieldProps<Value> {
+  fields: FieldConfig[] // child configs; each `name` is the child's absolute path
+}
+```
+
+## `ArrayContainerProps`
+
+```ts
+interface ArrayContainerProps<Item = unknown> extends ContainerFieldProps<
+  Item[]
+> {
+  itemConfig: FieldConfig
+  rows: UseFieldArrayReturn['fields'] // each row has a stable `id`
+  rowCount: number
+  canAdd: boolean // false when maxItems is reached
+  atMin: boolean // true when rowCount <= minItems
+  // Row operations (per-row overrides follow their rows):
+  append
+  prepend
+  insert
+  remove
+  move
+  swap
+  update
+  replace
+}
+```
+
+`onChange(nextArray)` replaces the rows (so `rows` / `rowCount` stay in step) and keeps per-row overrides.
+
+---
+
+## `FieldComponentProps`
+
+Props for [`<Field>`](./field).
+
+```ts
+type FieldComponentProps = {
+  name: string // absolute, or relative to the enclosing container
+  component?: string | React.ComponentType<any>
+  label?: string
+  disabled?: boolean
+  className?: string // appended to meta.className
 }
 ```
 

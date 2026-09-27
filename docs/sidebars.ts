@@ -14,6 +14,7 @@ const sidebars: SidebarsConfig = {
         'api/create-form',
         'api/create-auto-form',
         'api/use-array-field',
+        'api/field',
         'api/types',
       ],
     },

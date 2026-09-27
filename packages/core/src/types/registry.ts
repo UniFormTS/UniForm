@@ -1,6 +1,10 @@
 import type * as React from 'react'
-import type { FieldProps } from './field'
-import type { FieldConfig } from './field'
+import type {
+  ArrayContainerProps,
+  FieldConfig,
+  FieldProps,
+  ObjectContainerProps,
+} from './field'
 
 // ---------------------------------------------------------------------------
 // ComponentRegistry
@@ -19,7 +23,11 @@ export type ComponentRegistry = {
   date?: React.ComponentType<FieldProps>
   select?: React.ComponentType<FieldProps>
   textarea?: React.ComponentType<FieldProps>
-  [key: string]: React.ComponentType<FieldProps> | undefined
+  [key: string]:
+    | React.ComponentType<FieldProps>
+    | React.ComponentType<ObjectContainerProps>
+    | React.ComponentType<ArrayContainerProps>
+    | undefined
 }
 
 // ---------------------------------------------------------------------------

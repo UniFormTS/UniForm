@@ -30,15 +30,15 @@ export function resolveComponent(
     typeof field.meta.component === 'string' &&
     Object.prototype.hasOwnProperty.call(registry, field.meta.component)
   ) {
-    return registry[field.meta.component]!
+    return registry[field.meta.component] as React.ComponentType<FieldProps>
   }
   // 3. field.type key in the merged registry
   if (registry[field.type]) {
-    return registry[field.type]!
+    return registry[field.type] as React.ComponentType<FieldProps>
   }
   // 4. field.type key in the default registry
   if (defaultRegistry[field.type]) {
-    return defaultRegistry[field.type]!
+    return defaultRegistry[field.type] as React.ComponentType<FieldProps>
   }
   // 5. Unknown — render nothing
   console.warn(

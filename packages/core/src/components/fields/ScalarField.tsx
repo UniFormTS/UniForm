@@ -28,12 +28,6 @@ export function ScalarField({
 
   if (!Component) return null
 
-  // Scalar inputs expect a controlled string value, so nullish RHF values are
-  // normalized to `''`. Composite overrides (object/array) may legitimately
-  // receive an object/array — or `undefined` when no default exists — so their
-  // value is passed through unchanged.
-  const isComposite = field.type === 'object' || field.type === 'array'
-
   return (
     <Controller
       name={effectiveName}
@@ -42,11 +36,7 @@ export function ScalarField({
       render={({ field: rhfField, fieldState }) => (
         <Component
           name={effectiveName}
-          value={
-            isComposite
-              ? (rhfField.value as unknown)
-              : ((rhfField.value as unknown) ?? '')
-          }
+          value={(rhfField.value as unknown) ?? ''}
           onChange={(value) => {
             const coerced = coerceValue(field.type, value, coercions)
             rhfField.onChange(coerced)

@@ -29,6 +29,8 @@ import { DefaultArrayWrapper } from './defaults/DefaultArrayWrapper'
 import { DefaultArrayButton } from './defaults/DefaultArrayButton'
 import { DefaultArrayCollapseButton } from './defaults/DefaultArrayCollapseButton'
 import { AutoFormContextProvider } from '../context/AutoFormContext'
+import { FieldTreeProvider } from '../context/FieldTreeContext'
+import type { FieldTree } from '../context/FieldTreeContext'
 import { createArrayRegistry } from '../context/arrayRegistry'
 import { FieldRenderer } from './FieldRenderer'
 import { useConditionalFields } from '../hooks/useConditionalFields'
@@ -347,6 +349,19 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     [fieldsWithConditions, dynamicMeta],
   )
 
+  const fieldTree = React.useMemo<FieldTree>(
+    () => ({
+      fields: fieldsWithDynamic,
+      setValue: (name, value, options) =>
+        setValue(name, value, {
+          shouldValidate: true,
+          shouldDirty: true,
+          ...options,
+        }),
+    }),
+    [fieldsWithDynamic, setValue],
+  )
+
   const allValues = useWatch({ control })
 
   React.useEffect(() => {
@@ -447,57 +462,60 @@ export function AutoForm<TSchema extends z.$ZodObject>(
 
   return (
     <AutoFormContextProvider value={contextValue}>
-      <form
-        noValidate
-        className={classNames.form}
-        onSubmit={(e) => {
-          void handleSubmit(async (values) => {
-            await onSubmit(values as z.infer<TSchema>)
-            clearPersistedData()
-          })(e)
-        }}
-      >
-        <FormWrapper>
-          {sections.map((section) => {
-            const renderedFields = section.fields.map((field, idx) => (
-              <FieldRenderer
-                key={field.name}
-                field={field}
-                control={control}
-                index={idx}
-                depth={0}
-              />
-            ))
+      <FieldTreeProvider value={fieldTree}>
+        <form
+          noValidate
+          className={classNames.form}
+          onSubmit={(e) => {
+            void handleSubmit(async (values) => {
+              await onSubmit(values as z.infer<TSchema>)
+              clearPersistedData()
+            })(e)
+          }}
+        >
+          <FormWrapper>
+            {sections.map((section) => {
+              const renderedFields = section.fields.map((field, idx) => (
+                <FieldRenderer
+                  key={field.name}
+                  field={field}
+                  control={control}
+                  index={idx}
+                  depth={0}
+                />
+              ))
 
-            if (section.title === null) {
+              if (section.title === null) {
+                return (
+                  <React.Fragment key='__ungrouped'>
+                    {renderedFields}
+                  </React.Fragment>
+                )
+              }
+
+              const sectionConfig = layout?.sections?.[section.title]
+              const PerSectionWrapper =
+                sectionConfig?.component ?? SectionWrapper
+
               return (
-                <React.Fragment key='__ungrouped'>
+                <PerSectionWrapper
+                  key={section.title}
+                  title={section.title}
+                  className={sectionConfig?.className}
+                >
                   {renderedFields}
-                </React.Fragment>
+                </PerSectionWrapper>
               )
-            }
-
-            const sectionConfig = layout?.sections?.[section.title]
-            const PerSectionWrapper = sectionConfig?.component ?? SectionWrapper
-
-            return (
-              <PerSectionWrapper
-                key={section.title}
-                title={section.title}
-                className={sectionConfig?.className}
-              >
-                {renderedFields}
-              </PerSectionWrapper>
-            )
-          })}
-          {SubmitButton ? (
-            <SubmitButton
-              isSubmitting={formState.isSubmitting}
-              label={labels.submit ?? 'Submit'}
-            />
-          ) : null}
-        </FormWrapper>
-      </form>
+            })}
+            {SubmitButton ? (
+              <SubmitButton
+                isSubmitting={formState.isSubmitting}
+                label={labels.submit ?? 'Submit'}
+              />
+            ) : null}
+          </FormWrapper>
+        </form>
+      </FieldTreeProvider>
     </AutoFormContextProvider>
   )
 }

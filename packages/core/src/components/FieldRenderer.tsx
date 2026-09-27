@@ -8,6 +8,7 @@ import { BooleanField } from './fields/BooleanField'
 import { SelectField } from './fields/SelectField'
 import { ObjectField } from './fields/ObjectField'
 import { ArrayField } from './fields/ArrayField'
+import { ContainerField } from './fields/ContainerField'
 
 export type FieldRendererProps = {
   field: FieldConfig
@@ -73,8 +74,9 @@ export function FieldRenderer({
     messages,
     registry,
   } = useAutoFormContext()
-  const { errors } = useFormState({ control })
   const effectiveName = getEffectiveName(field, namePrefix)
+  // Scoped so a field re-renders only when its own error changes
+  const { errors } = useFormState({ control, name: effectiveName, exact: true })
 
   const hasComponentOverride =
     typeof field.meta.component === 'function' ||
@@ -110,13 +112,29 @@ export function FieldRenderer({
   const effectiveField =
     effectiveName !== field.name ? { ...field, name: effectiveName } : field
 
-  const rawError = getFieldError(
-    errors as Record<string, unknown>,
-    effectiveName,
-  )
+  const rawError =
+    getFieldError(errors as Record<string, unknown>, effectiveName) ??
+    (field.type === 'array'
+      ? getFieldError(
+          errors as Record<string, unknown>,
+          `${effectiveName}.root`,
+        )
+      : undefined)
   const error = resolveErrorMessage(effectiveName, rawError, messages)
 
   const renderField = () => {
+    if (field.type === 'object' || field.type === 'array') {
+      return (
+        <ContainerField
+          field={effectiveField as typeof field}
+          control={control}
+          effectiveName={effectiveName}
+          namePrefix={namePrefix}
+          error={error}
+          shouldUnregister={effectiveShouldUnregister}
+        />
+      )
+    }
     if (field.type === 'boolean') {
       return (
         <BooleanField

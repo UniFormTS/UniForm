@@ -1,5 +1,5 @@
 import type * as React from 'react'
-import type { RefCallBack } from 'react-hook-form'
+import type { RefCallBack, UseFieldArrayReturn } from 'react-hook-form'
 import type * as z from 'zod/v4/core'
 import type { FormMethods } from './form'
 import type { SelectOption } from './shared'
@@ -102,6 +102,8 @@ export type FieldMetaBase = {
   hidden?: boolean
   /** When `true`, the field is rendered but not interactive. */
   disabled?: boolean
+  /** Extra CSS class name(s) applied to the field's wrapper. */
+  className?: string
   /** Conditionally show or hide the field based on the current form values. */
   condition?: FieldCondition
   /**
@@ -276,6 +278,97 @@ export interface FieldProps<Value = unknown> {
    * exposes — e.g. inspecting union variants, accessing custom Zod refinements, etc.
    */
   schema: z.$ZodType
+}
+
+// ---------------------------------------------------------------------------
+// Container components
+// ---------------------------------------------------------------------------
+
+/** Options for a targeted value write such as `setPath`. */
+export type SetValueOptions = {
+  /** Validate after writing. Default: `true`. */
+  shouldValidate?: boolean
+  /** Mark the written path dirty. Default: `true`. */
+  shouldDirty?: boolean
+  /** Mark the written path touched. Default: `false`. */
+  shouldTouch?: boolean
+}
+
+/**
+ * Props passed to a component set on an `object` or `array` field. The
+ * component renders in place of the field's whole subtree; render the leaves
+ * inside it with `<Field>` (paths relative to the container).
+ */
+export interface ContainerFieldProps<
+  Value = unknown,
+> extends FieldProps<Value> {
+  /** Absolute dot-notated path of the container (e.g. `"lines"`). */
+  path: string
+  /**
+   * Writes `value` at `subPath` relative to the container — `'0.qty'` writes
+   * `"<path>.0.qty"`; `''` targets the container itself.
+   */
+  setPath: (subPath: string, value: unknown, options?: SetValueOptions) => void
+}
+
+/** Props passed to a container component set on an `object` field. */
+export interface ObjectContainerProps<
+  Value = Record<string, unknown>,
+> extends ContainerFieldProps<Value> {
+  /** Child field configs; each `name` is the child's absolute path. */
+  fields: FieldConfig[]
+}
+
+/**
+ * Props passed to a container component set on an `array` field. Backed by
+ * the array's field array, so `useArrayField(path)` drives the same rows.
+ * `onChange(nextArray)` replaces the rows and keeps per-row overrides.
+ */
+export interface ArrayContainerProps<Item = unknown>
+  extends
+    ContainerFieldProps<Item[]>,
+    Pick<
+      UseFieldArrayReturn,
+      | 'append'
+      | 'prepend'
+      | 'insert'
+      | 'remove'
+      | 'move'
+      | 'swap'
+      | 'update'
+      | 'replace'
+    > {
+  /** Field config describing a single row (children are row-relative). */
+  itemConfig: FieldConfig
+  /** Current rows; use `row.id` as the React key. */
+  rows: UseFieldArrayReturn['fields']
+  rowCount: number
+  /** `false` once `maxItems` is reached. */
+  canAdd: boolean
+  /** `true` while `rowCount <= minItems`. */
+  atMin: boolean
+}
+
+// ---------------------------------------------------------------------------
+// FieldComponentProps
+// ---------------------------------------------------------------------------
+
+/** Props for `<Field>`. */
+export type FieldComponentProps = {
+  /**
+   * Dot-notated path of the field. Absolute (`"lines.0.qty"`), or relative
+   * to the enclosing container component (`"0.qty"`).
+   */
+  name: string
+  /** Component override for this instance (registry key or component). */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  component?: string | React.ComponentType<any>
+  /** Label override for this instance. */
+  label?: string
+  /** Disabled override for this instance. */
+  disabled?: boolean
+  /** Appended to `meta.className` — both apply. */
+  className?: string
 }
 
 // ---------------------------------------------------------------------------

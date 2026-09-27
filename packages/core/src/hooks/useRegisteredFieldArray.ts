@@ -122,5 +122,11 @@ export function useRegisteredFieldArray(name: string) {
     [arrayRegistry, name, fields, ops],
   )
 
-  return { fields, ...ops, duplicate }
+  // Whole-array write that keeps per-row overrides (unlike `replace`)
+  const replaceKeepingMeta = React.useCallback(
+    (value: unknown[]) => latest.current.replace(value),
+    [latest],
+  )
+
+  return { fields, ...ops, duplicate, replaceKeepingMeta }
 }

@@ -61,6 +61,8 @@ UniForm introspects the schema, renders appropriate inputs, validates with Zod, 
 
 **`components`** — a registry mapping Zod types (`string`, `number`, `boolean`, etc.) to your own input components. Pass a component directly on a field via `fields` for one-off overrides. For custom components, type field values precisely with `FieldProps<Value>` (for example, `FieldProps<number>` for a rating widget).
 
+**Container components + `<Field>`** — a component set on an object or array field renders in place of its whole subtree and receives `ObjectContainerProps` / `ArrayContainerProps` (`path`, `setPath`, `rows`, `append`, `remove`, …). Render the leaves inside it with `<Field name='0.qty' />` (paths relative to the container); each cell registers, validates and shows its own error. `<Field>` also works anywhere else in the `<AutoForm>` tree (layout slots, custom wrappers) with absolute paths.
+
 **`fields`** — per-field overrides using dot-notated paths. Control labels, descriptions, ordering, sections, conditions, and custom components without touching the schema.
 
 ```tsx
@@ -100,6 +102,7 @@ UniForm introspects the schema, renders appropriate inputs, validates with Zod, 
 - **Conditional fields** — show/hide fields based on form values; `hidden` and row-local sibling conditions work inside array rows too
 - **Array fields** — arrays of objects and of primitives (`z.array(z.string())`, numbers, enums); movable, duplicable, collapsible rows; `minItems`/`maxItems` from Zod schema; per-row conditional fields
 - **External array controls** — use `useArrayField('path.to.array')` to place Add/Remove controls outside the default array block; it drives the rendered rows directly and stays in sync with schema limits
+- **Container components** — lay out an object or array subtree yourself (tables, cards) with `<Field>` cells while UniForm keeps registration, validation and per-row errors
 - **Programmatic control** — `reset()`, `submit()`, `setValues()`, `getValues()`, `setErrors()`, `focus()` via ref
 - **Form persistence** — auto-save to `localStorage` (or custom storage) with configurable debounce
 - **Pluggable coercion** — automatic `string → number`, `string → Date` with customizable coercion map

@@ -127,6 +127,77 @@ const schema = z.object({
 
 The component receives the **entire object (or array)** as `value` and must call `onChange` with a full object/array — validation still runs against the complete schema on submit. If a string key does not resolve in the merged registry, the field falls back to its default nested rendering.
 
+## Container components
+
+A component set on an object or array field renders **in place of the field's whole subtree** (inside the usual field wrapper, so its label and error still show). It gets more than `FieldProps`, so it can lay out the subtree itself while UniForm still handles registration, validation and errors for the leaves inside it. Render those leaves with [`<Field>`](/docs/api/field). Inside a container, `<Field>` names are **relative to the container**:
+
+```tsx
+import { Field, type ArrayContainerProps } from '@uniform-ts/core'
+
+function LinesTable({ rows, append, remove, canAdd }: ArrayContainerProps) {
+  return (
+    <table>
+      <tbody>
+        {rows.map((row, i) => (
+          <tr key={row.id}>
+            <td>
+              <Field name={`${i}.title`} />
+            </td>
+            <td>
+              <Field name={`${i}.qty`} />
+            </td>
+            <td>
+              <button type='button' onClick={() => remove(i)}>
+                ×
+              </button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td>
+            <button
+              type='button'
+              disabled={!canAdd}
+              onClick={() => append({ title: '', qty: 1 })}
+            >
+              Add line
+            </button>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  )
+}
+
+<AutoForm form={orderForm} fields={{ lines: { component: LinesTable } }} ... />
+```
+
+Each cell is a real field. It uses the registered component for its type, validates, shows its own per-row error and is submitted. Typing in a cell writes only that cell's path and never calls the container's `onChange`.
+
+Every container receives these props on top of `FieldProps`:
+
+| Prop                             | Description                                                                                                                                   |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `path`                           | The container's absolute path (e.g. `"lines"`)                                                                                                |
+| `setPath(subPath, value, opts?)` | Targeted write relative to the container: `setPath('0.qty', 3)` writes `lines.0.qty`, `''` targets the container. `opts` is `SetValueOptions` |
+
+**Object containers** (`ObjectContainerProps`) also get `fields`: the child `FieldConfig`s, each `name` being the child's absolute path.
+
+**Array containers** (`ArrayContainerProps`) are backed by a real field array, so [`useArrayField(path)`](/docs/api/use-array-field) in a sibling drives the same rows. They also get:
+
+- `itemConfig`: the row's field config
+- `rows`: each row has a stable `id` for use as the React key
+- `rowCount`, `canAdd`, `atMin`: derived from the schema's `.min()` / `.max()`
+- `append` / `prepend` / `insert` / `remove` / `move` / `swap` / `update` / `replace`: row operations. Per-row overrides set with `ctx.setFieldMeta('lines.0.qty', …)` follow their rows.
+
+For an array container, `onChange(nextArray)` replaces the rows, so `rows` / `rowCount` stay in step. Unlike `replace`, it **keeps** per-row overrides, because it is meant for whole-array writes of edited cells.
+
+A container honours `condition` like any field: it is not rendered while the condition is false, and its value is unregistered while hidden.
+
+Container components can be registered under a registry key too. `ComponentRegistry` accepts `FieldProps`, `ObjectContainerProps` and `ArrayContainerProps` components.
+
 ## Live Example
 
 ```jsx live noInline

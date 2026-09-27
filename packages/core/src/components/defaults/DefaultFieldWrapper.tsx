@@ -15,10 +15,13 @@ export function DefaultFieldWrapper({
   const isDisabled = field.meta.disabled || contextDisabled
   const hasError = Boolean(error)
   const hasDescription = Boolean(field.meta.description)
+  const className =
+    [classNames.fieldWrapper, field.meta.className].filter(Boolean).join(' ') ||
+    undefined
 
   return (
     <div
-      className={classNames.fieldWrapper}
+      className={className}
       style={
         {
           '--field-span': span ?? field.meta.span ?? 1,

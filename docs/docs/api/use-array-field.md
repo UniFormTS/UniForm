@@ -69,8 +69,8 @@ And it adds UniForm-specific derived flags:
 
 ## How operations are applied
 
-- **Array rendered** — the operations drive the array renderer's own field array, so rows update in the DOM immediately and rows added with the built-in buttons are reflected in `rowCount` and `fields`.
-- **Array not rendered** (for example `hidden`, or replaced by a component override) — the operations write the whole array value with `setValue`. Each call reads the current array at call time, so two `append` calls in one handler both land.
+- **Array rendered** (by the built-in renderer or an [array container component](../guides/custom-components#container-components)) — the operations drive the array's own field array, so rows update in the DOM immediately and rows added with the built-in buttons are reflected in `rowCount` and `fields`.
+- **Array not rendered** (for example `hidden`) — the operations write the whole array value with `setValue`. Each call reads the current array at call time, so two `append` calls in one handler both land.
 
 Either way, per-row overrides set with `ctx.setFieldMeta('<array>.<index>.<field>', …)` follow their rows (see [Array Fields](../guides/arrays#per-row-overrides-follow-their-row)).
 
