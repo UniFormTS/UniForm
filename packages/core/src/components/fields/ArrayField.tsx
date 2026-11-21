@@ -13,7 +13,10 @@ import { FieldRenderer } from '../FieldRenderer'
 import { getDefaultValue } from './getDefaultValue'
 import { useRegisteredFieldArray } from '../../hooks/useRegisteredFieldArray'
 import type { RowAwareOnChange } from '../../utils/createRowScopedContext'
-import type { ArrayFieldConfigWithRowMeta } from '../../utils/fieldPipeline'
+import {
+  applyRowDynamicMeta,
+  type ArrayFieldConfigWithRowMeta,
+} from '../../utils/fieldPipeline'
 
 type ArrayFieldProps = {
   field: Extract<FieldConfig, { type: 'array' }>
@@ -79,40 +82,6 @@ function bindRowIndexToItemConfig(
         },
       },
     }
-  })
-
-  return { ...itemConfig, children }
-}
-
-/**
- * Merges per-row dynamic meta overrides into the child field configs of an
- * array item. For each child field that has an override in `rowOverrides`,
- * applies the override properties (hidden, disabled, label, placeholder,
- * description, options) to the child's config.
- */
-function applyRowDynamicMeta(
-  itemConfig: FieldConfig,
-  rowOverrides: Record<string, Partial<FieldDependencyResult>>,
-): FieldConfig {
-  if (itemConfig.type !== 'object') return itemConfig
-
-  const children = itemConfig.children.map((child) => {
-    const override = rowOverrides[child.name]
-    if (!override) return child
-
-    const { options, label, ...metaOverrides } = override
-    let updated: FieldConfig = {
-      ...child,
-      ...(label !== undefined ? { label } : {}),
-      meta: { ...child.meta, ...metaOverrides },
-    }
-
-    // For select fields, override options if provided
-    if (options !== undefined && updated.type === 'select') {
-      updated = { ...updated, options }
-    }
-
-    return updated
   })
 
   return { ...itemConfig, children }

@@ -17,8 +17,9 @@ export type FieldRendererProps = {
   index?: number
   /** Nesting depth (0 = top-level, 1 = inside object, etc.). */
   depth?: number
-  /** When `true`, unregisters the field's value on unmount so it resets to its default when reshown.
-   *  Auto-set for conditional fields; propagated to object children. */
+  /** When `true`, unregisters the field's value on unmount. Propagated to
+   *  object children. Not needed for hidden fields: AutoForm resets a field to
+   *  its default when it becomes hidden and never validates or submits it. */
   shouldUnregister?: boolean
 }
 
@@ -66,8 +67,9 @@ export function FieldRenderer({
   depth = 0,
   shouldUnregister,
 }: FieldRendererProps) {
-  const effectiveShouldUnregister =
-    shouldUnregister ?? typeof field.meta.condition === 'function'
+  // Hidden fields are reset and excluded from validation by AutoForm; only an
+  // explicit `shouldUnregister` unregisters a field's value on unmount.
+  const effectiveShouldUnregister = shouldUnregister
   const {
     fieldWrapper: FieldWrapper,
     messages,

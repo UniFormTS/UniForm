@@ -7,6 +7,7 @@ import type {
   AutoFormHandle,
   DeepPartial,
   FieldCondition,
+  FieldConfig,
   FieldMeta,
   FormMethods,
   FieldDependencyResult,
@@ -44,7 +45,18 @@ import {
   buildDefaults,
 } from '../utils/fieldPipeline'
 import { resolveNullableSlot } from '../utils/resolveNullableSlot'
-import { mergeDefaults, omitPath } from '../utils/mergeDefaults'
+import { mergeDefaults } from '../utils/mergeDefaults'
+import {
+  collectHiddenFields,
+  collectHiddenPaths,
+  cloneValue,
+  omitErrorsAt,
+  omitPaths,
+  relaxSchemaAt,
+  toSchemaPath,
+} from '../utils/hiddenFields'
+import { getAtPath } from '../hooks/useRegisteredFieldArray'
+import { getDefaultValue } from './fields/getDefaultValue'
 import { normalizeEmptyValues } from '../utils/normalizeEmptyValues'
 
 // Shared defaults keep the context value stable across re-renders
@@ -136,77 +148,80 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   }, [rawFields, unionInfo])
 
   const computedDefaults = React.useMemo(() => {
-    let base = mergeDefaults(
+    const base = mergeDefaults(
       generatedDefaults,
       typeof defaultValues === 'function'
         ? undefined
         : (defaultValues as Record<string, unknown> | undefined),
     )
 
-    // Collect all conditions: UniForm-registered takes precedence, fields-prop fills gaps
-    const conditions = new Map<string, FieldCondition>(
-      (uniForm as UniForm<TSchema>)._getConditions() as Map<
-        string,
-        FieldCondition
-      >,
-    )
-    for (const [name, override] of Object.entries(
-      fieldOverridesProp as Record<string, Partial<FieldMeta>>,
-    )) {
-      if (typeof override.condition === 'function' && !conditions.has(name)) {
-        conditions.set(name, override.condition as FieldCondition)
-      }
-    }
-
-    // Exclude fields whose condition starts false so they're never pre-registered
-    // in the RHF store. Evaluated against `base` so fields that start visible
-    // (condition true) still receive their default value.
-    for (const [name, condition] of conditions) {
-      if (!condition(base)) {
-        base = omitPath(base, name)
-      }
-    }
-
+    // Fields that start hidden keep their defaults: hidden values are never
+    // validated or submitted (see `resolver`), and a field shown later starts
+    // from its default instead of `undefined`.
     return base
-  }, [generatedDefaults, defaultValues, uniForm, fieldOverridesProp])
+  }, [generatedDefaults, defaultValues])
 
   // Async defaultValues: track whether we are still waiting for the loader
   const isAsyncDefaults = typeof defaultValues === 'function'
   const [isLoadingDefaults, setIsLoadingDefaults] =
     React.useState(isAsyncDefaults)
 
-  // Before validation: map empty inputs ('' in form state) to the schema's
-  // empty value (undefined / null / ''), and for discriminated unions keep only
-  // the active variant's keys, so other variants' seeded or previously entered
-  // values are neither rejected by strict variants nor passed through by loose
-  // ones.
+  // Latest rendered field configs (with conditions and dynamic meta), read by
+  // the resolver to find hidden fields at validation time.
+  const renderedFieldsRef = React.useRef<FieldConfig[]>([])
+
+  // Before validation:
+  // - for discriminated unions, keep only the active variant's keys, so other
+  //   variants' seeded or previously entered values are neither rejected by
+  //   strict variants nor passed through by loose ones;
+  // - drop hidden fields' values (hidden fields are neither validated nor
+  //   submitted) and ignore their errors; if only hidden fields failed, parse
+  //   again with those paths made optional so `onSubmit` still gets Zod output;
+  // - map empty inputs ('' in form state) to the schema's empty value.
   const resolver = React.useMemo((): Resolver => {
-    const base = zodResolver(schema) as unknown as Resolver
-    if (!unionInfo) {
-      return (values, context, options) =>
-        base(normalizeEmptyValues(values, rawFields), context, options)
-    }
-    const variantFields = new Map(
-      [...unionInfo.variantMap].map(([value, variant]) => [
-        value,
-        introspectObjectSchema(variant),
-      ]),
-    )
-    return (values, context, options) => {
-      const active = String(
-        (values as Record<string, unknown>)[unionInfo.discriminatorKey],
-      )
-      const variant = unionInfo.variantMap.get(active)
-      if (!variant) return base(values, context, options)
-      const activeValues: Record<string, unknown> = {}
-      for (const key of Object.keys(variant._zod.def.shape)) {
-        if (key in values) activeValues[key] = values[key]
+    const validate = (s: z.$ZodType): Resolver =>
+      zodResolver(s as TSchema) as unknown as Resolver
+    const base = validate(schema)
+    const variantFields = unionInfo
+      ? new Map(
+          [...unionInfo.variantMap].map(([value, variant]) => [
+            value,
+            introspectObjectSchema(variant),
+          ]),
+        )
+      : undefined
+
+    return async (values, context, options) => {
+      let activeValues = values as Record<string, unknown>
+      let fields = rawFields
+      if (unionInfo && variantFields) {
+        const active = String(activeValues[unionInfo.discriminatorKey])
+        const variant = unionInfo.variantMap.get(active)
+        if (!variant) return base(values, context, options)
+        activeValues = {}
+        for (const key of Object.keys(variant._zod.def.shape)) {
+          if (key in values) activeValues[key] = values[key]
+        }
+        fields = variantFields.get(active) ?? []
       }
-      return base(
-        normalizeEmptyValues(activeValues, variantFields.get(active) ?? []),
-        context,
-        options,
+
+      const hiddenPaths = collectHiddenPaths(renderedFieldsRef.current, values)
+      const payload = normalizeEmptyValues(
+        omitPaths(activeValues, hiddenPaths),
+        fields,
       )
+      const result = await base(payload, context, options)
+      if (!hiddenPaths.length || !Object.keys(result.errors).length) {
+        return result
+      }
+      const visibleErrors = omitErrorsAt(result.errors, hiddenPaths)
+      if (Object.keys(visibleErrors).length) {
+        return { values: {}, errors: visibleErrors } as typeof result
+      }
+      const relaxed = relaxSchemaAt(schema, [
+        ...new Set(hiddenPaths.map(toSchemaPath)),
+      ])
+      return validate(relaxed)(payload, context, options)
     }
   }, [schema, unionInfo, rawFields])
 
@@ -403,6 +418,38 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   )
 
   const allValues = useWatch({ control })
+
+  React.useLayoutEffect(() => {
+    renderedFieldsRef.current = fieldsWithDynamic
+  }, [fieldsWithDynamic])
+
+  // A field that becomes hidden is reset to its default (and its errors are
+  // cleared), so it shows its default when it appears again. Applies alike to
+  // conditions, `hidden` (fields prop or setFieldMeta), objects and arrays.
+  const hiddenFields = React.useMemo(
+    () =>
+      collectHiddenFields(
+        fieldsWithDynamic,
+        (allValues ?? {}) as Record<string, unknown>,
+      ),
+    [fieldsWithDynamic, allValues],
+  )
+  const previousHiddenRef = React.useRef<Set<string> | null>(null)
+  React.useEffect(() => {
+    const previous = previousHiddenRef.current
+    previousHiddenRef.current = new Set(hiddenFields.map((h) => h.path))
+    if (!previous) return // fields hidden on mount already hold their defaults
+    for (const { path, field } of hiddenFields) {
+      if (previous.has(path)) continue
+      const stored = getAtPath(control._defaultValues, path)
+      const fallback = stored === undefined ? getDefaultValue(field) : stored
+      setValue(path, cloneValue(fallback), {
+        shouldDirty: false,
+        shouldValidate: false,
+      })
+      clearErrors(path)
+    }
+  }, [hiddenFields, control, setValue, clearErrors])
 
   React.useEffect(() => {
     onValuesChangeRef.current?.(allValues as z.infer<TSchema>)
