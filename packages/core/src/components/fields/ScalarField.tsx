@@ -4,6 +4,7 @@ import type { FieldConfig } from '../../types'
 import { useAutoFormContext } from '../../context/AutoFormContext'
 import { resolveComponent } from '../resolveComponent'
 import { coerceValue } from '../../coercion/coerce'
+import { TEXT_LIKE_TYPES } from './getDefaultValue'
 
 type ScalarFieldProps = {
   field: FieldConfig
@@ -52,7 +53,10 @@ export function ScalarField({
             // Empty input is stored as '' — RHF can't display a controlled
             // `undefined` (it falls back to the value captured at mount). The
             // resolver maps '' to the schema's empty value before validation.
-            if (!isComposite && (coerced === '' || coerced == null)) {
+            if (
+              TEXT_LIKE_TYPES.has(field.type) &&
+              (coerced === '' || coerced == null)
+            ) {
               coerced = ''
             }
             rhfField.onChange(coerced)

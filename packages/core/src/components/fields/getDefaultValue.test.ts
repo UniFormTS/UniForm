@@ -47,15 +47,20 @@ describe('getDefaultValue', () => {
         ),
       ),
     ).toBeUndefined()
+    // Composites are seeded from their children's own defaults, so every
+    // sibling holds a valid input; untouched-ness is detected on submit.
     expect(
       getDefaultValue(
         field(
           z
-            .object({ len: z.string().transform((s) => s.length) })
-            .default({ len: 5 }),
+            .object({
+              len: z.string().transform((s) => s.length),
+              flag: z.boolean(),
+            })
+            .default({ len: 5, flag: true }),
         ),
       ),
-    ).toBeUndefined()
+    ).toEqual({ len: '', flag: false })
     // Text inputs still hold '' (mapped to undefined on submit)
     expect(
       getDefaultValue(
@@ -97,5 +102,13 @@ describe('getEmptyValue', () => {
     expect(getEmptyValue(field(z.string().nullable()))).toBeNull()
     expect(getEmptyValue(field(z.string().nullish()))).toBeUndefined()
     expect(getEmptyValue(field(z.number()))).toBeUndefined()
+  })
+
+  it("treats an inconclusive (async) probe as accepting ''", () => {
+    expect(
+      getEmptyValue(
+        field(z.number().or(z.literal('').refine(() => Promise.resolve(true)))),
+      ),
+    ).toBe('')
   })
 })

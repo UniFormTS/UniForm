@@ -177,6 +177,18 @@ describe('ZodDefault', () => {
     expect(result.deferredDefault).toBeUndefined()
   })
 
+  it('drops a collapsed variant default when the outer default is deferred', () => {
+    const result = introspectSchema(
+      z
+        .union([z.string().default('abc'), z.number()])
+        .transform((v) => String(v).length)
+        .default(5),
+      'u',
+    )
+    expect(result.getDefault).toBeUndefined()
+    expect(result.deferredDefault).toBe(true)
+  })
+
   it('omits getDefault when the schema has no default', () => {
     const result = introspectSchema(z.string(), 'x')
     expect(result.getDefault).toBeUndefined()

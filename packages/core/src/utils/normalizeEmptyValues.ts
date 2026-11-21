@@ -1,6 +1,7 @@
 import type { FieldConfig } from '../types'
 import {
   TEXT_LIKE_TYPES,
+  getDefaultValue,
   getEmptyValue,
 } from '../components/fields/getDefaultValue'
 
@@ -9,30 +10,44 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' &&
   Object.getPrototypeOf(value) === Object.prototype
 
-/** `true` when nothing in `value` was filled in (all leaves empty). */
-function isUntouched(value: unknown): boolean {
-  if (value === undefined || value === '') return true
-  if (Array.isArray(value)) return value.length === 0
-  if (isPlainObject(value)) return Object.values(value).every(isUntouched)
+/** Structural equality for form-state values (plain objects, arrays, dates). */
+function isEqual(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true
+  if (a instanceof Date && b instanceof Date) return a.getTime() === b.getTime()
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return a.length === b.length && a.every((item, i) => isEqual(item, b[i]))
+  }
+  if (isPlainObject(a) && isPlainObject(b)) {
+    // Keys holding `undefined` count as absent
+    const keys = new Set([...Object.keys(a), ...Object.keys(b)])
+    return [...keys].every((key) => isEqual(a[key], b[key]))
+  }
   return false
 }
 
 function normalizeValue(value: unknown, field: FieldConfig): unknown {
+  // A composite with a deferred (output-typed) default that still equals its
+  // seeded value was not touched: drop it so Zod applies the default. Compared
+  // on raw form state, before blanks are mapped to null/undefined.
+  if (
+    field.deferredDefault &&
+    (field.type === 'object' || field.type === 'array') &&
+    (value === undefined || isEqual(value, getDefaultValue(field)))
+  ) {
+    return undefined
+  }
+
   if (TEXT_LIKE_TYPES.has(field.type)) {
     return value === '' ? getEmptyValue(field) : value
   }
 
-  let result = value
   if (field.type === 'object' && isPlainObject(value)) {
-    result = normalizeEmptyValues(value, field.children)
-  } else if (field.type === 'array' && Array.isArray(value)) {
-    result = value.map((item) => normalizeValue(item, field.itemConfig))
+    return normalizeEmptyValues(value, field.children)
   }
-
-  // An untouched composite with a deferred (output-typed) default is dropped so
-  // Zod applies the default instead of validating the empty shape.
-  if (field.deferredDefault && isUntouched(result)) return undefined
-  return result
+  if (field.type === 'array' && Array.isArray(value)) {
+    return value.map((item) => normalizeValue(item, field.itemConfig))
+  }
+  return value
 }
 
 /**

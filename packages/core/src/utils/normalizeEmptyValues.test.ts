@@ -75,6 +75,25 @@ describe('normalizeEmptyValues', () => {
     })
   })
 
+  it('compares raw values (before nullable mapping) to detect untouched composites', () => {
+    const fields = fieldsOf({
+      o: z
+        .object({
+          len: z.string().transform((s) => s.length),
+          note: z.string().nullable(),
+          flag: z.boolean(),
+        })
+        .default({ len: 5, note: null, flag: true }),
+    })
+    expect(
+      normalizeEmptyValues({ o: { len: '', note: '', flag: false } }, fields),
+    ).toEqual({ o: undefined })
+    // Any change from the seeded defaults keeps the composite
+    expect(
+      normalizeEmptyValues({ o: { len: '', note: '', flag: true } }, fields),
+    ).toEqual({ o: { len: '', note: null, flag: true } })
+  })
+
   it('passes through keys without a field config', () => {
     expect(normalizeEmptyValues({ extra: '' }, [])).toEqual({ extra: '' })
   })

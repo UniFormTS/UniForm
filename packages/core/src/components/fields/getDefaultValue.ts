@@ -43,8 +43,9 @@ function acceptsEmptyString(field: FieldConfig): boolean {
   try {
     return safeParse(field.schema, '').success
   } catch {
-    // e.g. async refinements, which can't be checked synchronously
-    return false
+    // Inconclusive (e.g. async refinements can't run synchronously): keep ''
+    // and let the async resolver decide.
+    return true
   }
 }
 
@@ -55,8 +56,9 @@ function acceptsEmptyString(field: FieldConfig): boolean {
  *
  * - A schema `.default()` / `.prefault()` value always wins (suppliers run on
  *   every call, so each new row gets a fresh value).
- * - A deferred (output-typed) default leaves the field untouched: `''` for
- *   text-like fields, `undefined` otherwise, so Zod applies the default.
+ * - A deferred (output-typed) default: `''` for text-like fields, `undefined`
+ *   for other scalars, and children's defaults for objects and arrays (dropped
+ *   on submit while unchanged), so Zod applies the default when untouched.
  * - `string` / `number` / `date` → `''`
  * - `boolean` → `false`
  * - `select` → first option value, or `''` if no options exist (the default
@@ -68,7 +70,16 @@ function acceptsEmptyString(field: FieldConfig): boolean {
 export function getDefaultValue(field: FieldConfig): unknown {
   if (field.getDefault) return cloneDefault(field.getDefault())
   if (TEXT_LIKE_TYPES.has(field.type)) return ''
-  if (field.deferredDefault) return undefined
+  // A deferred scalar (e.g. a transformed boolean) stays undefined so Zod
+  // applies its default. Composites are still seeded from their children, so
+  // every sibling input is valid; `normalizeEmptyValues` drops the composite
+  // while it still equals this seed.
+  if (
+    field.deferredDefault &&
+    field.type !== 'object' &&
+    field.type !== 'array'
+  )
+    return undefined
 
   switch (field.type) {
     case 'boolean':

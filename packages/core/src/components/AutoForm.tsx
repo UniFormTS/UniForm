@@ -44,7 +44,7 @@ import {
   buildDefaults,
 } from '../utils/fieldPipeline'
 import { resolveNullableSlot } from '../utils/resolveNullableSlot'
-import { mergeDefaults } from '../utils/mergeDefaults'
+import { mergeDefaults, omitPath } from '../utils/mergeDefaults'
 import { normalizeEmptyValues } from '../utils/normalizeEmptyValues'
 
 // Shared defaults keep the context value stable across re-renders
@@ -136,7 +136,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   }, [rawFields, unionInfo])
 
   const computedDefaults = React.useMemo(() => {
-    const base = mergeDefaults(
+    let base = mergeDefaults(
       generatedDefaults,
       typeof defaultValues === 'function'
         ? undefined
@@ -163,7 +163,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     // (condition true) still receive their default value.
     for (const [name, condition] of conditions) {
       if (!condition(base)) {
-        delete base[name]
+        base = omitPath(base, name)
       }
     }
 

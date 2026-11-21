@@ -161,9 +161,19 @@ export function introspectSchema(
       } else {
         // Plain union (z.or()) — collapse to the first variant.
         // The original schema is preserved on `schema` for custom components.
-        const collapsed = introspectSchema(variants[0], name, parentPath)
+        const { getDefault: collapsedDefault, ...collapsed } = introspectSchema(
+          variants[0],
+          name,
+          parentPath,
+        )
         return {
           ...collapsed,
+          // A deferred outer default must win over the first variant's own
+          // default, which would otherwise seed (and transform) the input.
+          ...(collapsedDefault &&
+            !deferredDefault && {
+              getDefault: collapsedDefault,
+            }),
           ...(!required && { required }),
           ...wrapperInfo,
           name: path,

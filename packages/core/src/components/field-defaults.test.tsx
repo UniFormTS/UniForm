@@ -427,4 +427,91 @@ describe('field defaults', () => {
     expect(ids).toHaveLength(2)
     expect(new Set(ids).size).toBe(2)
   })
+
+  it('seeds siblings of a deferred-default object so editing one field still validates', async () => {
+    const onSubmit = vi.fn()
+    const form = createForm(
+      z.object({
+        o: z
+          .object({
+            len: z.string().transform((s) => s.length),
+            flag: z.boolean(),
+          })
+          .default({ len: 5, flag: true }),
+      }),
+    )
+    const { user, container } = setup(
+      <AutoForm form={form} onSubmit={onSubmit} />,
+    )
+    await user.type(
+      container.querySelector('[name="o.len"]') as HTMLInputElement,
+      'abc',
+    )
+    await user.click(submit())
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    expect(onSubmit.mock.calls[0][0]).toEqual({ o: { len: 3, flag: false } })
+  })
+
+  it('applies a deferred object default after its inputs are cleared again', async () => {
+    const onSubmit = vi.fn()
+    const form = createForm(
+      z.object({
+        o: z
+          .object({
+            len: z.string().transform((s) => s.length),
+            note: z.string().nullable(),
+          })
+          .default({ len: 5, note: null }),
+      }),
+    )
+    const { user, container } = setup(
+      <AutoForm form={form} onSubmit={onSubmit} />,
+    )
+    const len = container.querySelector('[name="o.len"]') as HTMLInputElement
+    const note = container.querySelector('[name="o.note"]') as HTMLInputElement
+    await user.type(len, 'x')
+    await user.type(note, 'y')
+    await user.clear(len)
+    await user.clear(note)
+    await user.click(submit())
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    expect(onSubmit.mock.calls[0][0]).toEqual({ o: { len: 5, note: null } })
+  })
+
+  it('does not rewrite values from custom components on non-text fields', async () => {
+    const onSubmit = vi.fn()
+    const NullSetter = ({ onChange }: { onChange: (v: unknown) => void }) => (
+      <button type='button' onClick={() => onChange(null)}>
+        set null
+      </button>
+    )
+    const form = createForm(z.object({ x: z.unknown() }))
+    const { user } = setup(
+      <AutoForm
+        form={form}
+        fields={{ x: { component: NullSetter } }}
+        onSubmit={onSubmit}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'set null' }))
+    await user.click(submit())
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    expect(onSubmit.mock.calls[0][0]).toEqual({ x: null })
+  })
+
+  it('keeps nested fields whose condition starts false out of the submission', async () => {
+    const onSubmit = vi.fn()
+    const form = createForm(
+      z.object({
+        prefs: z.object({
+          news: z.boolean(),
+          internal: z.boolean().optional(),
+        }),
+      }),
+    ).setCondition('prefs.internal', () => false)
+    const { user } = setup(<AutoForm form={form} onSubmit={onSubmit} />)
+    await user.click(submit())
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    expect(onSubmit.mock.calls[0][0]).toEqual({ prefs: { news: false } })
+  })
 })

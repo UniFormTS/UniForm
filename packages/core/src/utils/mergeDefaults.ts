@@ -30,3 +30,26 @@ export function mergeDefaults(
   }
   return result
 }
+
+/**
+ * Returns a copy of `values` without the dot-notated `path`, copying only the
+ * objects along the path (inputs are not mutated). Returns `values` unchanged
+ * when the path doesn't exist or crosses a non-plain value such as an array
+ * (row-scoped paths like `"tasks.note"` are left to their rendered fields).
+ */
+export function omitPath(
+  values: Record<string, unknown>,
+  path: string,
+): Record<string, unknown> {
+  const [head, ...rest] = path.split('.')
+  if (!(head in values)) return values
+  if (!rest.length) {
+    const result = { ...values }
+    delete result[head]
+    return result
+  }
+  const child = values[head]
+  if (!isPlainObject(child)) return values
+  const updated = omitPath(child, rest.join('.'))
+  return updated === child ? values : { ...values, [head]: updated }
+}

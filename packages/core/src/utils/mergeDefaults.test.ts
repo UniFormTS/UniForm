@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { mergeDefaults } from './mergeDefaults'
+import { mergeDefaults, omitPath } from './mergeDefaults'
 
 describe('mergeDefaults', () => {
   it('recursively merges plain objects, source winning', () => {
@@ -37,5 +37,21 @@ describe('mergeDefaults', () => {
     const base = { nested: { x: 1 } }
     mergeDefaults(base, { nested: { y: 2 } })
     expect(base).toEqual({ nested: { x: 1 } })
+  })
+})
+
+describe('omitPath', () => {
+  it('removes a nested key without mutating the input', () => {
+    const values = { prefs: { news: false, internal: false }, other: { a: 1 } }
+    const result = omitPath(values, 'prefs.internal')
+    expect(result).toEqual({ prefs: { news: false }, other: { a: 1 } })
+    expect(values.prefs).toEqual({ news: false, internal: false })
+    expect(result.other).toBe(values.other)
+  })
+
+  it('returns the input unchanged for missing or array-crossing paths', () => {
+    const values = { tasks: [{ note: '' }], a: 1 }
+    expect(omitPath(values, 'missing.x')).toBe(values)
+    expect(omitPath(values, 'tasks.note')).toBe(values)
   })
 })
