@@ -768,4 +768,38 @@ describe('hidden fields', () => {
       expect(onSubmit.mock.calls[0][0]).toEqual({ kind: 'company' })
     })
   })
+
+  it('keeps a statically hidden row field that setFieldMeta reveals in one row', async () => {
+    const onSubmit = vi.fn()
+    const form = createForm(
+      z.object({
+        rows: z.array(z.object({ name: z.string(), secret: z.string() })),
+      }),
+    ).setOnChange('rows.name', (value, ctx) => {
+      ctx.setFieldMeta('rows.secret', { hidden: value !== 'show' })
+    })
+    const { user, container } = setup(
+      <AutoForm
+        form={form}
+        fields={{ 'rows.secret': { hidden: true } }}
+        defaultValues={{
+          rows: [
+            { name: '', secret: '' },
+            { name: '', secret: '' },
+          ],
+        }}
+        onSubmit={onSubmit}
+      />,
+    )
+    await user.type(input(container, 'rows.0.name')!, 'show')
+    await waitFor(() =>
+      expect(input(container, 'rows.0.secret')).not.toBeNull(),
+    )
+    await user.type(input(container, 'rows.0.secret')!, 'abc')
+    await user.click(submit())
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    expect(onSubmit.mock.calls[0][0]).toEqual({
+      rows: [{ name: 'show', secret: 'abc' }, { name: '' }],
+    })
+  })
 })

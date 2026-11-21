@@ -260,12 +260,13 @@ export function AutoForm<TSchema extends z.$ZodObject>(
         values,
         isCustomRenderedRef.current,
       )
-      // Hidden by `meta.hidden` in an array item: hidden in every row, even
-      // rows a default supplies that aren't in the input
+      // Hidden by `meta.hidden` in an array item config: covers rows a default
+      // supplies that aren't in the input. Where input rows exist, their
+      // observed visibility wins (per-row meta may reveal the field).
       const staticHidden = collectStaticHiddenSchemaPaths(
         visibilityFields,
         isCustomRenderedRef.current,
-      )
+      ).filter((path) => !visibility.rowOccurrences.get(path))
       const hiddenPaths = visibility.hidden.map((h) => h.path)
       // Map empty inputs first, on unpruned values (deferred-default
       // composites compare their raw value with their seed), without
