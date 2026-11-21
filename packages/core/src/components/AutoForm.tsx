@@ -414,7 +414,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
         Object.keys(reindexDynamicMeta(asRecord, name, mutation)),
       )
     },
-    [],
+    [setDynamicMeta],
   )
 
   const onSubmitRef = useLatestRef(onSubmit)
@@ -482,6 +482,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       watch: watch as FormMethods<z.infer<TSchema>>['watch'],
     }),
     [
+      setDynamicMeta,
       clearErrors,
       getValues,
       handleSubmit,
@@ -508,7 +509,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
         }))
       }
     },
-    [],
+    [setDynamicMeta],
   )
 
   // Build the UniForm context — stable when formMethods and setFieldMeta are stable
