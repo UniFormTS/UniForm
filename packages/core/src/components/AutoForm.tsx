@@ -48,12 +48,11 @@ import { resolveNullableSlot } from '../utils/resolveNullableSlot'
 import { mergeDefaults } from '../utils/mergeDefaults'
 import {
   collectHiddenFields,
-  collectHiddenPaths,
   cloneValue,
   omitErrorsAt,
   omitPaths,
   relaxSchemaAt,
-  toSchemaPath,
+  skipSchemaAt,
 } from '../utils/hiddenFields'
 import { getAtPath } from '../hooks/useRegisteredFieldArray'
 import { getDefaultValue } from './fields/getDefaultValue'
@@ -191,6 +190,27 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   const resolver = React.useMemo((): Resolver => {
     const validate = (s: z.$ZodType): Resolver =>
       zodResolver(s as TSchema) as unknown as Resolver
+    // Derived schemas, cached per (mode, base schema, paths)
+    const derived = new WeakMap<z.$ZodType, Map<string, z.$ZodType>>()
+    const schemaFor = (
+      mode: 'skip' | 'relax',
+      from: z.$ZodType,
+      paths: string[],
+    ): z.$ZodType => {
+      if (!paths.length) return from
+      const key = `${mode}:${[...paths].sort().join('|')}`
+      const cache = derived.get(from) ?? new Map<string, z.$ZodType>()
+      derived.set(from, cache)
+      let result = cache.get(key)
+      if (!result) {
+        result =
+          mode === 'skip'
+            ? skipSchemaAt(from, paths)
+            : relaxSchemaAt(from, paths)
+        cache.set(key, result)
+      }
+      return result
+    }
     const base = validate(schema)
     const variantFields = unionInfo
       ? new Map(
@@ -215,27 +235,59 @@ export function AutoForm<TSchema extends z.$ZodObject>(
         fields = variantFields.get(active) ?? []
       }
 
-      const hiddenPaths = collectHiddenPaths(
+      const hidden = collectHiddenFields(
         renderedFieldsRef.current,
         values,
         isCustomRenderedRef.current,
       )
+      if (!hidden.length) {
+        return base(
+          normalizeEmptyValues(activeValues, fields),
+          context,
+          options,
+        )
+      }
+      const hiddenPaths = hidden.map((h) => h.path)
       const payload = normalizeEmptyValues(
         omitPaths(activeValues, hiddenPaths),
         fields,
       )
-      const result = await base(payload, context, options)
-      if (!hiddenPaths.length || !Object.keys(result.errors).length) {
-        return result
-      }
+      // Hidden everywhere: swap the field's schema out entirely, so its
+      // validators, transforms and defaults never run.
+      const unique = (paths: string[]) => [...new Set(paths)]
+      const skipped = unique(
+        hidden.filter((h) => h.path === h.schemaPath).map((h) => h.schemaPath),
+      )
+      // Hidden in some array rows only: the element schema is shared by every
+      // row, so validate as-is, ignore those rows' errors, and re-parse with the
+      // field optional if nothing else failed.
+      const perRow = unique(
+        hidden.filter((h) => h.path !== h.schemaPath).map((h) => h.schemaPath),
+      )
+      const target = schemaFor('skip', schema, skipped)
+      // Zod may recreate hidden keys (e.g. from a parent default): drop them
+      type Result = Awaited<ReturnType<Resolver>>
+      const prune = (result: Result): Result =>
+        Object.keys(result.errors).length
+          ? result
+          : ({
+              ...result,
+              values: omitPaths(
+                result.values as Record<string, unknown>,
+                hiddenPaths,
+              ),
+            } as Result)
+
+      const result = await validate(target)(payload, context, options)
+      if (!Object.keys(result.errors).length) return prune(result)
       const visibleErrors = omitErrorsAt(result.errors, hiddenPaths)
-      if (Object.keys(visibleErrors).length) {
-        return { values: {}, errors: visibleErrors } as typeof result
+      if (Object.keys(visibleErrors).length || !perRow.length) {
+        return Object.keys(visibleErrors).length
+          ? ({ values: {}, errors: visibleErrors } as typeof result)
+          : result
       }
-      const relaxed = relaxSchemaAt(schema, [
-        ...new Set(hiddenPaths.map(toSchemaPath)),
-      ])
-      return validate(relaxed)(payload, context, options)
+      const relaxed = schemaFor('relax', target, perRow)
+      return prune(await validate(relaxed)(payload, context, options))
     }
   }, [schema, unionInfo, rawFields, isCustomRenderedRef])
 

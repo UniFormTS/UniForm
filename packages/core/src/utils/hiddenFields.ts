@@ -35,71 +35,78 @@ function isHidden(field: FieldConfig, conditionValues: unknown): boolean {
   }
 }
 
-export type HiddenField = { path: string; field: FieldConfig }
+export type HiddenField = {
+  /** Concrete path in the form values, e.g. `"rows.0.note"`. */
+  path: string
+  /** The same path in the schema (array indices removed), e.g. `"rows.note"`. */
+  schemaPath: string
+  field: FieldConfig
+}
+
+type IsCustomRendered = (field: FieldConfig) => boolean
+
+const joinPath = (prefix: string, name: string) =>
+  prefix ? (name ? `${prefix}.${name}` : prefix) : name
 
 /**
- * Returns the fields currently hidden with their concrete paths (e.g.
- * `"detail"`, `"prefs.reason"`, `"rows.0.note"`), mirroring how they render:
- * conditions receive the full values, or the row's values inside an array;
- * per-row dynamic meta applies per row; a hidden parent hides its subtree (only
- * the parent is returned). Fields for which `isCustomRendered` returns true
- * (by default: a component function in `meta.component`) are treated as
+ * Returns the fields currently hidden with their concrete and schema paths,
+ * mirroring how they render: conditions receive the full values, or the row's
+ * values inside an array; per-row dynamic meta applies per row; a hidden parent
+ * hides its subtree (only the parent is returned); arrays of any item shape are
+ * walked row by row. Fields (and array items) for which `isCustomRendered`
+ * returns true — by default a component function in `meta.component` — are
  * leaves, since their component renders the subtree.
  */
 export function collectHiddenFields(
   fields: FieldConfig[],
   values: Record<string, unknown>,
-  isCustomRendered: (field: FieldConfig) => boolean = (field) =>
+  isCustomRendered: IsCustomRendered = (field) =>
     typeof field.meta.component === 'function',
-  prefix = '',
 ): HiddenField[] {
-  const conditionValues = prefix ? getAtPath(values, prefix) : values
   const hidden: HiddenField[] = []
 
-  for (const field of fields) {
-    const path = prefix
-      ? field.name
-        ? `${prefix}.${field.name}`
-        : prefix
-      : field.name
-    if (isHidden(field, conditionValues)) {
-      hidden.push({ path, field })
-      continue
-    }
-    // A custom component owns its subtree: nested conditions don't apply
-    if (isCustomRendered(field)) continue
+  const walkArray = (field: FieldConfig, path: string, schemaPath: string) => {
+    if (field.type !== 'array') return
+    const rows = getAtPath(values, path)
+    if (!Array.isArray(rows)) return
+    const rowMeta = (field as ArrayFieldConfigWithRowMeta)._rowDynamicMeta
+    rows.forEach((_, index) => {
+      const item = rowMeta?.[index]
+        ? applyRowDynamicMeta(field.itemConfig, rowMeta[index])
+        : field.itemConfig
+      if (isCustomRendered(item)) return
+      const rowPath = `${path}.${index}`
+      // Row children are named relative to the row, which is also their
+      // condition scope (see ArrayField / ObjectField)
+      if (item.type === 'object') walkFields(item.children, rowPath, schemaPath)
+      else if (item.type === 'array') walkArray(item, rowPath, schemaPath)
+    })
+  }
 
-    if (field.type === 'object') {
-      // Object children keep the parent's condition scope (see ObjectField)
-      hidden.push(
-        ...collectHiddenFields(
-          field.children,
-          values,
-          isCustomRendered,
-          prefix,
-        ),
-      )
-    } else if (field.type === 'array') {
-      const rows = getAtPath(values, path)
-      if (!Array.isArray(rows)) continue
-      const rowMeta = (field as ArrayFieldConfigWithRowMeta)._rowDynamicMeta
-      rows.forEach((_, index) => {
-        const itemConfig = rowMeta?.[index]
-          ? applyRowDynamicMeta(field.itemConfig, rowMeta[index])
-          : field.itemConfig
-        if (itemConfig.type === 'object') {
-          hidden.push(
-            ...collectHiddenFields(
-              itemConfig.children,
-              values,
-              isCustomRendered,
-              `${path}.${index}`,
-            ),
-          )
-        }
-      })
+  const walkFields = (
+    list: FieldConfig[],
+    prefix: string,
+    schemaPrefix: string,
+  ) => {
+    const conditionValues = prefix ? getAtPath(values, prefix) : values
+    for (const field of list) {
+      const path = joinPath(prefix, field.name)
+      const schemaPath = joinPath(schemaPrefix, field.name)
+      if (isHidden(field, conditionValues)) {
+        hidden.push({ path, schemaPath, field })
+        continue
+      }
+      // A custom component owns its subtree: nested conditions don't apply
+      if (isCustomRendered(field)) continue
+      // Object children are named from the root of the current scope and keep
+      // its condition values (see ObjectField)
+      if (field.type === 'object')
+        walkFields(field.children, prefix, schemaPrefix)
+      else if (field.type === 'array') walkArray(field, path, schemaPath)
     }
   }
+
+  walkFields(fields, '', '')
   return hidden
 }
 
@@ -107,7 +114,7 @@ export function collectHiddenFields(
 export const collectHiddenPaths = (
   fields: FieldConfig[],
   values: Record<string, unknown>,
-  isCustomRendered?: (field: FieldConfig) => boolean,
+  isCustomRendered?: IsCustomRendered,
 ): string[] =>
   collectHiddenFields(fields, values, isCustomRendered).map((h) => h.path)
 
@@ -157,13 +164,6 @@ export function omitPaths<T extends Record<string, unknown>>(
   )
 }
 
-/** Drops array indices: `"rows.3.note"` → `"rows.note"`. */
-export const toSchemaPath = (path: string): string =>
-  path
-    .split('.')
-    .filter((segment) => !/^\d+$/.test(segment))
-    .join('.')
-
 type Def = Record<string, unknown> & { type: string }
 
 const WRAPPERS_WITH_INNER = new Set([
@@ -176,12 +176,17 @@ const WRAPPERS_WITH_INNER = new Set([
   'catch',
 ])
 
-function relax(schema: z.$ZodType, paths: string[][]): z.$ZodType {
+type Leaf = (schema: z.$ZodType) => z.$ZodType
+
+function transformAt(
+  schema: z.$ZodType,
+  paths: string[][],
+  leaf: Leaf,
+): z.$ZodType {
   if (!paths.length) return schema
-  if (paths.some((p) => p.length === 0)) {
-    return new z.$ZodOptional({ type: 'optional', innerType: schema })
-  }
+  if (paths.some((p) => p.length === 0)) return leaf(schema)
   const def = schema._zod.def as unknown as Def
+  const at = (s: unknown) => transformAt(s as z.$ZodType, paths, leaf)
   const withDef = (changes: Record<string, unknown>) =>
     z.clone(schema, { ...def, ...changes } as never)
 
@@ -189,52 +194,64 @@ function relax(schema: z.$ZodType, paths: string[][]): z.$ZodType {
     const shape = def.shape as Record<string, z.$ZodType>
     const byKey = new Map<string, string[][]>()
     for (const [key, ...rest] of paths) {
-      if (!(key in shape)) continue
+      if (!Object.prototype.hasOwnProperty.call(shape, key)) continue
       byKey.set(key, [...(byKey.get(key) ?? []), rest])
     }
     if (!byKey.size) return schema
     const nextShape = { ...shape }
-    for (const [key, rest] of byKey) nextShape[key] = relax(shape[key], rest)
+    for (const [key, rest] of byKey) {
+      nextShape[key] = transformAt(shape[key], rest, leaf)
+    }
     return withDef({ shape: nextShape })
   }
-  if (def.type === 'array') {
-    return withDef({ element: relax(def.element as z.$ZodType, paths) })
-  }
+  if (def.type === 'array') return withDef({ element: at(def.element) })
   if (WRAPPERS_WITH_INNER.has(def.type)) {
-    return withDef({ innerType: relax(def.innerType as z.$ZodType, paths) })
+    return withDef({ innerType: at(def.innerType) })
   }
-  if (def.type === 'pipe') {
-    return withDef({ in: relax(def.in as z.$ZodType, paths) })
-  }
+  // Both sides of a pipe: an object output schema re-checks the same keys
+  if (def.type === 'pipe') return withDef({ in: at(def.in), out: at(def.out) })
   if (def.type === 'union') {
-    return withDef({
-      options: (def.options as z.$ZodType[]).map((o) => relax(o, paths)),
-    })
+    return withDef({ options: (def.options as unknown[]).map(at) })
   }
   if (def.type === 'intersection') {
-    return withDef({
-      left: relax(def.left as z.$ZodType, paths),
-      right: relax(def.right as z.$ZodType, paths),
-    })
+    return withDef({ left: at(def.left), right: at(def.right) })
   }
   return schema
 }
 
+const optional = (innerType: z.$ZodType) =>
+  new z.$ZodOptional({ type: 'optional', innerType })
+
 /**
  * Returns a copy of `schema` in which each schema path (no array indices, e.g.
- * `"rows.note"`) accepts `undefined`, descending through objects, arrays,
- * wrappers, pipes and union variants. Everything else — including transforms,
- * defaults and refinements — is kept. Returns `schema` itself for no paths.
+ * `"rows.note"`) also accepts `undefined`, descending through objects, arrays,
+ * wrappers, pipes (both sides) and union variants. The field's own schema —
+ * transforms, defaults, refinements — is kept. Returns `schema` for no paths.
  */
-export function relaxSchemaAt<T extends z.$ZodType>(
+export const relaxSchemaAt = <T extends z.$ZodType>(
   schema: T,
   paths: string[],
-): T {
-  return relax(
+): T =>
+  transformAt(
     schema,
     paths.map((p) => p.split('.')),
+    optional,
   ) as T
-}
+
+/**
+ * Like {@link relaxSchemaAt}, but replaces the schema at each path with an
+ * optional `unknown`, so none of that field's validators, transforms or
+ * defaults run. For fields hidden everywhere (not per array row).
+ */
+export const skipSchemaAt = <T extends z.$ZodType>(
+  schema: T,
+  paths: string[],
+): T =>
+  transformAt(
+    schema,
+    paths.map((p) => p.split('.')),
+    () => optional(new z.$ZodUnknown({ type: 'unknown' })),
+  ) as T
 
 /** Removes empty objects/arrays left behind after pruning errors. */
 function compactErrors(value: unknown): unknown {
@@ -243,8 +260,10 @@ function compactErrors(value: unknown): unknown {
     return items.some((item) => item !== undefined) ? items : undefined
   }
   if (!isPlainObject(value)) return value
-  // A field error (has `type` / `message`) is a leaf
-  if ('type' in value || 'message' in value) return value
+  // A field error has a string `type` / `message` (a field may be named so)
+  if (typeof value.type === 'string' || typeof value.message === 'string') {
+    return value
+  }
   const entries = Object.entries(value)
     .map(([key, item]) => [key, compactErrors(item)] as const)
     .filter(([, item]) => item !== undefined)

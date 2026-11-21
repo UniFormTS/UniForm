@@ -4,10 +4,12 @@ import { safeParse } from 'zod/v4/core'
 import { introspectObjectSchema } from '../introspection/introspect'
 import { applyFieldOverrides } from './fieldPipeline'
 import {
+  collectHiddenFields,
   collectHiddenPaths,
+  omitErrorsAt,
   omitPaths,
   relaxSchemaAt,
-  toSchemaPath,
+  skipSchemaAt,
 } from './hiddenFields'
 
 const fieldsOf = (
@@ -74,7 +76,10 @@ describe('collectHiddenPaths', () => {
     const [rows] = fieldsOf(
       z.object({ rows: z.array(z.object({ a: z.string() })) }),
     )
-    const withRowMeta = { ...rows, _rowDynamicMeta: { 1: { a: { hidden: true } } } }
+    const withRowMeta = {
+      ...rows,
+      _rowDynamicMeta: { 1: { a: { hidden: true } } },
+    }
     expect(
       collectHiddenPaths([withRowMeta], { rows: [{ a: '' }, { a: '' }] }),
     ).toEqual(['rows.1.a'])
@@ -119,13 +124,6 @@ describe('omitPaths', () => {
   })
 })
 
-describe('toSchemaPath', () => {
-  it('drops array indices', () => {
-    expect(toSchemaPath('rows.12.note')).toBe('rows.note')
-    expect(toSchemaPath('a.b')).toBe('a.b')
-  })
-})
-
 describe('relaxSchemaAt', () => {
   it('makes the given paths optional, through wrappers, arrays and unions', () => {
     const schema = z.object({
@@ -161,5 +159,60 @@ describe('relaxSchemaAt', () => {
   it('returns the original schema when nothing needs relaxing', () => {
     const schema = z.object({ a: z.string() })
     expect(relaxSchemaAt(schema, [])).toBe(schema)
+  })
+})
+
+describe('omitErrorsAt', () => {
+  it('does not mistake a field named `type` or `message` for an error', () => {
+    const error = { type: 'too_small', message: 'Too short' }
+    expect(
+      omitErrorsAt({ type: { note: error }, message: { a: error } }, [
+        'type.note',
+        'message.a',
+      ]),
+    ).toEqual({})
+    expect(omitErrorsAt({ type: { note: error } }, [])).toEqual({
+      type: { note: error },
+    })
+  })
+})
+
+describe('collectHiddenFields schema paths', () => {
+  it('derives schema paths from the field tree, keeping numeric object keys', () => {
+    const fields = fieldsOf(
+      z.object({
+        '123': z.string(),
+        rows: z.array(z.object({ '7': z.string() })),
+      }),
+      { '123': { hidden: true }, 'rows.7': { hidden: true } },
+    )
+    expect(
+      collectHiddenFields(fields, { '123': '', rows: [{ '7': '' }] }).map(
+        (h) => [h.path, h.schemaPath],
+      ),
+    ).toEqual([
+      ['123', '123'],
+      ['rows.0.7', 'rows.7'],
+    ])
+  })
+})
+
+describe('skipSchemaAt', () => {
+  it('replaces the schema at a path so its validators and defaults never run', () => {
+    let ran = false
+    const schema = z.object({
+      a: z.string(),
+      b: z
+        .string()
+        .default('d')
+        .refine(() => {
+          ran = true
+          return true
+        }),
+    })
+    const result = safeParse(skipSchemaAt(schema, ['b']), { a: 'x' })
+    expect(result.success).toBe(true)
+    expect(result.data).toEqual({ a: 'x' })
+    expect(ran).toBe(false)
   })
 })

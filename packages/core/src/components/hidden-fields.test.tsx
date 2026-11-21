@@ -377,4 +377,140 @@ describe('hidden fields', () => {
       rows: [{ kind: 'a', note: 'keep' }],
     })
   })
+
+  describe('hidden field schemas', () => {
+    it("never runs a statically hidden field's validators", async () => {
+      const onSubmit = vi.fn()
+      const form = createForm(
+        z.object({
+          name: z.string(),
+          secret: z
+            .string()
+            .optional()
+            .refine((v) => {
+              if (v === undefined) throw new Error('validator ran')
+              return true
+            }),
+        }),
+      )
+      const { user } = setup(
+        <AutoForm
+          form={form}
+          fields={{ secret: { hidden: true } }}
+          onSubmit={onSubmit}
+        />,
+      )
+      await user.click(submit())
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(onSubmit.mock.calls[0][0]).toEqual({ name: '' })
+    })
+
+    it('does not let a schema default bring a hidden field back', async () => {
+      const onSubmit = vi.fn()
+      const form = createForm(
+        z.object({ name: z.string(), secret: z.string().default('saved') }),
+      )
+      const { user } = setup(
+        <AutoForm
+          form={form}
+          fields={{ secret: { hidden: true } }}
+          onSubmit={onSubmit}
+        />,
+      )
+      await user.click(submit())
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(Object.keys(onSubmit.mock.calls[0][0] as object)).toEqual(['name'])
+    })
+
+    it('handles numeric object keys', async () => {
+      const onSubmit = vi.fn()
+      const form = createForm(
+        z.object({ name: z.string(), '123': z.string().min(1) }),
+      )
+      const { user } = setup(
+        <AutoForm
+          form={form}
+          fields={{ '123': { hidden: true } }}
+          onSubmit={onSubmit}
+        />,
+      )
+      await user.click(submit())
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(onSubmit.mock.calls[0][0]).toEqual({ name: '' })
+    })
+
+    it('handles a hidden key inside an object pipe', async () => {
+      const onSubmit = vi.fn()
+      const form = createForm(
+        z.object({
+          prefs: z
+            .object({ note: z.string().min(1), name: z.string() })
+            .pipe(z.object({ note: z.string().min(1), name: z.string() })),
+        }),
+      )
+      const { user } = setup(
+        <AutoForm
+          form={form}
+          fields={{ 'prefs.note': { hidden: true } }}
+          onSubmit={onSubmit}
+        />,
+      )
+      await user.click(submit())
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(onSubmit.mock.calls[0][0]).toEqual({ prefs: { name: '' } })
+    })
+
+    it('finds hidden fields inside arrays of arrays', async () => {
+      const onSubmit = vi.fn()
+      const form = createForm(
+        z.object({
+          grid: z.array(
+            z.array(
+              z.object({
+                name: z.string(),
+                note: z.string().min(1).meta({ hidden: true }),
+              }),
+            ),
+          ),
+        }),
+      )
+      const { user } = setup(
+        <AutoForm
+          form={form}
+          defaultValues={{ grid: [[{ name: 'x', note: '' }]] }}
+          onSubmit={onSubmit}
+        />,
+      )
+      await user.click(submit())
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(onSubmit.mock.calls[0][0]).toEqual({ grid: [[{ name: 'x' }]] })
+    })
+
+    it('leaves array items rendered by a custom component untouched', async () => {
+      const onSubmit = vi.fn()
+      const Row = () => <div data-testid='custom-row' />
+      const form = createForm(
+        z.object({
+          rows: z.array(
+            z.object({ kind: z.string(), note: z.string() }).meta({
+              component: Row,
+            }),
+          ),
+        }),
+      ).setCondition('rows.note', (row) => row.kind === 'b')
+      const { user } = setup(
+        <AutoForm
+          form={form}
+          defaultValues={{ rows: [{ kind: 'a', note: 'keep' }] }}
+          onSubmit={onSubmit}
+        />,
+      )
+      expect(screen.getByTestId('custom-row')).toBeInTheDocument()
+      await user.click(submit())
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(onSubmit.mock.calls[0][0]).toEqual({
+        rows: [{ kind: 'a', note: 'keep' }],
+      })
+    })
+  })
 })
