@@ -26,6 +26,12 @@ export function extractMeta(schema: z.$ZodType): FieldMeta {
 export type UnwrapResult = {
   schema: z.$ZodType
   required: boolean
+  /** A wrapper accepts `undefined` (`optional`). */
+  optional: boolean
+  /** A wrapper accepts `null` (`nullable`). */
+  nullable: boolean
+  /** Present only when a `default` / `prefault` wrapper exists (outermost wins). */
+  defaultValue?: { value: unknown }
   meta: FieldMeta
 }
 
@@ -42,6 +48,9 @@ const WRAPPER_KINDS = new Set([
  * `default`, `prefault`, `pipe`) from a schema, collecting metadata and
  * requiredness along the way.
  *
+ * Also records whether the schema accepts `undefined` / `null` and the value
+ * of the outermost `default` / `prefault` wrapper, if any.
+ *
  * Metadata is merged so that outer wrappers take precedence over inner ones
  * (e.g. meta attached to the `optional()` call overrides meta on the inner
  * type).
@@ -53,6 +62,9 @@ const WRAPPER_KINDS = new Set([
 export function unwrap(schema: z.$ZodType): UnwrapResult {
   let inner = schema
   let required = true
+  let optional = false
+  let nullable = false
+  let defaultValue: UnwrapResult['defaultValue']
   let meta: FieldMeta = extractMeta(inner)
 
   let kind = inner._zod.def.type
@@ -60,6 +72,14 @@ export function unwrap(schema: z.$ZodType): UnwrapResult {
   while (WRAPPER_KINDS.has(kind)) {
     if (kind === 'optional' || kind === 'nullable') {
       required = false
+    }
+    if (kind === 'optional') optional = true
+    if (kind === 'nullable') nullable = true
+    if ((kind === 'default' || kind === 'prefault') && !defaultValue) {
+      defaultValue = {
+        value: (inner._zod.def as z.$ZodDefaultDef | z.$ZodPrefaultDef)
+          .defaultValue,
+      }
     }
 
     if (kind === 'pipe') {
@@ -80,5 +100,5 @@ export function unwrap(schema: z.$ZodType): UnwrapResult {
     kind = inner._zod.def.type
   }
 
-  return { schema: inner, required, meta }
+  return { schema: inner, required, optional, nullable, defaultValue, meta }
 }

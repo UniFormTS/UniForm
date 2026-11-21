@@ -4,6 +4,7 @@ import type { FieldConfig } from '../../types'
 import { useAutoFormContext } from '../../context/AutoFormContext'
 import { resolveComponent } from '../resolveComponent'
 import { coerceValue } from '../../coercion/coerce'
+import { getEmptyValue } from './getDefaultValue'
 
 type ScalarFieldProps = {
   field: FieldConfig
@@ -48,7 +49,12 @@ export function ScalarField({
               : ((rhfField.value as unknown) ?? '')
           }
           onChange={(value) => {
-            const coerced = coerceValue(field.type, value, coercions)
+            let coerced = coerceValue(field.type, value, coercions)
+            // Empty input becomes the schema's "empty" value (undefined for
+            // optional, null for nullable) so blank optional fields validate.
+            if (!isComposite && (coerced === '' || coerced == null)) {
+              coerced = getEmptyValue(field)
+            }
             rhfField.onChange(coerced)
             void field.meta.onChange?.(coerced, formMethods)
           }}

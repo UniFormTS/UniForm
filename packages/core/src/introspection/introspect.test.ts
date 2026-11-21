@@ -51,6 +51,26 @@ describe('optional and nullable', () => {
     expect(result.required).toBe(false)
     expect(result.type).toBe('number')
   })
+
+  it('distinguishes optional from nullable', () => {
+    const opt = introspectSchema(z.string().optional(), 'a')
+    expect(opt.optional).toBe(true)
+    expect(opt.nullable).toBeUndefined()
+
+    const nul = introspectSchema(z.string().nullable(), 'b')
+    expect(nul.nullable).toBe(true)
+    expect(nul.optional).toBeUndefined()
+
+    const both = introspectSchema(z.string().nullish(), 'c')
+    expect(both.optional).toBe(true)
+    expect(both.nullable).toBe(true)
+  })
+
+  it('keeps outer optionality when collapsing a plain union', () => {
+    const result = introspectSchema(z.string().or(z.number()).optional(), 'u')
+    expect(result.required).toBe(false)
+    expect(result.optional).toBe(true)
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -67,6 +87,28 @@ describe('ZodDefault', () => {
   it('unwraps ZodDefault wrapping a number', () => {
     const result = introspectSchema(z.number().default(0), 'count')
     expect(result.type).toBe('number')
+  })
+
+  it('records the schema default value on the field config', () => {
+    expect(
+      introspectSchema(z.string().default('hello'), 'greeting').defaultValue,
+    ).toBe('hello')
+    expect(introspectSchema(z.number().default(5), 'n').defaultValue).toBe(5)
+    expect(introspectSchema(z.boolean().prefault(true), 'b').defaultValue).toBe(
+      true,
+    )
+  })
+
+  it('uses the outermost default when defaults are nested', () => {
+    const result = introspectSchema(
+      z.string().default('inner').optional().default('outer'),
+      'x',
+    )
+    expect(result.defaultValue).toBe('outer')
+  })
+
+  it('omits defaultValue when the schema has no default', () => {
+    expect('defaultValue' in introspectSchema(z.string(), 'x')).toBe(false)
   })
 })
 

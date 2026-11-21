@@ -8,6 +8,7 @@ import type {
 } from '../types'
 import type { UniForm, UniFormContext } from '../UniForm'
 import { createRowScopedContext } from './createRowScopedContext'
+import { getDefaultValue } from '../components/fields/getDefaultValue'
 import type { RowAwareOnChange } from './createRowScopedContext'
 
 /**
@@ -334,33 +335,15 @@ export function applyDynamicMeta(
   })
 }
 
-/** Generate sensible empty defaults so RHF starts with '' instead of undefined */
+/**
+ * Builds the initial form values for a list of top-level fields, recursing into
+ * nested objects. Fields whose default is `undefined` are omitted.
+ */
 export function buildDefaults(fields: FieldConfig[]): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   for (const field of fields) {
-    const key = field.name
-    switch (field.type) {
-      case 'string':
-        result[key] = ''
-        break
-      case 'number':
-        result[key] = ''
-        break
-      case 'boolean':
-        result[key] = false
-        break
-      case 'select':
-        result[key] = field.options?.[0]?.value ?? ''
-        break
-      case 'array':
-        result[key] = []
-        break
-      case 'object':
-        result[key] = {}
-        break
-      default:
-        break
-    }
+    const value = getDefaultValue(field)
+    if (value !== undefined) result[field.name] = value
   }
   return result
 }

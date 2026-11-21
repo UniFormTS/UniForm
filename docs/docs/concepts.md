@@ -36,7 +36,12 @@ When `<AutoForm>` mounts, it walks the Zod schema and builds an ordered list of 
 1. **Type key** — derived from the Zod type (`z.string()` → `"string"`, `z.enum(...)` → `"select"`, `z.boolean()` → `"boolean"`, etc.). A `z.string()` field with `.meta({ component: 'select', options: [...] })` is also treated as `"select"` — see [Custom Components](./guides/custom-components#select-from-a-string-field).
 2. **Required** — whether the field is optional or nullable in the schema
 3. **Options** — for enum/nativeEnum fields, or string fields with `meta.options`, the list of valid values
-4. **Default value** — from `.default(...)` in the schema, or from the `defaultValues` prop
+4. **Default value** — the field's initial value, resolved in this order:
+   - the `defaultValues` prop, deep-merged over the generated defaults (a partial nested object such as `{ address: { city: 'Paris' } }` keeps the defaults of its siblings);
+   - the schema's `.default(...)` / `.prefault(...)` value;
+   - otherwise the type's empty value: `''` for required strings, `undefined` for numbers and dates, `false` for booleans, the first option for selects, `[]` for arrays, and a recursively built object for nested objects.
+
+   Optional text-like fields (`string`, `number`, `date`) start as — and return to, when cleared — `undefined`, and nullable ones `null`, so a blank optional field such as `z.string().email().optional()` passes validation. The same rules apply to nested objects, discriminated-union variants and newly added array rows.
 5. **Schema** — the original Zod schema (after transparent wrappers are stripped), available on every field as an escape hatch for custom components
 
 Plain unions (`z.union([...])` / `.or()`) are collapsed to their first variant for rendering purposes; validation still runs against the full union schema. See [Plain Unions](./guides/plain-unions) for details. For variant-switching forms, use `z.discriminatedUnion()` — see [Discriminated Unions](./guides/discriminated-unions).

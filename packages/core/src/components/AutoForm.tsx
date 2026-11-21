@@ -43,6 +43,7 @@ import {
   buildDefaults,
 } from '../utils/fieldPipeline'
 import { resolveNullableSlot } from '../utils/resolveNullableSlot'
+import { mergeDefaults } from '../utils/mergeDefaults'
 
 // Shared defaults keep the context value stable across re-renders
 const EMPTY_FIELDS = {}
@@ -101,7 +102,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     )
   }, [schema])
 
-  // Initial field list — for unions, use the first variant so buildDefaults has something
+  // Initial field list — for unions, the discriminator plus the first variant
   const rawFields = React.useMemo(() => {
     if (!unionInfo) return introspectObjectSchema(schema)
     const firstVariantFields = introspectObjectSchema(
@@ -115,18 +116,28 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     [components],
   )
 
-  const generatedDefaults = React.useMemo(
-    () => buildDefaults(rawFields),
-    [rawFields],
-  )
+  const generatedDefaults = React.useMemo(() => {
+    const defaults = buildDefaults(rawFields)
+    if (!unionInfo) return defaults
+    // Seed every variant's fields so switching variants never leaves a field
+    // `undefined`. Earlier variants win on key conflicts; the union schema
+    // strips the inactive variants' keys from the submitted values.
+    for (const variant of unionInfo.variantMap.values()) {
+      const variantDefaults = buildDefaults(introspectObjectSchema(variant))
+      for (const [key, value] of Object.entries(variantDefaults)) {
+        if (!(key in defaults)) defaults[key] = value
+      }
+    }
+    return defaults
+  }, [rawFields, unionInfo])
 
   const computedDefaults = React.useMemo(() => {
-    const base: Record<string, unknown> = {
-      ...generatedDefaults,
-      ...(typeof defaultValues === 'function'
-        ? {}
-        : (defaultValues as Record<string, unknown>)),
-    }
+    const base = mergeDefaults(
+      generatedDefaults,
+      typeof defaultValues === 'function'
+        ? undefined
+        : (defaultValues as Record<string, unknown> | undefined),
+    )
 
     // Collect all conditions: UniForm-registered takes precedence, fields-prop fills gaps
     const conditions = new Map<string, FieldCondition>(
@@ -233,7 +244,12 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     void (defaultValues as () => Promise<Partial<z.infer<TSchema>>>)().then(
       (vals) => {
         if (cancelled) return
-        rhf.reset({ ...generatedDefaultsRef.current, ...vals })
+        rhf.reset(
+          mergeDefaults(
+            generatedDefaultsRef.current,
+            vals as Record<string, unknown>,
+          ),
+        )
         setIsLoadingDefaults(false)
       },
     )

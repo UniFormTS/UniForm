@@ -177,6 +177,15 @@ type FieldConfigBase = {
   label: string
   /** Whether the field is required by the schema. */
   required: boolean
+  /** `true` when the schema accepts `undefined` (`.optional()` / `.nullish()`). */
+  optional?: boolean
+  /** `true` when the schema accepts `null` (`.nullable()` / `.nullish()`). */
+  nullable?: boolean
+  /**
+   * The value from the schema's outermost `.default()` / `.prefault()`, used as
+   * the field's initial value. Absent when the schema declares no default.
+   */
+  defaultValue?: unknown
   /** Merged UI metadata for the field. */
   meta: FieldMeta
   /**

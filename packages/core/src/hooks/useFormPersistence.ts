@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from 'react'
 import { useWatch } from 'react-hook-form'
 import type { Control } from 'react-hook-form'
 import type { PersistStorage } from '../types'
+import { mergeDefaults } from '../utils/mergeDefaults'
 
 const defaultStorage: PersistStorage | undefined =
   typeof window !== 'undefined'
@@ -53,7 +54,7 @@ export function useFormPersistence(options: {
       const raw = storage.getItem(key)
       if (raw) {
         const parsed = JSON.parse(raw) as Record<string, unknown>
-        reset({ ...defaultValues, ...parsed })
+        reset(mergeDefaults(defaultValues, parsed))
       }
     } catch {
       // Invalid data — ignore silently

@@ -1,38 +1,65 @@
 import type { FieldConfig } from '../../types'
 
+/** Field types whose empty input is mapped by `getEmptyValue`. */
+const TEXT_LIKE_TYPES = new Set(['string', 'number', 'date'])
+
+/** Copies arrays and plain objects so form rows never share a default instance. */
+function cloneDefault(value: unknown): unknown {
+  if (Array.isArray(value)) return [...(value as unknown[])]
+  if (
+    value !== null &&
+    typeof value === 'object' &&
+    Object.getPrototypeOf(value) === Object.prototype
+  ) {
+    return { ...(value as Record<string, unknown>) }
+  }
+  return value
+}
+
 /**
- * Returns a sensible empty default value for a field based on its `type`.
+ * Returns the value a text-like field should hold when its input is empty, so
+ * that leaving it blank satisfies the schema whenever the schema allows it:
  *
- * Used when appending new rows to an array field so that RHF starts each row
- * with typed, non-`undefined` values.
+ * - optional (incl. `nullish`) → `undefined`
+ * - nullable only → `null`
+ * - required `string` → `''`; required `number` / `date` → `undefined`
+ */
+export function getEmptyValue(field: FieldConfig): unknown {
+  if (field.optional) return undefined
+  if (field.nullable) return null
+  return field.type === 'string' ? '' : undefined
+}
+
+/**
+ * Returns the initial value for a field. This is the single source of defaults
+ * for top-level fields, nested object children, discriminated-union variants and
+ * newly appended array rows.
  *
- * - `string` → `''`
- * - `number` → `0`
+ * - A schema `.default()` / `.prefault()` value always wins.
+ * - `string` / `number` / `date` → {@link getEmptyValue}
  * - `boolean` → `false`
- * - `date` → `new Date()`
- * - `select` → first option value, or `''` if no options exist
+ * - `select` → first option value, or `''` if no options exist (the default
+ *   select has no empty option, so the first option is what the user sees)
  * - `object` → recursively built object using child defaults
  * - `array` → `[]`
  * - anything else → `undefined`
  */
 export function getDefaultValue(field: FieldConfig): unknown {
+  if ('defaultValue' in field) return cloneDefault(field.defaultValue)
+  if (TEXT_LIKE_TYPES.has(field.type)) return getEmptyValue(field)
+
   switch (field.type) {
-    case 'string':
-      return ''
-    case 'number':
-      return 0
     case 'boolean':
       return false
-    case 'date':
-      return new Date()
     case 'select':
       return field.options?.[0]?.value ?? ''
     case 'object': {
       const result: Record<string, unknown> = {}
       for (const child of field.children ?? []) {
-        // Use only the last segment of the child's name for the key
+        // Child names are dot-paths (or row-relative); the key is the last segment
         const key = child.name.split('.').pop() ?? child.name
-        result[key] = getDefaultValue(child)
+        const value = getDefaultValue(child)
+        if (value !== undefined) result[key] = value
       }
       return result
     }

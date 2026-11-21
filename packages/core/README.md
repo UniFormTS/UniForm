@@ -82,7 +82,7 @@ UniForm introspects the schema, renders appropriate inputs, validates with Zod, 
 | --------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `form`          | `UniForm<TSchema>`                       | Schema + onChange handlers from `createForm()`                                                                                           |
 | `onSubmit`      | `(values) => void \| Promise<void>`      | Called with typed values after successful validation                                                                                     |
-| `defaultValues` | `Partial<...>` or `() => Promise<...>`   | Initial values; async function shows `loadingFallback`                                                                                   |
+| `defaultValues` | `Partial<...>` or `() => Promise<...>`   | Initial values, deep-merged over schema-derived defaults; async function shows `loadingFallback`                                         |
 | `components`    | `ComponentRegistry`                      | Map Zod types to your input components                                                                                                   |
 | `fields`        | `Record<string, FieldOverride>`          | Per-field label, description, order, section, condition                                                                                  |
 | `fieldWrapper`  | `React.ComponentType<FieldWrapperProps>` | Custom wrapper around every scalar field                                                                                                 |
