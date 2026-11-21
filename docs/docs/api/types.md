@@ -142,7 +142,8 @@ type FieldOverride = {
   order?: number
   span?: number // 1–12 column span in 12-col grid
   section?: string // Group into a named section
-  hidden?: boolean // Hard-hide (never renders, never validates)
+  hidden?: boolean // Not part of the form: never renders, validates or submits; resets when hidden
+  render?: boolean // false: no built-in UI, but still validated and submitted
   disabled?: boolean
   component?: string | React.ComponentType<FieldProps> // Registry key or inline component
   options?: Array<{ label: string; value: string | number }>

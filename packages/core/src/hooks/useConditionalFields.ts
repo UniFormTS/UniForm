@@ -2,11 +2,13 @@ import { useMemo } from 'react'
 import { useWatch } from 'react-hook-form'
 import type { Control } from 'react-hook-form'
 import type { FieldConfig } from '../types'
+import { isFieldHidden } from '../utils/hiddenFields'
 
 /**
  * Filters and sorts a list of field configs based on the current form values.
  *
- * - Fields with `meta.hidden === true` are always excluded.
+ * - Fields with `meta.hidden === true` or `meta.render === false` are always
+ *   excluded (a `render: false` field is still validated and submitted).
  * - Fields with a `meta.condition` function are included only when the
  *   function returns `true` for the current values.
  * - Remaining fields are sorted ascending by `meta.order` (fields without an
@@ -36,11 +38,8 @@ export function useConditionalFields(
   return useMemo(() => {
     return fields
       .filter((field) => {
-        if (field.meta.hidden) return false
-        if (typeof field.meta.condition === 'function') {
-          return field.meta.condition(values)
-        }
-        return true
+        if (field.meta.render === false) return false
+        return !isFieldHidden(field, values)
       })
       .sort((a, b) => {
         const orderA =

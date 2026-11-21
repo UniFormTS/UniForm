@@ -18,7 +18,8 @@ The `fields` prop on `<AutoForm>` accepts a map of field paths to `FieldOverride
 | `order`       | `number`                                                       | Render order (lower = first)                                                                                                |
 | `span`        | `number`                                                       | Column span (1–12) in a 12-column grid                                                                                      |
 | `section`     | `string`                                                       | Group field into a named section                                                                                            |
-| `hidden`      | `boolean`                                                      | Hard-hide (never renders, never validates)                                                                                  |
+| `hidden`      | `boolean`                                                      | Not part of the form: never renders, never validates, never submitted; resets to its default when hidden                    |
+| `render`      | `boolean`                                                      | `false` skips the built-in UI but keeps the value validated and submitted (e.g. drive an array with `useArrayField`)        |
 | `disabled`    | `boolean`                                                      | Disable just this field                                                                                                     |
 | `component`   | `string \| React.ComponentType<FieldProps>`                    | Registry key (`"textarea"`, `"rating"`, …) **or** an inline React component                                                 |
 | `options`     | `Array<{ label: string; value: string \| number }>`            | Override select options for enum fields                                                                                     |

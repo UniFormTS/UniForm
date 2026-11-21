@@ -6,7 +6,8 @@ import type {
   ArrayOperations,
   ArrayRegistration,
 } from '../context/arrayRegistry'
-import { getAtPath, withRowMetaReindex } from './useRegisteredFieldArray'
+import { withRowMetaReindex } from './useRegisteredFieldArray'
+import { getAtPath } from '../utils/getAtPath'
 
 function findField(
   fields: FieldConfig[],
@@ -123,7 +124,7 @@ function createValueOps(
  * }
  */
 export function useArrayField(fieldName: string) {
-  const { control, fieldConfigs, formMethods, setDynamicMeta, arrayRegistry } =
+  const { control, fieldConfigs, formMethods, runRowMutation, arrayRegistry } =
     useAutoFormContext()
 
   const getRegistration = React.useCallback(
@@ -148,9 +149,9 @@ export function useArrayField(fieldName: string) {
       withRowMetaReindex(
         createValueOps(fieldName, formMethods),
         fieldName,
-        setDynamicMeta,
+        runRowMutation,
       ),
-    [fieldName, formMethods, setDynamicMeta],
+    [fieldName, formMethods, runRowMutation],
   )
 
   const config = React.useMemo(

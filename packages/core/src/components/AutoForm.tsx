@@ -7,6 +7,7 @@ import type {
   AutoFormHandle,
   DeepPartial,
   FieldCondition,
+  FieldConfig,
   FieldMeta,
   FormMethods,
   FieldDependencyResult,
@@ -38,13 +39,30 @@ import { useFormPersistence } from '../hooks/useFormPersistence'
 import { useLatestRef } from '../hooks/useLatestRef'
 import {
   applyFieldOverrides,
+  buildVisibilityFields,
   injectOnChangeHandlers,
-  injectConditions,
-  applyDynamicMeta,
   buildDefaults,
 } from '../utils/fieldPipeline'
 import { resolveNullableSlot } from '../utils/resolveNullableSlot'
-import { mergeDefaults, omitPath } from '../utils/mergeDefaults'
+import { mergeDefaults } from '../utils/mergeDefaults'
+import {
+  reindexDynamicMeta,
+  type MutationType,
+} from '../utils/reindexDynamicMeta'
+import {
+  analyzeVisibility,
+  collectStaticHiddenSchemaPaths,
+  omitSchemaPath,
+  collectHiddenFields,
+  rowIndicesStable,
+  splitHidden,
+  cloneValue,
+  omitErrorsAt,
+  omitPaths,
+  createDerivedSchemaCache,
+} from '../utils/hiddenFields'
+import { getAtPath } from '../utils/getAtPath'
+import { getDefaultValue } from './fields/getDefaultValue'
 import { normalizeEmptyValues } from '../utils/normalizeEmptyValues'
 
 // Shared defaults keep the context value stable across re-renders
@@ -118,6 +136,16 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     [components],
   )
 
+  // Mirrors FieldRenderer: a component function, or a key in the registry
+  const isCustomRendered = React.useCallback(
+    (field: FieldConfig) =>
+      typeof field.meta.component === 'function' ||
+      (typeof field.meta.component === 'string' &&
+        Object.prototype.hasOwnProperty.call(registry, field.meta.component)),
+    [registry],
+  )
+  const isCustomRenderedRef = useLatestRef(isCustomRendered)
+
   const generatedDefaults = React.useMemo(() => {
     const defaults = buildDefaults(rawFields)
     if (!unionInfo) return defaults
@@ -136,79 +164,170 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   }, [rawFields, unionInfo])
 
   const computedDefaults = React.useMemo(() => {
-    let base = mergeDefaults(
+    const base = mergeDefaults(
       generatedDefaults,
       typeof defaultValues === 'function'
         ? undefined
         : (defaultValues as Record<string, unknown> | undefined),
     )
 
-    // Collect all conditions: UniForm-registered takes precedence, fields-prop fills gaps
-    const conditions = new Map<string, FieldCondition>(
-      (uniForm as UniForm<TSchema>)._getConditions() as Map<
-        string,
-        FieldCondition
-      >,
-    )
-    for (const [name, override] of Object.entries(
-      fieldOverridesProp as Record<string, Partial<FieldMeta>>,
-    )) {
-      if (typeof override.condition === 'function' && !conditions.has(name)) {
-        conditions.set(name, override.condition as FieldCondition)
-      }
-    }
-
-    // Exclude fields whose condition starts false so they're never pre-registered
-    // in the RHF store. Evaluated against `base` so fields that start visible
-    // (condition true) still receive their default value.
-    for (const [name, condition] of conditions) {
-      if (!condition(base)) {
-        base = omitPath(base, name)
-      }
-    }
-
+    // Fields that start hidden keep their defaults: hidden values are never
+    // validated or submitted (see `resolver`), and a field shown later starts
+    // from its default instead of `undefined`.
     return base
-  }, [generatedDefaults, defaultValues, uniForm, fieldOverridesProp])
+  }, [generatedDefaults, defaultValues])
 
   // Async defaultValues: track whether we are still waiting for the loader
   const isAsyncDefaults = typeof defaultValues === 'function'
   const [isLoadingDefaults, setIsLoadingDefaults] =
     React.useState(isAsyncDefaults)
 
-  // Before validation: map empty inputs ('' in form state) to the schema's
-  // empty value (undefined / null / ''), and for discriminated unions keep only
-  // the active variant's keys, so other variants' seeded or previously entered
-  // values are neither rejected by strict variants nor passed through by loose
-  // ones.
+  // The discriminator selects the variant, so hiding it only hides its input:
+  // its value is always validated and submitted, and never reset.
+  const discriminatorKey = unionInfo?.discriminatorKey
+  const isStructural = React.useCallback(
+    (path: string) => path === discriminatorKey,
+    [discriminatorKey],
+  )
+
+  // The field list for the variant that `values` select (for discriminated
+  // unions), or all fields. Shared by validation and hidden-field syncing.
+  const variantFieldsMap = React.useMemo(
+    () =>
+      unionInfo
+        ? new Map(
+            [...unionInfo.variantMap].map(([value, variant]) => [
+              value,
+              introspectObjectSchema(variant).filter(
+                (f) => f.name !== unionInfo.discriminatorKey,
+              ),
+            ]),
+          )
+        : undefined,
+    [unionInfo],
+  )
+  const activeFieldsFor = React.useCallback(
+    (values: Record<string, unknown>): FieldConfig[] => {
+      if (!unionInfo || !variantFieldsMap) return rawFields
+      const variantFields = variantFieldsMap.get(
+        String(values[unionInfo.discriminatorKey]),
+      )
+      return [unionInfo.discriminatorField, ...(variantFields ?? [])]
+    },
+    [unionInfo, variantFieldsMap, rawFields],
+  )
+
+  // Applies the current overrides, conditions and dynamic meta to a field list,
+  // so the resolver can find hidden fields for whichever variant it validates.
+  // Kept current below, once dynamic meta exists.
+  const toVisibilityFieldsRef = React.useRef<
+    (fields: FieldConfig[]) => FieldConfig[]
+  >((fields) => fields)
+
+  // Before validation:
+  // - for discriminated unions, keep only the active variant's keys, so other
+  //   variants' seeded or previously entered values are neither rejected by
+  //   strict variants nor passed through by loose ones;
+  // - drop hidden fields' values (hidden fields are neither validated nor
+  //   submitted) and ignore their errors; if only hidden fields failed, parse
+  //   again with those paths made optional so `onSubmit` still gets Zod output;
+  // - map empty inputs ('' in form state) to the schema's empty value.
   const resolver = React.useMemo((): Resolver => {
-    const base = zodResolver(schema) as unknown as Resolver
-    if (!unionInfo) {
-      return (values, context, options) =>
-        base(normalizeEmptyValues(values, rawFields), context, options)
-    }
-    const variantFields = new Map(
-      [...unionInfo.variantMap].map(([value, variant]) => [
-        value,
-        introspectObjectSchema(variant),
-      ]),
-    )
-    return (values, context, options) => {
-      const active = String(
-        (values as Record<string, unknown>)[unionInfo.discriminatorKey],
-      )
-      const variant = unionInfo.variantMap.get(active)
-      if (!variant) return base(values, context, options)
-      const activeValues: Record<string, unknown> = {}
-      for (const key of Object.keys(variant._zod.def.shape)) {
-        if (key in values) activeValues[key] = values[key]
+    const validate = (s: z.$ZodType): Resolver =>
+      zodResolver(s as TSchema) as unknown as Resolver
+    const schemaFor = createDerivedSchemaCache()
+    const base = validate(schema)
+
+    return async (values, context, options) => {
+      let activeValues = values as Record<string, unknown>
+      if (unionInfo) {
+        const active = String(activeValues[unionInfo.discriminatorKey])
+        const variant = unionInfo.variantMap.get(active)
+        if (!variant) return base(values, context, options)
+        activeValues = {}
+        for (const key of Object.keys(variant._zod.def.shape)) {
+          if (key in values) activeValues[key] = values[key]
+        }
       }
-      return base(
-        normalizeEmptyValues(activeValues, variantFields.get(active) ?? []),
-        context,
-        options,
+      const fields = activeFieldsFor(values)
+
+      // Visibility is derived from the variant being validated (not the last
+      // rendered one), with the current overrides, conditions and dynamic meta.
+      const visibilityFields = toVisibilityFieldsRef.current(fields)
+      const analyzed = analyzeVisibility(
+        visibilityFields,
+        values,
+        isCustomRenderedRef.current,
       )
+      const visibility = {
+        ...analyzed,
+        hidden: analyzed.hidden.filter((h) => !isStructural(h.path)),
+      }
+      // Hidden by `meta.hidden` in an array item config: covers rows a default
+      // supplies that aren't in the input. Where input rows exist, their
+      // observed visibility wins (per-row meta may reveal the field).
+      const staticHidden = collectStaticHiddenSchemaPaths(
+        visibilityFields,
+        isCustomRenderedRef.current,
+      ).filter(
+        (path) => !visibility.rowOccurrences.get(path) && !isStructural(path),
+      )
+      const hiddenPaths = visibility.hidden.map((h) => h.path)
+      // Map empty inputs first, on unpruned values (deferred-default
+      // composites compare their raw value with their seed), without
+      // consulting hidden fields' schemas
+      const normalized = normalizeEmptyValues(
+        activeValues,
+        fields,
+        new Set(hiddenPaths),
+      )
+      if (!hiddenPaths.length && !staticHidden.length) {
+        return base(normalized, context, options)
+      }
+
+      const payload = omitPaths(normalized, hiddenPaths)
+      // Hidden wherever it appears: swap the field's schema out entirely, so
+      // its validators, transforms and defaults never run. Hidden in only some
+      // array rows: the element schema is shared with visible rows, so
+      // validate as-is, ignore those rows' errors, and re-parse with the field
+      // optional if nothing else failed.
+      const split = splitHidden(visibility)
+      const everywhere = [...new Set([...split.everywhere, ...staticHidden])]
+      const { someRows } = split
+      const target = schemaFor('skip', schema, everywhere)
+      // Zod may recreate hidden keys (e.g. from defaults): drop them from the
+      // output. Fields hidden everywhere are dropped by key from every row;
+      // per-row ones by row index, unless a transform may have moved rows.
+      const someRowPaths = new Set(someRows)
+      const indexedOutputPaths = visibility.hidden
+        .filter(
+          (h) =>
+            someRowPaths.has(h.schemaPath) &&
+            rowIndicesStable(schema, h.schemaPath),
+        )
+        .map((h) => h.path)
+      type Result = Awaited<ReturnType<Resolver>>
+      const prune = (result: Result): Result => {
+        if (Object.keys(result.errors).length) return result
+        let output = result.values as Record<string, unknown>
+        for (const path of everywhere) output = omitSchemaPath(output, path)
+        return {
+          ...result,
+          values: omitPaths(output, indexedOutputPaths),
+        } as Result
+      }
+
+      const result = await validate(target)(payload, context, options)
+      if (!Object.keys(result.errors).length) return prune(result)
+      const visibleErrors = omitErrorsAt(result.errors, hiddenPaths)
+      if (Object.keys(visibleErrors).length) {
+        return { values: {}, errors: visibleErrors } as Result
+      }
+      if (!someRows.length) return result
+      const relaxed = schemaFor('relax', target, someRows)
+      return prune(await validate(relaxed)(payload, context, options))
     }
-  }, [schema, unionInfo, rawFields])
+  }, [schema, unionInfo, activeFieldsFor, isCustomRenderedRef, isStructural])
 
   const rhf = useForm({
     resolver,
@@ -267,10 +386,115 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   })
 
   // Dynamic field meta — updated by setFieldMeta inside UniForm onChange handlers
-  const [dynamicMeta, setDynamicMeta] = React.useState<
+  const [dynamicMeta, setDynamicMetaState] = React.useState<
     Record<string, Partial<FieldDependencyResult>>
   >({})
+  // Synchronous snapshot for the resolver: a handler may call setFieldMeta (or
+  // reset) and submit before React commits the state update
+  const dynamicMetaRef = React.useRef(dynamicMeta)
+  const setDynamicMeta = React.useCallback(
+    (
+      action: React.SetStateAction<
+        Record<string, Partial<FieldDependencyResult>>
+      >,
+    ) => {
+      const next =
+        typeof action === 'function' ? action(dynamicMetaRef.current) : action
+      dynamicMetaRef.current = next
+      setDynamicMetaState(next)
+      syncHiddenRef.current()
+    },
+    [],
+  )
   const [arrayRegistry] = React.useState(createArrayRegistry)
+
+  // ---------------------------------------------------------------------------
+  // Reset-on-hide. A field that becomes hidden is reset to its default (and its
+  // errors cleared), so it shows its default when it appears again — alike for
+  // conditions, `hidden` (fields prop or setFieldMeta), objects and arrays.
+  //
+  // `syncHidden` runs synchronously from the events that can hide a field —
+  // value changes (RHF `watch`), dynamic meta changes (`setDynamicMeta`), prop
+  // changes (layout effect below) — and always reads live values, so it never
+  // compares against a stale render.
+  // ---------------------------------------------------------------------------
+  const previousHiddenRef = React.useRef<Set<string> | null>(null)
+  const syncSuspendedRef = React.useRef(0)
+  const syncHidden = () => {
+    if (syncSuspendedRef.current) return
+    const values = getValues() as Record<string, unknown>
+    const hidden = collectHiddenFields(
+      toVisibilityFieldsRef.current(activeFieldsFor(values)),
+      values,
+      isCustomRenderedRef.current,
+    ).filter((h) => !isStructural(h.path))
+    const previous = previousHiddenRef.current
+    // Updated before any setValue below, so re-entrant calls see no change
+    previousHiddenRef.current = new Set(hidden.map((h) => h.path))
+    if (!previous) return // fields hidden at first sync already hold defaults
+    for (const { path, schemaPath, field } of hidden) {
+      if (previous.has(path)) continue
+      // Array rows move, so their initial defaults can't be looked up by index:
+      // use the field's own default there
+      const stored =
+        path === schemaPath
+          ? getAtPath(control._defaultValues, path)
+          : undefined
+      const fallback = stored === undefined ? getDefaultValue(field) : stored
+      setValue(path, cloneValue(fallback), {
+        shouldDirty: false,
+        shouldValidate: false,
+      })
+      clearErrors(path)
+    }
+  }
+  const syncHiddenRef = React.useRef(syncHidden)
+  syncHiddenRef.current = syncHidden
+
+  // Runs an array row operation as one step: per-row state (dynamic meta and
+  // the hidden-field set) is reindexed alongside the values before syncing,
+  // so a moved row's hidden field isn't mistaken for a newly hidden one.
+  const runRowMutation = React.useCallback(
+    (
+      name: string,
+      mutations: MutationType | MutationType[],
+      run: () => void,
+    ) => {
+      const list = Array.isArray(mutations) ? mutations : [mutations]
+      const reindexAll = <T,>(record: Record<string, T>) =>
+        list.reduce(
+          (acc, mutation) =>
+            reindexDynamicMeta(
+              acc as Record<string, Partial<FieldDependencyResult>>,
+              name,
+              mutation,
+            ) as Record<string, T>,
+          record,
+        )
+      syncSuspendedRef.current++
+      try {
+        run()
+        const previous = previousHiddenRef.current
+        if (previous) {
+          const asRecord = Object.fromEntries([...previous].map((p) => [p, {}]))
+          previousHiddenRef.current = new Set(Object.keys(reindexAll(asRecord)))
+        }
+        setDynamicMeta((prev) => reindexAll(prev))
+      } finally {
+        syncSuspendedRef.current--
+      }
+      syncHiddenRef.current()
+    },
+    [setDynamicMeta],
+  )
+
+  // Value changes, including those not caused by a field (setValue, reset,
+  // array operations), arrive through RHF's subscription
+  React.useEffect(() => {
+    syncHiddenRef.current() // baseline
+    const subscription = watch(() => syncHiddenRef.current())
+    return () => subscription.unsubscribe()
+  }, [watch])
 
   const onSubmitRef = useLatestRef(onSubmit)
   const onValuesChangeRef = useLatestRef(onValuesChange)
@@ -337,6 +561,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       watch: watch as FormMethods<z.infer<TSchema>>['watch'],
     }),
     [
+      setDynamicMeta,
       clearErrors,
       getValues,
       handleSubmit,
@@ -363,7 +588,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
         }))
       }
     },
-    [],
+    [setDynamicMeta],
   )
 
   // Build the UniForm context — stable when formMethods and setFieldMeta are stable
@@ -372,37 +597,52 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     [formMethods, setFieldMeta],
   )
 
-  // Inject UniForm handlers into field.meta.onChange so they fire as real event handlers
-  const fieldsWithHandlers = React.useMemo(
+  // Everything that decides visibility (overrides, conditions, dynamic meta).
+  // Validation builds on the same function (see `toVisibilityFieldsRef`).
+  const visibilityFields = React.useMemo(
     () =>
-      injectOnChangeHandlers(
-        mergedFields,
-        uniForm as UniForm<TSchema>,
-        uniFormCtx,
-      ),
-    [mergedFields, uniForm, uniFormCtx],
-  )
-
-  // Inject UniForm conditions into field.meta.condition
-  const fieldsWithConditions = React.useMemo(
-    () =>
-      injectConditions(
-        fieldsWithHandlers,
+      buildVisibilityFields(
+        activeFields,
+        fieldOverridesProp as Record<string, Partial<FieldMeta>>,
         (uniForm as UniForm<TSchema>)._getConditions() as Map<
           string,
           FieldCondition
         >,
+        dynamicMeta,
       ),
-    [fieldsWithHandlers, uniForm],
+    [activeFields, fieldOverridesProp, uniForm, dynamicMeta],
   )
 
-  // Apply event-driven dynamic meta overrides (from setFieldMeta calls)
+  // Inject UniForm handlers into field.meta.onChange so they fire as real
+  // event handlers (doesn't affect visibility)
   const fieldsWithDynamic = React.useMemo(
-    () => applyDynamicMeta(fieldsWithConditions, dynamicMeta),
-    [fieldsWithConditions, dynamicMeta],
+    () =>
+      injectOnChangeHandlers(
+        visibilityFields,
+        uniForm as UniForm<TSchema>,
+        uniFormCtx,
+      ),
+    [visibilityFields, uniForm, uniFormCtx],
   )
 
   const allValues = useWatch({ control })
+
+  React.useLayoutEffect(() => {
+    // Same pipeline as `visibilityFields`, but for any variant's fields and
+    // with the synchronous dynamic-meta snapshot
+    toVisibilityFieldsRef.current = (fields) =>
+      buildVisibilityFields(
+        fields,
+        fieldOverridesProp as Record<string, Partial<FieldMeta>>,
+        (uniForm as UniForm<TSchema>)._getConditions() as Map<
+          string,
+          FieldCondition
+        >,
+        dynamicMetaRef.current,
+      )
+    // A `fields`-prop or condition change can hide fields too
+    syncHiddenRef.current()
+  }, [fieldOverridesProp, uniForm])
 
   React.useEffect(() => {
     onValuesChangeRef.current?.(allValues as z.infer<TSchema>)
@@ -476,6 +716,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       control,
       setDynamicMeta,
       arrayRegistry,
+      runRowMutation,
     }),
     [
       registry,
@@ -492,6 +733,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       control,
       setDynamicMeta,
       arrayRegistry,
+      runRowMutation,
     ],
   )
 

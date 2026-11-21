@@ -20,9 +20,31 @@ myForm.setCondition(
 
 ## How it works
 
-- When a field is hidden, it is **unregistered** from React Hook Form — its value is removed from the submitted object and its validation rules do not run.
-- When a field becomes visible again, it is re-registered and its previous value is restored. This means switching a field off and back on does not lose the user's input.
+- A hidden field is **not part of the form**: its validation rules do not run (even if the schema requires it) and its value is left out of the object passed to `onSubmit`. This applies to everything inside it too — nested fields and array rows.
+- When a field becomes hidden, it is **reset to its default** (the `defaultValues` entry, the schema `.default(…)`, or the type's empty value) and its errors are cleared. Showing it again starts from that default; earlier input is not restored.
+- Fields hidden with `hidden: true` (in `fields` or via `setFieldMeta`) follow the same rules.
+- A hidden field's own schema — refinements, transforms, `.default()` — does not run. One exception: inside an array, a field hidden in only _some_ rows shares its schema with the visible rows, so its checks still run for the hidden rows (with `undefined`); their errors are ignored, but a check that throws will still stop the submit. (A field hidden in _every_ row is skipped entirely.) If such an array also has a `.transform()` that can reorder rows, a hidden row field's `.default()` value may appear in the submitted output. Likewise, rows that come only from an array's schema `.default([...])` (when the form submits no rows of its own) are never shown, so row conditions aren't evaluated for them; only fields hidden with `hidden: true` are stripped from such rows.
 - Conditions are evaluated reactively on every form value change.
+
+:::tip Hide the UI but keep the value
+To skip a field's built-in UI while keeping its value validated and submitted — for example an array you drive from your own toolbar with `useArrayField` — use `render: false` instead of `hidden`.
+:::
+
+:::caution Hidden fields and the `onSubmit` type
+`onSubmit` is typed from your schema (`z.infer<typeof schema>`), but a hidden field is left out of the submitted values even when the schema requires it. Choose per field:
+
+- **Optional in the schema** — the type matches what you receive (`string | undefined`). Note that a _visible_ field left blank is then also accepted: blank optional inputs are submitted as `undefined`.
+
+  ```ts
+  vatNumber: z.string().min(1).optional(), // `.min(1)` applies only to typed input
+  ```
+
+- **Required in the schema** — the user must fill it in whenever it is shown, but treat it as possibly `undefined` in `onSubmit`, because it is missing when hidden.
+  :::
+
+:::note Discriminated unions
+Hiding the discriminator of a `z.discriminatedUnion` (for example `fields={{ kind: { hidden: true } }}`) only hides its input. Its value still selects the variant, so it is always validated and submitted, and never reset.
+:::
 
 ## Inline condition (without `createForm`)
 

@@ -25,7 +25,12 @@ function isEqual(a: unknown, b: unknown): boolean {
   return false
 }
 
-function normalizeValue(value: unknown, field: FieldConfig): unknown {
+function normalizeValue(
+  value: unknown,
+  field: FieldConfig,
+  path: string,
+  skip: ReadonlySet<string>,
+): unknown {
   // A composite with a deferred (output-typed) default that still equals its
   // seeded value was not touched: drop it so Zod applies the default. Compared
   // on raw form state, before blanks are mapped to null/undefined.
@@ -42,10 +47,12 @@ function normalizeValue(value: unknown, field: FieldConfig): unknown {
   }
 
   if (field.type === 'object' && isPlainObject(value)) {
-    return normalizeEmptyValues(value, field.children)
+    return normalizeEmptyValues(value, field.children, skip, path)
   }
   if (field.type === 'array' && Array.isArray(value)) {
-    return value.map((item) => normalizeValue(item, field.itemConfig))
+    return value.map((item, index) =>
+      normalizeValue(item, field.itemConfig, `${path}.${index}`, skip),
+    )
   }
   return value
 }
@@ -54,17 +61,24 @@ function normalizeValue(value: unknown, field: FieldConfig): unknown {
  * Maps empty form-state values to what the schema expects for "empty" before
  * validation: `''` in a text-like field becomes {@link getEmptyValue} (e.g.
  * `undefined` for optional, `null` for nullable). Recurses into nested objects
- * and array rows. Keys without a field config pass through. Does not mutate.
+ * and array rows. Keys without a field config pass through. Values at the
+ * concrete paths in `skip` (e.g. hidden fields, removed afterwards) are left
+ * as they are, so their schemas aren't consulted. Does not mutate.
  */
 export function normalizeEmptyValues(
   values: Record<string, unknown>,
   fields: FieldConfig[],
+  skip: ReadonlySet<string> = new Set(),
+  basePath = '',
 ): Record<string, unknown> {
   const result: Record<string, unknown> = { ...values }
   for (const field of fields) {
     // Child names are dot-paths (or row-relative); the key is the last segment
     const key = field.name.split('.').pop() ?? field.name
-    if (key in result) result[key] = normalizeValue(result[key], field)
+    const path = basePath ? `${basePath}.${key}` : key
+    if (key in result && !skip.has(path)) {
+      result[key] = normalizeValue(result[key], field, path, skip)
+    }
   }
   return result
 }

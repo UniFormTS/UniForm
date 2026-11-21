@@ -198,7 +198,7 @@ const RowsOnly = ({ rows }: ArrayFieldLayoutProps) => <>{rows}</>
 
 Use dot paths for nested arrays too, including row indices (for example `"profile.contacts"` or `"groups.0.emails"`).
 
-The hook drives the rendered array's own rows, so rows added from a toolbar appear immediately, and rows added with the built-in **Add** button are reflected in `rowCount`. When nothing renders the array (for example it is `hidden`), the operations write the array value directly instead; each call reads the current value, so several calls in one handler all apply.
+The hook drives the rendered array's own rows, so rows added from a toolbar appear immediately, and rows added with the built-in **Add** button are reflected in `rowCount`. When nothing renders the array (for example with `fields={{ lineItems: { render: false } }}`), the operations write the array value directly instead; each call reads the current value, so several calls in one handler all apply.
 
 ## Per-row overrides follow their row
 

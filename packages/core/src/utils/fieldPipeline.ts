@@ -270,6 +270,40 @@ export type ArrayFieldConfigWithRowMeta = Extract<
   >
 }
 
+/**
+ * Merges per-row dynamic meta overrides into the child field configs of an
+ * array item. For each child field that has an override in `rowOverrides`,
+ * applies the override properties (hidden, disabled, label, placeholder,
+ * description, options) to the child's config.
+ */
+export function applyRowDynamicMeta(
+  itemConfig: FieldConfig,
+  rowOverrides: Record<string, Partial<FieldDependencyResult>>,
+): FieldConfig {
+  if (itemConfig.type !== 'object') return itemConfig
+
+  const children = itemConfig.children.map((child) => {
+    const override = rowOverrides[child.name]
+    if (!override) return child
+
+    const { options, label, ...metaOverrides } = override
+    let updated: FieldConfig = {
+      ...child,
+      ...(label !== undefined ? { label } : {}),
+      meta: { ...child.meta, ...metaOverrides },
+    }
+
+    // For select fields, override options if provided
+    if (options !== undefined && updated.type === 'select') {
+      updated = { ...updated, options }
+    }
+
+    return updated
+  })
+
+  return { ...itemConfig, children }
+}
+
 /** Regex to match row-indexed keys: "{arrayName}.{digit(s)}.{childField}" */
 const ROW_KEY_PATTERN = /^(.+?)\.(\d+)\.(.+)$/
 
@@ -333,6 +367,25 @@ export function applyDynamicMeta(
 
     return updated
   })
+}
+
+/**
+ * Applies everything that decides a field's visibility to a field list:
+ * `fields`-prop overrides, then conditions (UniForm conditions win over
+ * `fields`-prop ones), then dynamic meta from `setFieldMeta` (including
+ * per-row overrides). The renderer and validation both build on this, so they
+ * always agree on which fields are hidden.
+ */
+export function buildVisibilityFields(
+  fields: FieldConfig[],
+  overrides: Record<string, Partial<FieldMeta>>,
+  conditions: Map<string, FieldCondition>,
+  dynamicMeta: Record<string, Partial<FieldDependencyResult>>,
+): FieldConfig[] {
+  return applyDynamicMeta(
+    injectConditions(applyFieldOverrides(fields, overrides), conditions),
+    dynamicMeta,
+  )
 }
 
 /**
