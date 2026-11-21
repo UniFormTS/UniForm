@@ -5,6 +5,7 @@ import type * as z from 'zod/v4/core'
 import type {
   AutoFormProps,
   AutoFormHandle,
+  DeepPartial,
   FieldCondition,
   FieldMeta,
   FormMethods,
@@ -43,6 +44,8 @@ import {
   buildDefaults,
 } from '../utils/fieldPipeline'
 import { resolveNullableSlot } from '../utils/resolveNullableSlot'
+import { mergeDefaults, omitPath } from '../utils/mergeDefaults'
+import { normalizeEmptyValues } from '../utils/normalizeEmptyValues'
 
 // Shared defaults keep the context value stable across re-renders
 const EMPTY_FIELDS = {}
@@ -101,7 +104,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     )
   }, [schema])
 
-  // Initial field list — for unions, use the first variant so buildDefaults has something
+  // Initial field list — for unions, the discriminator plus the first variant
   const rawFields = React.useMemo(() => {
     if (!unionInfo) return introspectObjectSchema(schema)
     const firstVariantFields = introspectObjectSchema(
@@ -115,18 +118,30 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     [components],
   )
 
-  const generatedDefaults = React.useMemo(
-    () => buildDefaults(rawFields),
-    [rawFields],
-  )
+  const generatedDefaults = React.useMemo(() => {
+    const defaults = buildDefaults(rawFields)
+    if (!unionInfo) return defaults
+    // Seed every variant's fields so switching variants never leaves a field
+    // `undefined`. Merged recursively; earlier variants win only where keys
+    // actually conflict. Inactive variants' keys are dropped before validation
+    // (see `resolver` below).
+    let seeded = defaults
+    for (const variant of unionInfo.variantMap.values()) {
+      seeded = mergeDefaults(
+        buildDefaults(introspectObjectSchema(variant)),
+        seeded,
+      )
+    }
+    return seeded
+  }, [rawFields, unionInfo])
 
   const computedDefaults = React.useMemo(() => {
-    const base: Record<string, unknown> = {
-      ...generatedDefaults,
-      ...(typeof defaultValues === 'function'
-        ? {}
-        : (defaultValues as Record<string, unknown>)),
-    }
+    let base = mergeDefaults(
+      generatedDefaults,
+      typeof defaultValues === 'function'
+        ? undefined
+        : (defaultValues as Record<string, unknown> | undefined),
+    )
 
     // Collect all conditions: UniForm-registered takes precedence, fields-prop fills gaps
     const conditions = new Map<string, FieldCondition>(
@@ -148,7 +163,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     // (condition true) still receive their default value.
     for (const [name, condition] of conditions) {
       if (!condition(base)) {
-        delete base[name]
+        base = omitPath(base, name)
       }
     }
 
@@ -160,8 +175,43 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   const [isLoadingDefaults, setIsLoadingDefaults] =
     React.useState(isAsyncDefaults)
 
+  // Before validation: map empty inputs ('' in form state) to the schema's
+  // empty value (undefined / null / ''), and for discriminated unions keep only
+  // the active variant's keys, so other variants' seeded or previously entered
+  // values are neither rejected by strict variants nor passed through by loose
+  // ones.
+  const resolver = React.useMemo((): Resolver => {
+    const base = zodResolver(schema) as unknown as Resolver
+    if (!unionInfo) {
+      return (values, context, options) =>
+        base(normalizeEmptyValues(values, rawFields), context, options)
+    }
+    const variantFields = new Map(
+      [...unionInfo.variantMap].map(([value, variant]) => [
+        value,
+        introspectObjectSchema(variant),
+      ]),
+    )
+    return (values, context, options) => {
+      const active = String(
+        (values as Record<string, unknown>)[unionInfo.discriminatorKey],
+      )
+      const variant = unionInfo.variantMap.get(active)
+      if (!variant) return base(values, context, options)
+      const activeValues: Record<string, unknown> = {}
+      for (const key of Object.keys(variant._zod.def.shape)) {
+        if (key in values) activeValues[key] = values[key]
+      }
+      return base(
+        normalizeEmptyValues(activeValues, variantFields.get(active) ?? []),
+        context,
+        options,
+      )
+    }
+  }, [schema, unionInfo, rawFields])
+
   const rhf = useForm({
-    resolver: zodResolver(schema) as unknown as Resolver,
+    resolver,
     defaultValues: computedDefaults,
   })
 
@@ -230,10 +280,15 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   React.useEffect(() => {
     if (!isAsyncDefaults) return
     let cancelled = false
-    void (defaultValues as () => Promise<Partial<z.infer<TSchema>>>)().then(
+    void (defaultValues as () => Promise<DeepPartial<z.infer<TSchema>>>)().then(
       (vals) => {
         if (cancelled) return
-        rhf.reset({ ...generatedDefaultsRef.current, ...vals })
+        rhf.reset(
+          mergeDefaults(
+            generatedDefaultsRef.current,
+            vals as Record<string, unknown>,
+          ),
+        )
         setIsLoadingDefaults(false)
       },
     )

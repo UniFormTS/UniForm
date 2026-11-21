@@ -51,6 +51,26 @@ describe('optional and nullable', () => {
     expect(result.required).toBe(false)
     expect(result.type).toBe('number')
   })
+
+  it('distinguishes optional from nullable', () => {
+    const opt = introspectSchema(z.string().optional(), 'a')
+    expect(opt.optional).toBe(true)
+    expect(opt.nullable).toBeUndefined()
+
+    const nul = introspectSchema(z.string().nullable(), 'b')
+    expect(nul.nullable).toBe(true)
+    expect(nul.optional).toBeUndefined()
+
+    const both = introspectSchema(z.string().nullish(), 'c')
+    expect(both.optional).toBe(true)
+    expect(both.nullable).toBe(true)
+  })
+
+  it('keeps outer optionality when collapsing a plain union', () => {
+    const result = introspectSchema(z.string().or(z.number()).optional(), 'u')
+    expect(result.required).toBe(false)
+    expect(result.optional).toBe(true)
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -67,6 +87,112 @@ describe('ZodDefault', () => {
   it('unwraps ZodDefault wrapping a number', () => {
     const result = introspectSchema(z.number().default(0), 'count')
     expect(result.type).toBe('number')
+  })
+
+  it('exposes the schema default through getDefault()', () => {
+    expect(
+      introspectSchema(z.string().default('hello'), 'greeting').getDefault?.(),
+    ).toBe('hello')
+    expect(introspectSchema(z.number().default(5), 'n').getDefault?.()).toBe(5)
+    expect(
+      introspectSchema(z.boolean().prefault(true), 'b').getDefault?.(),
+    ).toBe(true)
+  })
+
+  it('evaluates a default supplier on every call', () => {
+    let n = 0
+    const field = introspectSchema(
+      z.string().default(() => `id-${++n}`),
+      'id',
+    )
+    expect(field.getDefault?.()).toBe('id-1')
+    expect(field.getDefault?.()).toBe('id-2')
+  })
+
+  it('uses the outermost default when defaults are nested', () => {
+    const result = introspectSchema(
+      z.string().default('inner').optional().default('outer'),
+      'x',
+    )
+    expect(result.getDefault?.()).toBe('outer')
+  })
+
+  it('defers a .default() that wraps a transform (output-typed default)', () => {
+    const result = introspectSchema(
+      z
+        .string()
+        .transform((s) => s.length)
+        .default(5),
+      'len',
+    )
+    expect(result.getDefault).toBeUndefined()
+    expect(result.deferredDefault).toBe(true)
+    // `.default()` makes the input accept `undefined`
+    expect(result.optional).toBe(true)
+  })
+
+  it('lets a deferred outer default win over an inner input default', () => {
+    // Untouched input must parse to the outer default (5), not transform('abc')
+    const result = introspectSchema(
+      z
+        .string()
+        .default('abc')
+        .transform((s) => s.length)
+        .default(5),
+      'len',
+    )
+    expect(result.getDefault).toBeUndefined()
+    expect(result.deferredDefault).toBe(true)
+  })
+
+  it('defers a composite default whose children transform', () => {
+    const result = introspectSchema(
+      z
+        .object({ len: z.string().transform((s) => s.length) })
+        .default({ len: 5 }),
+      'o',
+    )
+    expect(result.getDefault).toBeUndefined()
+    expect(result.deferredDefault).toBe(true)
+  })
+
+  it('keeps a composite default whose children do not transform', () => {
+    const result = introspectSchema(
+      z.object({ a: z.string() }).default({ a: 'x' }),
+      'o',
+    )
+    expect(result.getDefault?.()).toEqual({ a: 'x' })
+    expect(result.deferredDefault).toBeUndefined()
+  })
+
+  it('keeps a .prefault() that wraps a transform (input-typed default)', () => {
+    const result = introspectSchema(
+      z
+        .string()
+        .transform((s) => s.length)
+        .prefault('abc'),
+      'len',
+    )
+    expect(result.getDefault?.()).toBe('abc')
+    expect(result.deferredDefault).toBeUndefined()
+  })
+
+  it('drops a collapsed variant default when the outer default is deferred', () => {
+    const result = introspectSchema(
+      z
+        .union([z.string().default('abc'), z.number()])
+        .transform((v) => String(v).length)
+        .default(5),
+      'u',
+    )
+    expect(result.getDefault).toBeUndefined()
+    expect(result.deferredDefault).toBe(true)
+  })
+
+  it('omits getDefault when the schema has no default', () => {
+    const result = introspectSchema(z.string(), 'x')
+    expect(result.getDefault).toBeUndefined()
+    expect(result.deferredDefault).toBeUndefined()
   })
 })
 

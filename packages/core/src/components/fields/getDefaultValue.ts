@@ -1,38 +1,98 @@
+import { safeParse } from 'zod/v4/core'
 import type { FieldConfig } from '../../types'
 
 /**
- * Returns a sensible empty default value for a field based on its `type`.
+ * Field types rendered as text-like inputs. In form state an empty one always
+ * holds `''` (RHF can't display a controlled `undefined` — it falls back to the
+ * value captured at mount); `normalizeEmptyValues` maps `''` to
+ * {@link getEmptyValue} right before validation.
+ */
+export const TEXT_LIKE_TYPES = new Set(['string', 'number', 'date'])
+
+/** Copies arrays and plain objects so form rows never share a default instance. */
+function cloneDefault(value: unknown): unknown {
+  if (Array.isArray(value)) return [...(value as unknown[])]
+  if (
+    value !== null &&
+    typeof value === 'object' &&
+    Object.getPrototypeOf(value) === Object.prototype
+  ) {
+    return { ...(value as Record<string, unknown>) }
+  }
+  return value
+}
+
+/**
+ * Returns the value submitted for an empty text-like field, so that leaving it
+ * blank satisfies the schema whenever the schema allows it:
  *
- * Used when appending new rows to an array field so that RHF starts each row
- * with typed, non-`undefined` values.
+ * - optional (incl. `nullish`) → `undefined`
+ * - nullable only → `null`
+ * - required `string` → `''`
+ * - required `number` / `date` → `''` when the schema accepts it (e.g. the
+ *   collapsed plain union `z.number().or(z.literal(''))`), otherwise `undefined`
+ */
+export function getEmptyValue(field: FieldConfig): unknown {
+  if (field.optional) return undefined
+  if (field.nullable) return null
+  if (field.type === 'string') return ''
+  return acceptsEmptyString(field) ? '' : undefined
+}
+
+function acceptsEmptyString(field: FieldConfig): boolean {
+  try {
+    return safeParse(field.schema, '').success
+  } catch {
+    // Inconclusive (e.g. async refinements can't run synchronously): keep ''
+    // and let the async resolver decide.
+    return true
+  }
+}
+
+/**
+ * Returns the initial form-state value for a field. This is the single source of
+ * defaults for top-level fields, nested object children, discriminated-union
+ * variants and newly appended array rows.
  *
- * - `string` → `''`
- * - `number` → `0`
+ * - A schema `.default()` / `.prefault()` value always wins (suppliers run on
+ *   every call, so each new row gets a fresh value).
+ * - A deferred (output-typed) default: `''` for text-like fields, `undefined`
+ *   for other scalars, and children's defaults for objects and arrays (dropped
+ *   on submit while unchanged), so Zod applies the default when untouched.
+ * - `string` / `number` / `date` → `''`
  * - `boolean` → `false`
- * - `date` → `new Date()`
- * - `select` → first option value, or `''` if no options exist
+ * - `select` → first option value, or `''` if no options exist (the default
+ *   select has no empty option, so the first option is what the user sees)
  * - `object` → recursively built object using child defaults
  * - `array` → `[]`
  * - anything else → `undefined`
  */
 export function getDefaultValue(field: FieldConfig): unknown {
+  if (field.getDefault) return cloneDefault(field.getDefault())
+  if (TEXT_LIKE_TYPES.has(field.type)) return ''
+  // A deferred scalar (e.g. a transformed boolean) stays undefined so Zod
+  // applies its default. Composites are still seeded from their children, so
+  // every sibling input is valid; `normalizeEmptyValues` drops the composite
+  // while it still equals this seed.
+  if (
+    field.deferredDefault &&
+    field.type !== 'object' &&
+    field.type !== 'array'
+  )
+    return undefined
+
   switch (field.type) {
-    case 'string':
-      return ''
-    case 'number':
-      return 0
     case 'boolean':
       return false
-    case 'date':
-      return new Date()
     case 'select':
       return field.options?.[0]?.value ?? ''
     case 'object': {
       const result: Record<string, unknown> = {}
       for (const child of field.children ?? []) {
-        // Use only the last segment of the child's name for the key
+        // Child names are dot-paths (or row-relative); the key is the last segment
         const key = child.name.split('.').pop() ?? child.name
-        result[key] = getDefaultValue(child)
+        const value = getDefaultValue(child)
+        if (value !== undefined) result[key] = value
       }
       return result
     }

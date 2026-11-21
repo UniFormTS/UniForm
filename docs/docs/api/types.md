@@ -51,8 +51,8 @@ type AutoFormProps<TSchema extends z.$ZodObject> = {
   form: { readonly schema: TSchema }
   onSubmit: (values: z.infer<TSchema>) => void | Promise<void>
   defaultValues?:
-    | Partial<z.infer<TSchema>>
-    | (() => Promise<Partial<z.infer<TSchema>>>)
+    | DeepPartial<z.infer<TSchema>> // nested objects may be partial; arrays are replaced whole
+    | (() => Promise<DeepPartial<z.infer<TSchema>>>)
   components?: ComponentRegistry
   fields?: { [K in DeepKeys<z.infer<TSchema>>]?: FieldOverride<TSchema, ...> }
   fieldWrapper?: React.ComponentType<FieldWrapperProps>

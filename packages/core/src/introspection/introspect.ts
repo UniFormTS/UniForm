@@ -26,7 +26,22 @@ export function introspectSchema(
 ): FieldConfig {
   const path = parentPath && name ? `${parentPath}.${name}` : name || parentPath
 
-  const { schema: unwrappedSchema, required, meta } = unwrap(schema)
+  const {
+    schema: unwrappedSchema,
+    required,
+    optional,
+    nullable,
+    getDefault,
+    deferredDefault,
+    meta,
+  } = unwrap(schema)
+  // Only set when meaningful, so configs without them stay unchanged
+  const wrapperInfo = {
+    ...(optional && { optional: true }),
+    ...(nullable && { nullable: true }),
+    ...(getDefault && { getDefault }),
+    ...(deferredDefault && { deferredDefault: true }),
+  }
   const inner = unwrappedSchema as z.$ZodTypes
   const def = inner._zod.def
   const kind = def.type
@@ -146,9 +161,21 @@ export function introspectSchema(
       } else {
         // Plain union (z.or()) — collapse to the first variant.
         // The original schema is preserved on `schema` for custom components.
-        const collapsed = introspectSchema(variants[0], name, parentPath)
+        const { getDefault: collapsedDefault, ...collapsed } = introspectSchema(
+          variants[0],
+          name,
+          parentPath,
+        )
         return {
           ...collapsed,
+          // A deferred outer default must win over the first variant's own
+          // default, which would otherwise seed (and transform) the input.
+          ...(collapsedDefault &&
+            !deferredDefault && {
+              getDefault: collapsedDefault,
+            }),
+          ...(!required && { required }),
+          ...wrapperInfo,
           name: path,
           label,
           meta: { ...collapsed.meta, ...mergedMeta },
@@ -165,6 +192,7 @@ export function introspectSchema(
     type,
     label,
     required,
+    ...wrapperInfo,
     meta: mergedMeta,
     schema: inner,
     ...(options !== undefined && { options }),

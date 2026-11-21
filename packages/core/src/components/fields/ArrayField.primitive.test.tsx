@@ -60,7 +60,7 @@ describe('arrays of primitives', () => {
     })
   })
 
-  it('number rows: Add appends 0 and submit yields number[]', async () => {
+  it('number rows: Add appends an empty row and submit yields number[]', async () => {
     const onSubmit = vi.fn()
     const { user } = setup(
       <AutoForm
@@ -71,8 +71,7 @@ describe('arrays of primitives', () => {
     )
     expect(input('scores.0')).toHaveAttribute('type', 'number')
     await user.click(screen.getByRole('button', { name: 'Add' }))
-    await waitFor(() => expect(input('scores.1')).toHaveValue(0))
-    await user.clear(input('scores.1')!)
+    await waitFor(() => expect(input('scores.1')).toHaveValue(null))
     await user.type(input('scores.1')!, '7')
     expect(await submitAndGetValues(user, onSubmit)).toEqual({
       scores: [5, 7],

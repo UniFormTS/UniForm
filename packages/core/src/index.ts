@@ -37,6 +37,7 @@ export type {
   CoercionMap,
   ValidationMessages,
   PersistStorage,
+  DeepPartial,
 } from './types'
 
 // Introspection

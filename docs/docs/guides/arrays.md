@@ -34,7 +34,7 @@ const schema = z.object({
 })
 ```
 
-- **Add** appends the type's empty value: `''` for strings, `0` for numbers, the first option for enums.
+- **Add** appends the item's default value: the schema `.default(...)` if present, otherwise an empty input for strings, numbers and dates, and the first option for enums. Default suppliers (`.default(() => …)`) run for each added row. Object rows are built the same way field by field.
 - Remove, move and `minItems` / `maxItems` behave as for object rows. Duplicate and collapse are not rendered for primitive rows.
 - Rows have **no visible label** by default. Set `meta.itemLabel` to show one on every row. Unlabelled rows still get an accessible name — `aria-label="<array label> <n>"` (for example `"Tags 1"`) — via `meta.ariaLabel`, which the default input and select render.
 - Validation errors for an item appear on the failing row.
