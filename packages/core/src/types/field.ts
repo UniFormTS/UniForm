@@ -182,10 +182,18 @@ type FieldConfigBase = {
   /** `true` when the schema accepts `null` (`.nullable()` / `.nullish()`). */
   nullable?: boolean
   /**
-   * The value from the schema's outermost `.default()` / `.prefault()`, used as
-   * the field's initial value. Absent when the schema declares no default.
+   * Returns the schema's outermost `.default()` / `.prefault()` value, used as
+   * the field's initial value. Called per generated value, so default suppliers
+   * (e.g. `.default(() => crypto.randomUUID())`) run for every new row.
+   * Absent when the schema declares no default or the default is deferred.
    */
-  defaultValue?: unknown
+  getDefault?: () => unknown
+  /**
+   * `true` when the schema's outermost `.default()` supplies a transformed
+   * *output* value that can't seed the input. The input starts empty and is
+   * submitted as `undefined` while untouched, so Zod applies the default.
+   */
+  deferredDefault?: boolean
   /** Merged UI metadata for the field. */
   meta: FieldMeta
   /**

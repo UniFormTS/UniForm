@@ -4,7 +4,6 @@ import type { FieldConfig } from '../../types'
 import { useAutoFormContext } from '../../context/AutoFormContext'
 import { resolveComponent } from '../resolveComponent'
 import { coerceValue } from '../../coercion/coerce'
-import { getEmptyValue } from './getDefaultValue'
 
 type ScalarFieldProps = {
   field: FieldConfig
@@ -50,10 +49,11 @@ export function ScalarField({
           }
           onChange={(value) => {
             let coerced = coerceValue(field.type, value, coercions)
-            // Empty input becomes the schema's "empty" value (undefined for
-            // optional, null for nullable) so blank optional fields validate.
+            // Empty input is stored as '' — RHF can't display a controlled
+            // `undefined` (it falls back to the value captured at mount). The
+            // resolver maps '' to the schema's empty value before validation.
             if (!isComposite && (coerced === '' || coerced == null)) {
-              coerced = getEmptyValue(field)
+              coerced = ''
             }
             rhfField.onChange(coerced)
             void field.meta.onChange?.(coerced, formMethods)

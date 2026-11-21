@@ -349,4 +349,82 @@ describe('field defaults', () => {
       ).toBe('')
     })
   })
+
+  it('shows an emptied prefilled optional input as empty and submits it as cleared', async () => {
+    const onSubmit = vi.fn()
+    const form = createForm(
+      z.object({
+        email: z.string().email().optional(),
+        age: z.number().optional(),
+      }),
+    )
+    const { user, container } = setup(
+      <AutoForm
+        form={form}
+        defaultValues={{ email: 'old@example.com', age: 30 }}
+        onSubmit={onSubmit}
+      />,
+    )
+    const email = container.querySelector('[name="email"]') as HTMLInputElement
+    const age = container.querySelector('[name="age"]') as HTMLInputElement
+    await user.clear(email)
+    await user.clear(age)
+    expect(email.value).toBe('')
+    expect(age.value).toBe('')
+    await user.click(submit())
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    expect(onSubmit.mock.calls[0][0]).toEqual({})
+    expect(email.value).toBe('')
+  })
+
+  it('applies a transformed boolean default when the checkbox is untouched', async () => {
+    const onSubmit = vi.fn()
+    const form = createForm(
+      z.object({
+        flag: z
+          .boolean()
+          .transform((b) => !b)
+          .default(false),
+      }),
+    )
+    const { user } = setup(<AutoForm form={form} onSubmit={onSubmit} />)
+    await user.click(submit())
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    expect(onSubmit.mock.calls[0][0]).toEqual({ flag: false })
+  })
+
+  it('applies a composite output default when its fields are untouched', async () => {
+    const onSubmit = vi.fn()
+    const form = createForm(
+      z.object({
+        o: z
+          .object({ len: z.string().transform((s) => s.length) })
+          .default({ len: 5 }),
+      }),
+    )
+    const { user } = setup(<AutoForm form={form} onSubmit={onSubmit} />)
+    await user.click(submit())
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    expect(onSubmit.mock.calls[0][0]).toEqual({ o: { len: 5 } })
+  })
+
+  it('runs default suppliers for every appended row', async () => {
+    const onSubmit = vi.fn()
+    let n = 0
+    const form = createForm(
+      z.object({
+        rows: z.array(z.object({ id: z.string().default(() => `id-${++n}`) })),
+      }),
+    )
+    const { user } = setup(<AutoForm form={form} onSubmit={onSubmit} />)
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+    await user.click(submit())
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    const ids = (
+      onSubmit.mock.calls[0][0] as { rows: { id: string }[] }
+    ).rows.map((r) => r.id)
+    expect(ids).toHaveLength(2)
+    expect(new Set(ids).size).toBe(2)
+  })
 })

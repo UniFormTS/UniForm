@@ -15,7 +15,7 @@ Add `persistKey` to auto-save the form values to storage whenever they change. O
 ## How it works
 
 1. On mount, UniForm looks for a value in storage under `persistKey`.
-2. If found, those values are deep-merged over `defaultValues` and passed to `reset()`. Fields the user cleared (for example an emptied optional field, stored as `undefined`) stay cleared instead of reverting to their default.
+2. If found, those values are deep-merged over `defaultValues` and passed to `reset()`. Fields the user cleared stay cleared instead of reverting to their default.
 3. On every field change (debounced by `persistDebounce` ms), the current values are written back.
 4. After a successful submit, the stored value is **removed** automatically.
 

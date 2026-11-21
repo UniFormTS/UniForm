@@ -31,14 +31,16 @@ export function introspectSchema(
     required,
     optional,
     nullable,
-    defaultValue,
+    getDefault,
+    deferredDefault,
     meta,
   } = unwrap(schema)
   // Only set when meaningful, so configs without them stay unchanged
   const wrapperInfo = {
     ...(optional && { optional: true }),
     ...(nullable && { nullable: true }),
-    ...(defaultValue && { defaultValue: defaultValue.value }),
+    ...(getDefault && { getDefault }),
+    ...(deferredDefault && { deferredDefault: true }),
   }
   const inner = unwrappedSchema as z.$ZodTypes
   const def = inner._zod.def

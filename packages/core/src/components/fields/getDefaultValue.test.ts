@@ -6,11 +6,15 @@ import { getDefaultValue, getEmptyValue } from './getDefaultValue'
 const field = (schema: z.ZodType, name = 'f') => introspectSchema(schema, name)
 
 describe('getDefaultValue', () => {
-  it('returns type defaults for required scalars', () => {
+  it('returns form-state empty values for scalars', () => {
+    // Text-like inputs hold '' in form state; the resolver maps '' to the
+    // schema's empty value (see normalizeEmptyValues) before validation.
     expect(getDefaultValue(field(z.string()))).toBe('')
+    expect(getDefaultValue(field(z.number()))).toBe('')
+    expect(getDefaultValue(field(z.date()))).toBe('')
+    expect(getDefaultValue(field(z.string().email().optional()))).toBe('')
+    expect(getDefaultValue(field(z.number().nullable()))).toBe('')
     expect(getDefaultValue(field(z.boolean()))).toBe(false)
-    expect(getDefaultValue(field(z.number()))).toBeUndefined()
-    expect(getDefaultValue(field(z.date()))).toBeUndefined()
     expect(getDefaultValue(field(z.enum(['red', 'blue'])))).toBe('red')
     expect(getDefaultValue(field(z.array(z.string())))).toEqual([])
   })
@@ -25,16 +29,44 @@ describe('getDefaultValue', () => {
     ])
   })
 
-  it('uses undefined for empty optional text-like fields', () => {
-    expect(
-      getDefaultValue(field(z.string().email().optional())),
-    ).toBeUndefined()
-    expect(getDefaultValue(field(z.number().optional()))).toBeUndefined()
+  it('runs a default supplier for every generated value', () => {
+    let n = 0
+    const f = field(z.string().default(() => `id-${++n}`))
+    expect(getDefaultValue(f)).toBe('id-1')
+    expect(getDefaultValue(f)).toBe('id-2')
   })
 
-  it('uses null for empty nullable (non-optional) text-like fields', () => {
-    expect(getDefaultValue(field(z.string().nullable()))).toBeNull()
-    expect(getDefaultValue(field(z.number().nullable()))).toBeNull()
+  it('leaves non-text fields with a deferred (output) default undefined', () => {
+    expect(
+      getDefaultValue(
+        field(
+          z
+            .boolean()
+            .transform((b) => !b)
+            .default(false),
+        ),
+      ),
+    ).toBeUndefined()
+    expect(
+      getDefaultValue(
+        field(
+          z
+            .object({ len: z.string().transform((s) => s.length) })
+            .default({ len: 5 }),
+        ),
+      ),
+    ).toBeUndefined()
+    // Text inputs still hold '' (mapped to undefined on submit)
+    expect(
+      getDefaultValue(
+        field(
+          z
+            .string()
+            .transform((s) => s.length)
+            .default(5),
+        ),
+      ),
+    ).toBe('')
   })
 
   it('keeps the first option for optional selects (no empty option to show)', () => {

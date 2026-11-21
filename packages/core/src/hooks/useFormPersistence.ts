@@ -1,7 +1,8 @@
-import { useEffect, useRef, useCallback, useState } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { useWatch } from 'react-hook-form'
 import type { Control } from 'react-hook-form'
 import type { PersistStorage } from '../types'
+import { mergeDefaults } from '../utils/mergeDefaults'
 
 const defaultStorage: PersistStorage | undefined =
   typeof window !== 'undefined'
@@ -13,64 +14,6 @@ const defaultStorage: PersistStorage | undefined =
     : undefined
 
 /**
- * JSON drops `undefined`, but a cleared optional field *is* `undefined`; without
- * a marker, restoring would bring back its default. Encoded in drafts and
- * decoded on restore (drafts without markers restore as before).
- */
-const UNDEFINED_KEY = '__uniformUndefined'
-
-const isPlainObject = (value: unknown): value is Record<string, unknown> =>
-  value !== null &&
-  typeof value === 'object' &&
-  Object.getPrototypeOf(value) === Object.prototype
-
-const isUndefinedMarker = (value: unknown): boolean =>
-  isPlainObject(value) &&
-  value[UNDEFINED_KEY] === true &&
-  Object.keys(value).length === 1
-
-/** Serializes form values, keeping `undefined` values as markers. */
-export function serializeDraft(values: unknown): string {
-  return JSON.stringify(values, (_key, value: unknown) =>
-    value === undefined ? { [UNDEFINED_KEY]: true } : value,
-  )
-}
-
-/** Replaces markers with `undefined`, keeping the keys present. */
-function revive(value: unknown): unknown {
-  if (isUndefinedMarker(value)) return undefined
-  if (Array.isArray(value)) return value.map(revive)
-  if (isPlainObject(value)) {
-    const result: Record<string, unknown> = {}
-    for (const [key, item] of Object.entries(value)) result[key] = revive(item)
-    return result
-  }
-  return value
-}
-
-/**
- * Deep-merges a parsed draft over the form defaults. Plain objects merge
- * recursively; everything else (including cleared `undefined` values) from the
- * draft replaces the default.
- */
-export function mergeDraft(
-  base: Record<string, unknown>,
-  draft: Record<string, unknown>,
-): Record<string, unknown> {
-  const result: Record<string, unknown> = { ...base }
-  for (const [key, value] of Object.entries(draft)) {
-    const current = result[key]
-    result[key] =
-      isPlainObject(current) &&
-      isPlainObject(value) &&
-      !isUndefinedMarker(value)
-        ? mergeDraft(current, value)
-        : revive(value)
-  }
-  return result
-}
-
-/**
  * Persists form values to a storage adapter and restores them on mount.
  *
  * - On mount, reads `key` from `storage` and calls `reset` with the merged
@@ -80,9 +23,8 @@ export function mergeDraft(
  * - When `key` is `undefined`, persistence is entirely disabled.
  * - Falls back to `sessionStorage` when no custom `storage` adapter is provided.
  *
- * @returns `clearPersistedData` — call this after a successful submission to
- *   remove the persisted draft — and `restoreVersion`, which changes when a draft
- *   is restored (use it as a `key` to remount the rendered fields).
+ * @returns An object with `clearPersistedData` — call this after a successful
+ *   submission to remove the persisted draft.
  */
 export function useFormPersistence(options: {
   control: Control
@@ -91,7 +33,7 @@ export function useFormPersistence(options: {
   storage?: PersistStorage
   reset: (values: Record<string, unknown>) => void
   defaultValues: Record<string, unknown>
-}): { clearPersistedData: () => void; restoreVersion: number } {
+}): { clearPersistedData: () => void } {
   const {
     control,
     key,
@@ -103,10 +45,6 @@ export function useFormPersistence(options: {
   const storage = customStorage ?? defaultStorage
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const restoredRef = useRef(false)
-  // Bumped after a draft is restored. Controllers capture their fallback value
-  // at mount, so a field restored to `undefined` (cleared) would keep showing
-  // its old default; the form keys its fields on this to remount them.
-  const [restoreVersion, setRestoreVersion] = useState(0)
 
   // Restore persisted values on mount
   useEffect(() => {
@@ -116,8 +54,7 @@ export function useFormPersistence(options: {
       const raw = storage.getItem(key)
       if (raw) {
         const parsed = JSON.parse(raw) as Record<string, unknown>
-        reset(mergeDraft(defaultValues, parsed))
-        setRestoreVersion((v) => v + 1)
+        reset(mergeDefaults(defaultValues, parsed))
       }
     } catch {
       // Invalid data — ignore silently
@@ -135,7 +72,7 @@ export function useFormPersistence(options: {
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => {
       try {
-        storage.setItem(key, serializeDraft(values))
+        storage.setItem(key, JSON.stringify(values))
       } catch {
         // Storage full or unavailable — fail silently
       }
@@ -155,5 +92,5 @@ export function useFormPersistence(options: {
     }
   }, [key, storage])
 
-  return { clearPersistedData, restoreVersion }
+  return { clearPersistedData }
 }

@@ -45,6 +45,7 @@ import {
 } from '../utils/fieldPipeline'
 import { resolveNullableSlot } from '../utils/resolveNullableSlot'
 import { mergeDefaults } from '../utils/mergeDefaults'
+import { normalizeEmptyValues } from '../utils/normalizeEmptyValues'
 
 // Shared defaults keep the context value stable across re-renders
 const EMPTY_FIELDS = {}
@@ -174,24 +175,40 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   const [isLoadingDefaults, setIsLoadingDefaults] =
     React.useState(isAsyncDefaults)
 
-  // For discriminated unions, validate only the active variant's keys so other
-  // variants' seeded or previously entered values are neither rejected by
-  // strict variants nor passed through by loose ones.
+  // Before validation: map empty inputs ('' in form state) to the schema's
+  // empty value (undefined / null / ''), and for discriminated unions keep only
+  // the active variant's keys, so other variants' seeded or previously entered
+  // values are neither rejected by strict variants nor passed through by loose
+  // ones.
   const resolver = React.useMemo((): Resolver => {
     const base = zodResolver(schema) as unknown as Resolver
-    if (!unionInfo) return base
+    if (!unionInfo) {
+      return (values, context, options) =>
+        base(normalizeEmptyValues(values, rawFields), context, options)
+    }
+    const variantFields = new Map(
+      [...unionInfo.variantMap].map(([value, variant]) => [
+        value,
+        introspectObjectSchema(variant),
+      ]),
+    )
     return (values, context, options) => {
-      const variant = unionInfo.variantMap.get(
-        String((values as Record<string, unknown>)[unionInfo.discriminatorKey]),
+      const active = String(
+        (values as Record<string, unknown>)[unionInfo.discriminatorKey],
       )
+      const variant = unionInfo.variantMap.get(active)
       if (!variant) return base(values, context, options)
       const activeValues: Record<string, unknown> = {}
       for (const key of Object.keys(variant._zod.def.shape)) {
         if (key in values) activeValues[key] = values[key]
       }
-      return base(activeValues, context, options)
+      return base(
+        normalizeEmptyValues(activeValues, variantFields.get(active) ?? []),
+        context,
+        options,
+      )
     }
-  }, [schema, unionInfo])
+  }, [schema, unionInfo, rawFields])
 
   const rhf = useForm({
     resolver,
@@ -240,7 +257,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     [activeFields, fieldOverridesProp],
   )
 
-  const { clearPersistedData, restoreVersion } = useFormPersistence({
+  const { clearPersistedData } = useFormPersistence({
     control,
     key: persistKey,
     debounceMs: persistDebounce,
@@ -495,7 +512,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
           })(e)
         }}
       >
-        <FormWrapper key={restoreVersion}>
+        <FormWrapper>
           {sections.map((section) => {
             const renderedFields = section.fields.map((field, idx) => (
               <FieldRenderer
