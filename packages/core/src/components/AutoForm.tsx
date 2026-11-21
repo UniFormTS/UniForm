@@ -59,8 +59,7 @@ import {
   cloneValue,
   omitErrorsAt,
   omitPaths,
-  relaxSchemaAt,
-  skipSchemaAt,
+  createDerivedSchemaCache,
 } from '../utils/hiddenFields'
 import { getAtPath } from '../utils/getAtPath'
 import { getDefaultValue } from './fields/getDefaultValue'
@@ -183,6 +182,14 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   const [isLoadingDefaults, setIsLoadingDefaults] =
     React.useState(isAsyncDefaults)
 
+  // The discriminator selects the variant, so hiding it only hides its input:
+  // its value is always validated and submitted, and never reset.
+  const discriminatorKey = unionInfo?.discriminatorKey
+  const isStructural = React.useCallback(
+    (path: string) => path === discriminatorKey,
+    [discriminatorKey],
+  )
+
   // The field list for the variant that `values` select (for discriminated
   // unions), or all fields. Shared by validation and hidden-field syncing.
   const variantFieldsMap = React.useMemo(
@@ -228,27 +235,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   const resolver = React.useMemo((): Resolver => {
     const validate = (s: z.$ZodType): Resolver =>
       zodResolver(s as TSchema) as unknown as Resolver
-    // Derived schemas, cached per (mode, base schema, paths)
-    const derived = new WeakMap<z.$ZodType, Map<string, z.$ZodType>>()
-    const schemaFor = (
-      mode: 'skip' | 'relax',
-      from: z.$ZodType,
-      paths: string[],
-    ): z.$ZodType => {
-      if (!paths.length) return from
-      const key = `${mode}:${[...paths].sort().join('|')}`
-      const cache = derived.get(from) ?? new Map<string, z.$ZodType>()
-      derived.set(from, cache)
-      let result = cache.get(key)
-      if (!result) {
-        result =
-          mode === 'skip'
-            ? skipSchemaAt(from, paths)
-            : relaxSchemaAt(from, paths)
-        cache.set(key, result)
-      }
-      return result
-    }
+    const schemaFor = createDerivedSchemaCache()
     const base = validate(schema)
 
     return async (values, context, options) => {
@@ -267,18 +254,24 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       // Visibility is derived from the variant being validated (not the last
       // rendered one), with the current overrides, conditions and dynamic meta.
       const visibilityFields = toVisibilityFieldsRef.current(fields)
-      const visibility = analyzeVisibility(
+      const analyzed = analyzeVisibility(
         visibilityFields,
         values,
         isCustomRenderedRef.current,
       )
+      const visibility = {
+        ...analyzed,
+        hidden: analyzed.hidden.filter((h) => !isStructural(h.path)),
+      }
       // Hidden by `meta.hidden` in an array item config: covers rows a default
       // supplies that aren't in the input. Where input rows exist, their
       // observed visibility wins (per-row meta may reveal the field).
       const staticHidden = collectStaticHiddenSchemaPaths(
         visibilityFields,
         isCustomRenderedRef.current,
-      ).filter((path) => !visibility.rowOccurrences.get(path))
+      ).filter(
+        (path) => !visibility.rowOccurrences.get(path) && !isStructural(path),
+      )
       const hiddenPaths = visibility.hidden.map((h) => h.path)
       // Map empty inputs first, on unpruned values (deferred-default
       // composites compare their raw value with their seed), without
@@ -334,7 +327,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       const relaxed = schemaFor('relax', target, someRows)
       return prune(await validate(relaxed)(payload, context, options))
     }
-  }, [schema, unionInfo, activeFieldsFor, isCustomRenderedRef])
+  }, [schema, unionInfo, activeFieldsFor, isCustomRenderedRef, isStructural])
 
   const rhf = useForm({
     resolver,
@@ -434,7 +427,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       toVisibilityFieldsRef.current(activeFieldsFor(values)),
       values,
       isCustomRenderedRef.current,
-    )
+    ).filter((h) => !isStructural(h.path))
     const previous = previousHiddenRef.current
     // Updated before any setValue below, so re-entrant calls see no change
     previousHiddenRef.current = new Set(hidden.map((h) => h.path))

@@ -434,3 +434,33 @@ export function omitErrorsAt(
     unknown
   >
 }
+
+/**
+ * Returns a function that derives `skip` / `relax` schemas (see
+ * {@link skipSchemaAt}, {@link relaxSchemaAt}) and caches them per base
+ * schema, mode and path set (in any order). Keys are serialized structurally,
+ * so path sets can't collide whatever characters field names contain.
+ */
+export function createDerivedSchemaCache(): (
+  mode: 'skip' | 'relax',
+  from: z.$ZodType,
+  paths: string[],
+) => z.$ZodType {
+  const cache = new WeakMap<z.$ZodType, Map<string, z.$ZodType>>()
+  return (mode, from, paths) => {
+    if (!paths.length) return from
+    const key = JSON.stringify([mode, [...paths].sort()])
+    let byKey = cache.get(from)
+    if (!byKey) {
+      byKey = new Map()
+      cache.set(from, byKey)
+    }
+    let derived = byKey.get(key)
+    if (!derived) {
+      derived =
+        mode === 'skip' ? skipSchemaAt(from, paths) : relaxSchemaAt(from, paths)
+      byKey.set(key, derived)
+    }
+    return derived
+  }
+}

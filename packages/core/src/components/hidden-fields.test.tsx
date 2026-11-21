@@ -891,4 +891,48 @@ describe('hidden fields', () => {
       expect(seen).toEqual(['x'])
     })
   })
+
+  describe('closer-look findings', () => {
+    const union = () =>
+      z.discriminatedUnion('kind', [
+        z.object({ kind: z.literal('a'), x: z.string() }),
+        z.object({ kind: z.literal('b'), y: z.string() }),
+      ])
+
+    it('still validates and submits a hidden discriminator', async () => {
+      const onSubmit = vi.fn()
+      const { user } = setup(
+        <AutoForm
+          form={createForm(union())}
+          fields={{ kind: { hidden: true } }}
+          defaultValues={{ kind: 'b' } as never}
+          onSubmit={onSubmit}
+        />,
+      )
+      await user.click(submit())
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(onSubmit.mock.calls[0][0]).toEqual({ kind: 'b', y: '' })
+    })
+
+    it('does not reset the discriminator when it becomes hidden', async () => {
+      const onSubmit = vi.fn()
+      const form = createForm(union()).setOnChange(
+        'y' as never,
+        ((_: unknown, ctx: { setFieldMeta: (f: string, m: object) => void }) =>
+          ctx.setFieldMeta('kind', { hidden: true })) as never,
+      )
+      const { user, container } = setup(
+        <AutoForm
+          form={form}
+          defaultValues={{ kind: 'b' } as never}
+          onSubmit={onSubmit}
+        />,
+      )
+      await user.type(input(container, 'y')!, 'v')
+      await waitFor(() => expect(screen.queryByRole('combobox')).toBeNull())
+      await user.click(submit())
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(onSubmit.mock.calls[0][0]).toEqual({ kind: 'b', y: 'v' })
+    })
+  })
 })

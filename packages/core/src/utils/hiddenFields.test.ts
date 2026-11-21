@@ -13,6 +13,7 @@ import {
   omitPaths,
   relaxSchemaAt,
   skipSchemaAt,
+  createDerivedSchemaCache,
 } from './hiddenFields'
 
 const fieldsOf = (
@@ -273,5 +274,26 @@ describe('derived schemas keep default suppliers lazy', () => {
     const first = safeParse(derived, {}).data as { o: { a: string } }
     const second = safeParse(derived, {}).data as { o: { a: string } }
     expect(first.o.a).not.toBe(second.o.a)
+  })
+})
+
+describe('createDerivedSchemaCache', () => {
+  it('reuses a derived schema only for the same mode and path set', () => {
+    const schema = z.object({
+      'a|b': z.string().min(1),
+      a: z.string().min(1),
+      b: z.string().min(1),
+    })
+    const derive = createDerivedSchemaCache()
+    const skipPipeName = derive('skip', schema, ['a|b'])
+    const skipAandB = derive('skip', schema, ['b', 'a'])
+    // Paths joined with '|' used to collide here
+    expect(skipAandB).not.toBe(skipPipeName)
+    expect(safeParse(skipAandB, { 'a|b': 'x' }).success).toBe(true)
+    expect(safeParse(skipPipeName, { a: '', b: '' }).success).toBe(false)
+    // Same set in any order, and the same mode, is reused
+    expect(derive('skip', schema, ['a', 'b'])).toBe(skipAandB)
+    expect(derive('relax', schema, ['a', 'b'])).not.toBe(skipAandB)
+    expect(derive('skip', schema, [])).toBe(schema)
   })
 })
