@@ -62,7 +62,7 @@ describe('field defaults', () => {
     const { user } = setup(
       <AutoForm
         form={form}
-        defaultValues={{ prefs: { news: true } as never }}
+        defaultValues={{ prefs: { news: true } }}
         onSubmit={onSubmit}
       />,
     )
@@ -83,9 +83,7 @@ describe('field defaults', () => {
     const { user } = setup(
       <AutoForm
         form={form}
-        defaultValues={() =>
-          Promise.resolve({ prefs: { news: true } as never })
-        }
+        defaultValues={() => Promise.resolve({ prefs: { news: true } })}
         onSubmit={onSubmit}
       />,
     )
@@ -203,6 +201,152 @@ describe('field defaults', () => {
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
     expect(onSubmit.mock.calls[0][0]).toEqual({
       items: [{ name: 'new', done: false }],
+    })
+  })
+
+  it('submits strict union variants without inactive variant keys', async () => {
+    const onSubmit = vi.fn()
+    const form = createForm(
+      z.discriminatedUnion('kind', [
+        z.strictObject({ kind: z.literal('a'), aFlag: z.boolean() }),
+        z.strictObject({ kind: z.literal('b'), bFlag: z.boolean() }),
+      ]),
+    )
+    const { user } = setup(<AutoForm form={form} onSubmit={onSubmit} />)
+    await user.click(submit())
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    expect(onSubmit.mock.calls[0][0]).toEqual({ kind: 'a', aFlag: false })
+  })
+
+  it('does not submit inactive variant values for passthrough variants', async () => {
+    const onSubmit = vi.fn()
+    const form = createForm(
+      z.discriminatedUnion('kind', [
+        z.looseObject({ kind: z.literal('a'), aFlag: z.boolean() }),
+        z.looseObject({ kind: z.literal('b'), bFlag: z.boolean() }),
+      ]),
+    )
+    const { user } = setup(<AutoForm form={form} onSubmit={onSubmit} />)
+    await user.click(submit())
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    expect(onSubmit.mock.calls[0][0]).toEqual({ kind: 'a', aFlag: false })
+  })
+
+  it('merges nested defaults of variants that share an object key', async () => {
+    const onSubmit = vi.fn()
+    const form = createForm(
+      z.discriminatedUnion('kind', [
+        z.object({
+          kind: z.literal('a'),
+          prefs: z.object({ news: z.boolean() }),
+        }),
+        z.object({
+          kind: z.literal('b'),
+          prefs: z.object({ done: z.boolean() }),
+        }),
+      ]),
+    )
+    const { user } = setup(<AutoForm form={form} onSubmit={onSubmit} />)
+    await user.selectOptions(screen.getByRole('combobox'), 'b')
+    await user.click(submit())
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    expect(onSubmit.mock.calls[0][0]).toEqual({
+      kind: 'b',
+      prefs: { done: false },
+    })
+  })
+
+  it("keeps the documented blank value for z.number().or(z.literal(''))", async () => {
+    const onSubmit = vi.fn()
+    const form = createForm(z.object({ amount: z.number().or(z.literal('')) }))
+    const { user, container } = setup(
+      <AutoForm form={form} onSubmit={onSubmit} />,
+    )
+    await user.click(submit())
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    expect(onSubmit.mock.calls[0][0]).toEqual({ amount: '' })
+
+    // Clearing a typed value returns to the blank value, too
+    const input = container.querySelector('[name="amount"]') as HTMLInputElement
+    await user.type(input, '4')
+    await user.clear(input)
+    await user.click(submit())
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(2))
+    expect(onSubmit.mock.calls[1][0]).toEqual({ amount: '' })
+  })
+
+  it('leaves the input undefined when .default() supplies a transformed output', async () => {
+    const onSubmit = vi.fn()
+    const form = createForm(
+      z.object({
+        len: z
+          .string()
+          .transform((s) => s.length)
+          .default(5),
+      }),
+    )
+    const { user, container } = setup(
+      <AutoForm form={form} onSubmit={onSubmit} />,
+    )
+    expect(
+      (container.querySelector('[name="len"]') as HTMLInputElement).value,
+    ).toBe('')
+    await user.click(submit())
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    expect(onSubmit.mock.calls[0][0]).toEqual({ len: 5 })
+  })
+
+  it('restores a cleared optional field as cleared, not as its default', async () => {
+    const store = new Map<string, string>()
+    const storage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    }
+    const form = createForm(
+      z.object({
+        email: z.string().email().optional(),
+        nested: z.object({ note: z.string().optional() }),
+      }),
+    )
+    const ui = (
+      <AutoForm
+        form={form}
+        defaultValues={{ email: 'old@example.com', nested: { note: 'keep?' } }}
+        persistKey='draft'
+        persistDebounce={0}
+        persistStorage={storage}
+        onSubmit={() => {}}
+      />
+    )
+    const first = setup(ui)
+    await first.user.clear(
+      first.container.querySelector('[name="email"]') as HTMLInputElement,
+    )
+    await first.user.clear(
+      first.container.querySelector('[name="nested.note"]') as HTMLInputElement,
+    )
+    await waitFor(() => {
+      const draft = store.get('draft') ?? ''
+      expect(draft).toContain('"email"')
+      expect(draft).not.toContain('old@example.com')
+      expect(draft).not.toContain('keep?')
+    })
+    first.unmount()
+
+    const second = render(ui)
+    await waitFor(() => {
+      expect(
+        (second.container.querySelector('[name="email"]') as HTMLInputElement)
+          .value,
+      ).toBe('')
+      expect(
+        (
+          second.container.querySelector(
+            '[name="nested.note"]',
+          ) as HTMLInputElement
+        ).value,
+      ).toBe('')
     })
   })
 })

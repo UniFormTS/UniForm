@@ -1,3 +1,4 @@
+import { safeParse } from 'zod/v4/core'
 import type { FieldConfig } from '../../types'
 
 /** Field types whose empty input is mapped by `getEmptyValue`. */
@@ -22,12 +23,24 @@ function cloneDefault(value: unknown): unknown {
  *
  * - optional (incl. `nullish`) → `undefined`
  * - nullable only → `null`
- * - required `string` → `''`; required `number` / `date` → `undefined`
+ * - required `string` → `''`
+ * - required `number` / `date` → `''` when the schema accepts it (e.g. the
+ *   collapsed plain union `z.number().or(z.literal(''))`), otherwise `undefined`
  */
 export function getEmptyValue(field: FieldConfig): unknown {
   if (field.optional) return undefined
   if (field.nullable) return null
-  return field.type === 'string' ? '' : undefined
+  if (field.type === 'string') return ''
+  return acceptsEmptyString(field) ? '' : undefined
+}
+
+function acceptsEmptyString(field: FieldConfig): boolean {
+  try {
+    return safeParse(field.schema, '').success
+  } catch {
+    // e.g. async refinements, which can't be checked synchronously
+    return false
+  }
 }
 
 /**

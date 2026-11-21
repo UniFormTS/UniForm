@@ -107,6 +107,42 @@ describe('ZodDefault', () => {
     expect(result.defaultValue).toBe('outer')
   })
 
+  it('ignores a .default() that wraps a transform (output-typed default)', () => {
+    const result = introspectSchema(
+      z
+        .string()
+        .transform((s) => s.length)
+        .default(5),
+      'len',
+    )
+    expect('defaultValue' in result).toBe(false)
+    // `.default()` still makes the input accept `undefined`
+    expect(result.optional).toBe(true)
+  })
+
+  it('falls back to an inner input default when the outer one is output-typed', () => {
+    const result = introspectSchema(
+      z
+        .string()
+        .default('abc')
+        .transform((s) => s.length)
+        .default(5),
+      'len',
+    )
+    expect(result.defaultValue).toBe('abc')
+  })
+
+  it('keeps a .prefault() that wraps a transform (input-typed default)', () => {
+    const result = introspectSchema(
+      z
+        .string()
+        .transform((s) => s.length)
+        .prefault('abc'),
+      'len',
+    )
+    expect(result.defaultValue).toBe('abc')
+  })
+
   it('omits defaultValue when the schema has no default', () => {
     expect('defaultValue' in introspectSchema(z.string(), 'x')).toBe(false)
   })

@@ -49,7 +49,9 @@ const WRAPPER_KINDS = new Set([
  * requiredness along the way.
  *
  * Also records whether the schema accepts `undefined` / `null` and the value
- * of the outermost `default` / `prefault` wrapper, if any.
+ * of the outermost `default` / `prefault` wrapper usable as an *input* value.
+ * A `.default()` placed outside a pipe/transform supplies an output value and is
+ * skipped (the field is then marked `optional`).
  *
  * Metadata is merged so that outer wrappers take precedence over inner ones
  * (e.g. meta attached to the `optional()` call overrides meta on the inner
@@ -65,6 +67,9 @@ export function unwrap(schema: z.$ZodType): UnwrapResult {
   let optional = false
   let nullable = false
   let defaultValue: UnwrapResult['defaultValue']
+  // A `.default()` value is an *output* value: it is only safe as the input's
+  // initial value when no pipe/transform sits between it and the input type.
+  let defaultIsOutput = false
   let meta: FieldMeta = extractMeta(inner)
 
   let kind = inner._zod.def.type
@@ -80,6 +85,17 @@ export function unwrap(schema: z.$ZodType): UnwrapResult {
         value: (inner._zod.def as z.$ZodDefaultDef | z.$ZodPrefaultDef)
           .defaultValue,
       }
+      defaultIsOutput = kind === 'default'
+    }
+
+    if (kind === 'pipe' && defaultValue && defaultIsOutput) {
+      // The outer `.default()` supplies a transformed output value, which can't
+      // be fed back through the input. Drop it and leave the input undefined
+      // (the wrapper accepts `undefined` and applies the default on parse); an
+      // inner input-typed default may still be picked up below.
+      defaultValue = undefined
+      defaultIsOutput = false
+      optional = true
     }
 
     if (kind === 'pipe') {

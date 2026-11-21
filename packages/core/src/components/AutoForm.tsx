@@ -5,6 +5,7 @@ import type * as z from 'zod/v4/core'
 import type {
   AutoFormProps,
   AutoFormHandle,
+  DeepPartial,
   FieldCondition,
   FieldMeta,
   FormMethods,
@@ -120,15 +121,17 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     const defaults = buildDefaults(rawFields)
     if (!unionInfo) return defaults
     // Seed every variant's fields so switching variants never leaves a field
-    // `undefined`. Earlier variants win on key conflicts; the union schema
-    // strips the inactive variants' keys from the submitted values.
+    // `undefined`. Merged recursively; earlier variants win only where keys
+    // actually conflict. Inactive variants' keys are dropped before validation
+    // (see `resolver` below).
+    let seeded = defaults
     for (const variant of unionInfo.variantMap.values()) {
-      const variantDefaults = buildDefaults(introspectObjectSchema(variant))
-      for (const [key, value] of Object.entries(variantDefaults)) {
-        if (!(key in defaults)) defaults[key] = value
-      }
+      seeded = mergeDefaults(
+        buildDefaults(introspectObjectSchema(variant)),
+        seeded,
+      )
     }
-    return defaults
+    return seeded
   }, [rawFields, unionInfo])
 
   const computedDefaults = React.useMemo(() => {
@@ -171,8 +174,27 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   const [isLoadingDefaults, setIsLoadingDefaults] =
     React.useState(isAsyncDefaults)
 
+  // For discriminated unions, validate only the active variant's keys so other
+  // variants' seeded or previously entered values are neither rejected by
+  // strict variants nor passed through by loose ones.
+  const resolver = React.useMemo((): Resolver => {
+    const base = zodResolver(schema) as unknown as Resolver
+    if (!unionInfo) return base
+    return (values, context, options) => {
+      const variant = unionInfo.variantMap.get(
+        String((values as Record<string, unknown>)[unionInfo.discriminatorKey]),
+      )
+      if (!variant) return base(values, context, options)
+      const activeValues: Record<string, unknown> = {}
+      for (const key of Object.keys(variant._zod.def.shape)) {
+        if (key in values) activeValues[key] = values[key]
+      }
+      return base(activeValues, context, options)
+    }
+  }, [schema, unionInfo])
+
   const rhf = useForm({
-    resolver: zodResolver(schema) as unknown as Resolver,
+    resolver,
     defaultValues: computedDefaults,
   })
 
@@ -218,7 +240,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     [activeFields, fieldOverridesProp],
   )
 
-  const { clearPersistedData } = useFormPersistence({
+  const { clearPersistedData, restoreVersion } = useFormPersistence({
     control,
     key: persistKey,
     debounceMs: persistDebounce,
@@ -241,7 +263,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   React.useEffect(() => {
     if (!isAsyncDefaults) return
     let cancelled = false
-    void (defaultValues as () => Promise<Partial<z.infer<TSchema>>>)().then(
+    void (defaultValues as () => Promise<DeepPartial<z.infer<TSchema>>>)().then(
       (vals) => {
         if (cancelled) return
         rhf.reset(
@@ -473,7 +495,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
           })(e)
         }}
       >
-        <FormWrapper>
+        <FormWrapper key={restoreVersion}>
           {sections.map((section) => {
             const renderedFields = section.fields.map((field, idx) => (
               <FieldRenderer

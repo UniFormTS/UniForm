@@ -50,9 +50,10 @@ export type DeepKeysIndexed<T> = T extends object
   ? {
       [K in keyof T & string]: T[K] extends unknown[]
         ? ArrayItem<T[K]> extends object
-          ? | K
-            | `${K}.${DeepKeys<ArrayItem<T[K]>>}`
-            | `${K}.${number}.${DeepKeys<ArrayItem<T[K]>>}`
+          ?
+              | K
+              | `${K}.${DeepKeys<ArrayItem<T[K]>>}`
+              | `${K}.${number}.${DeepKeys<ArrayItem<T[K]>>}`
           : K
         : T[K] extends object
           ? K | `${K}.${DeepKeysIndexed<T[K]>}`
@@ -107,3 +108,16 @@ export type ConditionValues<
       : TValues
     : TValues
   : TValues
+
+/**
+ * Recursively makes every property optional. Arrays keep their element type
+ * (rows are replaced, not merged); `Date` and other non-plain values are kept as-is.
+ * Used for `defaultValues`, which are deep-merged over schema-derived defaults.
+ */
+export type DeepPartial<T> = T extends Date | ((...args: never[]) => unknown)
+  ? T
+  : T extends readonly unknown[]
+    ? T
+    : T extends object
+      ? { [K in keyof T]?: DeepPartial<T[K]> }
+      : T

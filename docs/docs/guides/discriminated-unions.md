@@ -20,7 +20,7 @@ const schema = z.discriminatedUnion('type', [
 
 1. UniForm renders the `discriminant` field first.
 2. It watches the discriminant value and activates the matching variant.
-3. Fields from inactive variants are hidden and unregistered (no validation, excluded from submit).
+3. Fields from inactive variants are hidden, and only the active variant's keys are validated and submitted — so `z.strictObject` variants work, and `z.looseObject` variants don't pass through other variants' values.
 4. Every variant's fields start from their defaults (the schema `.default(...)` or the type's empty value — `false` for booleans, the first option for enums), so switching to any variant never leaves a field `undefined`. Values you typed are kept if you switch away and back.
 
 ## Combining with `setCondition`

@@ -1,6 +1,6 @@
 import type { FieldPath, FieldPathValue, FieldValues } from 'react-hook-form'
 import type * as z from 'zod/v4/core'
-import type { DeepKeys, DeepFieldValue } from './utils'
+import type { DeepKeys, DeepFieldValue, DeepPartial } from './utils'
 import type { FieldOverride } from './field'
 import type { ComponentRegistry, FieldWrapperProps } from './registry'
 import type { LayoutSlots, FormClassNames } from './layout'
@@ -186,7 +186,8 @@ export type AutoFormProps<TSchema extends z.$ZodObject> = {
    * promise resolves, then resets the form with the loaded values.
    */
   defaultValues?:
-    Partial<z.infer<TSchema>> | (() => Promise<Partial<z.infer<TSchema>>>)
+    | DeepPartial<z.infer<TSchema>>
+    | (() => Promise<DeepPartial<z.infer<TSchema>>>)
   /** Component registry overrides for this form instance. */
   components?: ComponentRegistry
   /** Per-field UI metadata overrides (label, placeholder, options, etc.). */

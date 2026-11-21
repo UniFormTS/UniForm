@@ -38,8 +38,8 @@ When `<AutoForm>` mounts, it walks the Zod schema and builds an ordered list of 
 3. **Options** — for enum/nativeEnum fields, or string fields with `meta.options`, the list of valid values
 4. **Default value** — the field's initial value, resolved in this order:
    - the `defaultValues` prop, deep-merged over the generated defaults (a partial nested object such as `{ address: { city: 'Paris' } }` keeps the defaults of its siblings);
-   - the schema's `.default(...)` / `.prefault(...)` value;
-   - otherwise the type's empty value: `''` for required strings, `undefined` for numbers and dates, `false` for booleans, the first option for selects, `[]` for arrays, and a recursively built object for nested objects.
+   - the schema's `.default(...)` / `.prefault(...)` value (a `.default(...)` placed after a `.transform(...)` supplies an *output* value, so the input is left empty and Zod applies the default on submit);
+   - otherwise the type's empty value: `''` for required strings, `undefined` for numbers and dates (or `''` when the schema accepts it, e.g. `z.number().or(z.literal(''))`), `false` for booleans, the first option for selects, `[]` for arrays, and a recursively built object for nested objects.
 
    Optional text-like fields (`string`, `number`, `date`) start as — and return to, when cleared — `undefined`, and nullable ones `null`, so a blank optional field such as `z.string().email().optional()` passes validation. The same rules apply to nested objects, discriminated-union variants and newly added array rows.
 5. **Schema** — the original Zod schema (after transparent wrappers are stripped), available on every field as an escape hatch for custom components

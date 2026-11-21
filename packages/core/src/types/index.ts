@@ -8,6 +8,7 @@ export type {
   DeepKeys,
   DeepKeysIndexed,
   DeepFieldValue,
+  DeepPartial,
   ConditionValues,
 } from './utils'
 
