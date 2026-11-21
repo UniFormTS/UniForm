@@ -6,7 +6,8 @@ import type { FieldConfig } from '../types'
 /**
  * Filters and sorts a list of field configs based on the current form values.
  *
- * - Fields with `meta.hidden === true` are always excluded.
+ * - Fields with `meta.hidden === true` or `meta.render === false` are always
+ *   excluded (a `render: false` field is still validated and submitted).
  * - Fields with a `meta.condition` function are included only when the
  *   function returns `true` for the current values.
  * - Remaining fields are sorted ascending by `meta.order` (fields without an
@@ -37,6 +38,7 @@ export function useConditionalFields(
     return fields
       .filter((field) => {
         if (field.meta.hidden) return false
+        if (field.meta.render === false) return false
         if (typeof field.meta.condition === 'function') {
           return field.meta.condition(values)
         }

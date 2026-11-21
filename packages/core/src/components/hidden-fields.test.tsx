@@ -12,7 +12,7 @@ function setup(ui: React.ReactElement) {
 
 const submit = () => screen.getByRole('button', { name: /submit/i })
 const input = (container: HTMLElement, name: string) =>
-  container.querySelector(`[name="${name}"]`) as HTMLInputElement | null
+  container.querySelector<HTMLInputElement>(`[name="${name}"]`)
 
 /** Contract: hidden fields are neither validated nor submitted, and a field
  * that is hidden resets to its default (shown again with that default). */
@@ -281,6 +281,100 @@ describe('hidden fields', () => {
     expect(onSubmit.mock.calls[0][0]).toEqual({
       has: true,
       extra: { flag: false, color: 'red' },
+    })
+  })
+
+  describe('render: false', () => {
+    it('does not render the field but still submits its value', async () => {
+      const onSubmit = vi.fn()
+      const form = createForm(z.object({ name: z.string(), token: z.string() }))
+      const { user, container } = setup(
+        <AutoForm
+          form={form}
+          defaultValues={{ token: 'abc' }}
+          fields={{ token: { render: false } }}
+          onSubmit={onSubmit}
+        />,
+      )
+      expect(input(container, 'token')).toBeNull()
+      await user.click(submit())
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(onSubmit.mock.calls[0][0]).toEqual({ name: '', token: 'abc' })
+    })
+
+    it('still validates the field', async () => {
+      const onSubmit = vi.fn()
+      const form = createForm(z.object({ token: z.string().min(1) }))
+      const { user } = setup(
+        <AutoForm
+          form={form}
+          fields={{ token: { render: false } }}
+          onSubmit={onSubmit}
+        />,
+      )
+      await user.click(submit())
+      // Give validation a chance to run
+      await new Promise((r) => setTimeout(r, 50))
+      expect(onSubmit).not.toHaveBeenCalled()
+    })
+
+    it('works for nested and array row fields', async () => {
+      const onSubmit = vi.fn()
+      const form = createForm(
+        z.object({
+          prefs: z.object({ id: z.string(), news: z.boolean() }),
+          rows: z.array(z.object({ id: z.string(), name: z.string() })),
+        }),
+      )
+      const { user, container } = setup(
+        <AutoForm
+          form={form}
+          defaultValues={{
+            prefs: { id: 'p1' },
+            rows: [{ id: 'r1', name: '' }],
+          }}
+          fields={{
+            'prefs.id': { render: false },
+            'rows.id': { render: false },
+          }}
+          onSubmit={onSubmit}
+        />,
+      )
+      expect(input(container, 'prefs.id')).toBeNull()
+      expect(input(container, 'rows.0.id')).toBeNull()
+      expect(input(container, 'rows.0.name')).not.toBeNull()
+      await user.click(submit())
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(onSubmit.mock.calls[0][0]).toEqual({
+        prefs: { id: 'p1', news: false },
+        rows: [{ id: 'r1', name: '' }],
+      })
+    })
+  })
+
+  it('leaves the rows of an array rendered by a registry component untouched', async () => {
+    const onSubmit = vi.fn()
+    const CustomArray = () => <div data-testid='custom-array' />
+    const form = createForm(
+      z.object({
+        rows: z.array(z.object({ kind: z.string(), note: z.string() })),
+      }),
+    ).setCondition('rows.note', (row) => row.kind === 'b')
+    const { user } = setup(
+      <AutoForm
+        form={form}
+        components={{ myArray: CustomArray }}
+        fields={{ rows: { component: 'myArray' } }}
+        defaultValues={{ rows: [{ kind: 'a', note: 'keep' }] }}
+        onSubmit={onSubmit}
+      />,
+    )
+    expect(screen.getByTestId('custom-array')).toBeInTheDocument()
+    await user.click(submit())
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    // The custom component owns the rows; row conditions don't apply to them
+    expect(onSubmit.mock.calls[0][0]).toEqual({
+      rows: [{ kind: 'a', note: 'keep' }],
     })
   })
 })

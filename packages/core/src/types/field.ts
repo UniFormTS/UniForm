@@ -98,8 +98,18 @@ export type FieldMetaBase = {
   order?: number
   /** Grid column span for multi-column layouts (e.g. `1`–`12`). */
   span?: number
-  /** When `true`, the field is not rendered. */
+  /**
+   * When `true`, the field is not part of the form: it is not rendered, not
+   * validated and not submitted, and it resets to its default when hidden.
+   */
   hidden?: boolean
+  /**
+   * When `false`, the field's built-in UI is not rendered, but its value is
+   * still validated and submitted — e.g. an array driven from your own toolbar
+   * with `useArrayField`. Its validation errors aren't displayed by AutoForm;
+   * read them with `useFormState` if your UI needs them. Defaults to `true`.
+   */
+  render?: boolean
   /** When `true`, the field is rendered but not interactive. */
   disabled?: boolean
   /** Conditionally show or hide the field based on the current form values. */

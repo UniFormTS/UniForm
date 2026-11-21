@@ -42,12 +42,15 @@ export type HiddenField = { path: string; field: FieldConfig }
  * `"detail"`, `"prefs.reason"`, `"rows.0.note"`), mirroring how they render:
  * conditions receive the full values, or the row's values inside an array;
  * per-row dynamic meta applies per row; a hidden parent hides its subtree (only
- * the parent is returned). Composites rendered by a custom component are
- * treated as leaves.
+ * the parent is returned). Fields for which `isCustomRendered` returns true
+ * (by default: a component function in `meta.component`) are treated as
+ * leaves, since their component renders the subtree.
  */
 export function collectHiddenFields(
   fields: FieldConfig[],
   values: Record<string, unknown>,
+  isCustomRendered: (field: FieldConfig) => boolean = (field) =>
+    typeof field.meta.component === 'function',
   prefix = '',
 ): HiddenField[] {
   const conditionValues = prefix ? getAtPath(values, prefix) : values
@@ -63,11 +66,19 @@ export function collectHiddenFields(
       hidden.push({ path, field })
       continue
     }
-    if (typeof field.meta.component === 'function') continue
+    // A custom component owns its subtree: nested conditions don't apply
+    if (isCustomRendered(field)) continue
 
     if (field.type === 'object') {
       // Object children keep the parent's condition scope (see ObjectField)
-      hidden.push(...collectHiddenFields(field.children, values, prefix))
+      hidden.push(
+        ...collectHiddenFields(
+          field.children,
+          values,
+          isCustomRendered,
+          prefix,
+        ),
+      )
     } else if (field.type === 'array') {
       const rows = getAtPath(values, path)
       if (!Array.isArray(rows)) continue
@@ -81,6 +92,7 @@ export function collectHiddenFields(
             ...collectHiddenFields(
               itemConfig.children,
               values,
+              isCustomRendered,
               `${path}.${index}`,
             ),
           )
@@ -95,7 +107,9 @@ export function collectHiddenFields(
 export const collectHiddenPaths = (
   fields: FieldConfig[],
   values: Record<string, unknown>,
-): string[] => collectHiddenFields(fields, values).map((h) => h.path)
+  isCustomRendered?: (field: FieldConfig) => boolean,
+): string[] =>
+  collectHiddenFields(fields, values, isCustomRendered).map((h) => h.path)
 
 /** Deep-copies plain objects and arrays (other values are returned as-is). */
 export function cloneValue<T>(value: T): T {
@@ -137,7 +151,10 @@ export function omitPaths<T extends Record<string, unknown>>(
   values: T,
   paths: string[],
 ): T {
-  return paths.reduce<T>((acc, path) => omitPath(acc, path.split('.')) as T, values)
+  return paths.reduce<T>(
+    (acc, path) => omitPath(acc, path.split('.')) as T,
+    values,
+  )
 }
 
 /** Drops array indices: `"rows.3.note"` → `"rows.note"`. */

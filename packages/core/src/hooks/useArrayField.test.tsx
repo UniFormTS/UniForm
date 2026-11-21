@@ -160,7 +160,7 @@ describe('useArrayField — fallback when the array is not rendered', () => {
         <AutoForm
           form={createForm(schema)}
           defaultValues={{ items: [{ name: 'a' }] }}
-          fields={{ items: { hidden: true } }}
+          fields={{ items: { render: false } }}
           layout={{ formWrapper: withToolbar(Toolbar) }}
           onSubmit={onSubmit}
         />,
@@ -193,7 +193,7 @@ describe('useArrayField — fallback when the array is not rendered', () => {
     expect(onSubmit.mock.calls[0][0]).toEqual({ items: [] })
   })
 
-  it('reflects rows added before the array was hidden', async () => {
+  it('resets rows to the default when the array is hidden, then drives the value', async () => {
     const user = userEvent.setup()
     const toggleSchema = z.object({
       show: z.boolean(),
@@ -216,10 +216,13 @@ describe('useArrayField — fallback when the array is not rendered', () => {
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: 'Add' })).toBeNull(),
     )
-    expect(screen.getByTestId('count')).toHaveTextContent('2')
-    await user.click(screen.getByRole('button', { name: 'remove-first' }))
+    // A hidden field resets to its default (one row)
     await waitFor(() =>
       expect(screen.getByTestId('count')).toHaveTextContent('1'),
+    )
+    await user.click(screen.getByRole('button', { name: 'remove-first' }))
+    await waitFor(() =>
+      expect(screen.getByTestId('count')).toHaveTextContent('0'),
     )
   })
 })

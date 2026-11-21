@@ -2,12 +2,7 @@ import { useState, useMemo } from 'react'
 import * as React from 'react'
 import { useWatch } from 'react-hook-form'
 import type { Control } from 'react-hook-form'
-import type {
-  FieldConfig,
-  ArrayWrapperProps,
-  FormMethods,
-  FieldDependencyResult,
-} from '../../types'
+import type { FieldConfig, ArrayWrapperProps, FormMethods } from '../../types'
 import { useAutoFormContext } from '../../context/AutoFormContext'
 import { FieldRenderer } from '../FieldRenderer'
 import { getDefaultValue } from './getDefaultValue'
@@ -307,7 +302,8 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
 
   const ArrayWrapper =
     (field.meta.wrapper as
-      React.ComponentType<ArrayWrapperProps> | undefined) ?? layout.arrayWrapper
+      | React.ComponentType<ArrayWrapperProps>
+      | undefined) ?? layout.arrayWrapper
   return (
     <ArrayWrapper
       label={field.label}
@@ -337,7 +333,8 @@ function CollapseSummary({
   const fallback = labels.arrayItemSummary?.(index) ?? `Item ${index + 1}`
 
   const rowValues = useWatch({ control, name: `${effectiveName}.${index}` }) as
-    Record<string, unknown> | undefined
+    | Record<string, unknown>
+    | undefined
 
   const summary = useMemo(() => {
     if (!isCollapsed) return fallback

@@ -70,7 +70,15 @@ And it adds UniForm-specific derived flags:
 ## How operations are applied
 
 - **Array rendered** — the operations drive the array renderer's own field array, so rows update in the DOM immediately and rows added with the built-in buttons are reflected in `rowCount` and `fields`.
-- **Array not rendered** (for example `hidden`, or replaced by a component override) — the operations write the whole array value with `setValue`. Each call reads the current array at call time, so two `append` calls in one handler both land.
+- **Array not rendered** (`render: false`, or replaced by a component override) — the operations write the whole array value with `setValue`. Each call reads the current array at call time, so two `append` calls in one handler both land.
+
+To drive an array entirely from your own UI, skip its built-in UI with `render: false`; the value is still validated and submitted:
+
+```tsx
+<AutoForm form={form} fields={{ lineItems: { render: false } }} … />
+```
+
+Don't use `hidden` for this: a hidden field is not part of the form, so its value is reset, not validated and not submitted.
 
 Either way, per-row overrides set with `ctx.setFieldMeta('<array>.<index>.<field>', …)` follow their rows (see [Array Fields](../guides/arrays#per-row-overrides-follow-their-row)).
 

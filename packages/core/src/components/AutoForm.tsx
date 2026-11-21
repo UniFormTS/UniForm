@@ -130,6 +130,16 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     [components],
   )
 
+  // Mirrors FieldRenderer: a component function, or a key in the registry
+  const isCustomRendered = React.useCallback(
+    (field: FieldConfig) =>
+      typeof field.meta.component === 'function' ||
+      (typeof field.meta.component === 'string' &&
+        Object.prototype.hasOwnProperty.call(registry, field.meta.component)),
+    [registry],
+  )
+  const isCustomRenderedRef = useLatestRef(isCustomRendered)
+
   const generatedDefaults = React.useMemo(() => {
     const defaults = buildDefaults(rawFields)
     if (!unionInfo) return defaults
@@ -205,7 +215,11 @@ export function AutoForm<TSchema extends z.$ZodObject>(
         fields = variantFields.get(active) ?? []
       }
 
-      const hiddenPaths = collectHiddenPaths(renderedFieldsRef.current, values)
+      const hiddenPaths = collectHiddenPaths(
+        renderedFieldsRef.current,
+        values,
+        isCustomRenderedRef.current,
+      )
       const payload = normalizeEmptyValues(
         omitPaths(activeValues, hiddenPaths),
         fields,
@@ -223,7 +237,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       ])
       return validate(relaxed)(payload, context, options)
     }
-  }, [schema, unionInfo, rawFields])
+  }, [schema, unionInfo, rawFields, isCustomRenderedRef])
 
   const rhf = useForm({
     resolver,
@@ -431,8 +445,9 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       collectHiddenFields(
         fieldsWithDynamic,
         (allValues ?? {}) as Record<string, unknown>,
+        isCustomRendered,
       ),
-    [fieldsWithDynamic, allValues],
+    [fieldsWithDynamic, allValues, isCustomRendered],
   )
   const previousHiddenRef = React.useRef<Set<string> | null>(null)
   React.useEffect(() => {
