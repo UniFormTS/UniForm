@@ -260,3 +260,18 @@ describe('rowIndicesStable', () => {
     expect(rowIndicesStable(schema, 'reordered.n')).toBe(false)
   })
 })
+
+describe('derived schemas keep default suppliers lazy', () => {
+  it('re-runs a default supplier on every parse', () => {
+    let n = 0
+    const schema = z.object({
+      o: z
+        .object({ a: z.string(), h: z.string() })
+        .default(() => ({ a: String(++n), h: '' })),
+    })
+    const derived = skipSchemaAt(schema, ['o.h'])
+    const first = safeParse(derived, {}).data as { o: { a: string } }
+    const second = safeParse(derived, {}).data as { o: { a: string } }
+    expect(first.o.a).not.toBe(second.o.a)
+  })
+})

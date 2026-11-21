@@ -52,6 +52,8 @@ import {
 } from '../utils/reindexDynamicMeta'
 import {
   analyzeVisibility,
+  collectStaticHiddenSchemaPaths,
+  omitSchemaPath,
   collectHiddenFields,
   rowIndicesStable,
   splitHidden,
@@ -252,44 +254,62 @@ export function AutoForm<TSchema extends z.$ZodObject>(
 
       // Visibility is derived from the variant being validated (not the last
       // rendered one), with the current overrides, conditions and dynamic meta.
+      const visibilityFields = toVisibilityFieldsRef.current(fields)
       const visibility = analyzeVisibility(
-        toVisibilityFieldsRef.current(fields),
+        visibilityFields,
         values,
         isCustomRenderedRef.current,
       )
-      // Map empty inputs first: deferred-default composites compare their raw
-      // (unpruned) value with their seed
-      const normalized = normalizeEmptyValues(activeValues, fields)
-      if (!visibility.hidden.length) return base(normalized, context, options)
-
+      // Hidden by `meta.hidden` in an array item: hidden in every row, even
+      // rows a default supplies that aren't in the input
+      const staticHidden = collectStaticHiddenSchemaPaths(
+        visibilityFields,
+        isCustomRenderedRef.current,
+      )
       const hiddenPaths = visibility.hidden.map((h) => h.path)
+      // Map empty inputs first, on unpruned values (deferred-default
+      // composites compare their raw value with their seed), without
+      // consulting hidden fields' schemas
+      const normalized = normalizeEmptyValues(
+        activeValues,
+        fields,
+        new Set(hiddenPaths),
+      )
+      if (!hiddenPaths.length && !staticHidden.length) {
+        return base(normalized, context, options)
+      }
+
       const payload = omitPaths(normalized, hiddenPaths)
       // Hidden wherever it appears: swap the field's schema out entirely, so
       // its validators, transforms and defaults never run. Hidden in only some
       // array rows: the element schema is shared with visible rows, so
       // validate as-is, ignore those rows' errors, and re-parse with the field
       // optional if nothing else failed.
-      const { everywhere, someRows } = splitHidden(visibility)
+      const split = splitHidden(visibility)
+      const everywhere = [...new Set([...split.everywhere, ...staticHidden])]
+      const { someRows } = split
       const target = schemaFor('skip', schema, everywhere)
-      // Zod may recreate hidden keys (e.g. from a default): drop them from the
-      // output — but not by row index when a transform may have moved rows
-      const outputPaths = visibility.hidden
+      // Zod may recreate hidden keys (e.g. from defaults): drop them from the
+      // output. Fields hidden everywhere are dropped by key from every row;
+      // per-row ones by row index, unless a transform may have moved rows.
+      const someRowPaths = new Set(someRows)
+      const indexedOutputPaths = visibility.hidden
         .filter(
           (h) =>
-            h.path === h.schemaPath || rowIndicesStable(schema, h.schemaPath),
+            someRowPaths.has(h.schemaPath) &&
+            rowIndicesStable(schema, h.schemaPath),
         )
         .map((h) => h.path)
       type Result = Awaited<ReturnType<Resolver>>
-      const prune = (result: Result): Result =>
-        Object.keys(result.errors).length
-          ? result
-          : ({
-              ...result,
-              values: omitPaths(
-                result.values as Record<string, unknown>,
-                outputPaths,
-              ),
-            } as Result)
+      const prune = (result: Result): Result => {
+        if (Object.keys(result.errors).length) return result
+        let output = result.values as Record<string, unknown>
+        for (const path of everywhere) output = omitSchemaPath(output, path)
+        return {
+          ...result,
+          values: omitPaths(output, indexedOutputPaths),
+        } as Result
+      }
 
       const result = await validate(target)(payload, context, options)
       if (!Object.keys(result.errors).length) return prune(result)
@@ -360,9 +380,25 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   })
 
   // Dynamic field meta — updated by setFieldMeta inside UniForm onChange handlers
-  const [dynamicMeta, setDynamicMeta] = React.useState<
+  const [dynamicMeta, setDynamicMetaState] = React.useState<
     Record<string, Partial<FieldDependencyResult>>
   >({})
+  // Synchronous snapshot for the resolver: a handler may call setFieldMeta (or
+  // reset) and submit before React commits the state update
+  const dynamicMetaRef = React.useRef(dynamicMeta)
+  const setDynamicMeta = React.useCallback(
+    (
+      action: React.SetStateAction<
+        Record<string, Partial<FieldDependencyResult>>
+      >,
+    ) => {
+      const next =
+        typeof action === 'function' ? action(dynamicMetaRef.current) : action
+      dynamicMetaRef.current = next
+      setDynamicMetaState(next)
+    },
+    [],
+  )
   const [arrayRegistry] = React.useState(createArrayRegistry)
 
   // Paths hidden at the last render; reindexed with array row mutations so a
@@ -526,9 +562,9 @@ export function AutoForm<TSchema extends z.$ZodObject>(
             FieldCondition
           >,
         ),
-        dynamicMeta,
+        dynamicMetaRef.current,
       )
-  }, [fieldOverridesProp, uniForm, dynamicMeta])
+  }, [fieldOverridesProp, uniForm])
 
   // A field that becomes hidden is reset to its default (and its errors are
   // cleared), so it shows its default when it appears again. Applies alike to

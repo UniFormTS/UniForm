@@ -133,6 +133,58 @@ export function analyzeVisibility(
 }
 
 /**
+ * Schema paths of fields hidden by `meta.hidden` in the field configs
+ * themselves — hidden in every row, even rows that don't exist in the input
+ * (e.g. rows supplied by a default). Custom-rendered subtrees are skipped.
+ */
+export function collectStaticHiddenSchemaPaths(
+  fields: FieldConfig[],
+  isCustomRendered: IsCustomRendered = (field) =>
+    typeof field.meta.component === 'function',
+): string[] {
+  const paths: string[] = []
+  const walk = (list: FieldConfig[], schemaPrefix: string) => {
+    for (const field of list) {
+      const schemaPath = joinPath(schemaPrefix, field.name)
+      if (field.meta.hidden === true) {
+        paths.push(schemaPath)
+        continue
+      }
+      if (isCustomRendered(field)) continue
+      if (field.type === 'object') walk(field.children, schemaPrefix)
+      else if (field.type === 'array') walkItem(field.itemConfig, schemaPath)
+    }
+  }
+  const walkItem = (item: FieldConfig, schemaPath: string) => {
+    if (isCustomRendered(item)) return
+    if (item.type === 'object') walk(item.children, schemaPath)
+    else if (item.type === 'array') walkItem(item.itemConfig, schemaPath)
+  }
+  walk(fields, '')
+  return paths
+}
+
+/**
+ * Removes a schema path (no row indices) from `values`, in every row of every
+ * array along the way. Copies only what changes.
+ */
+export function omitSchemaPath<T>(value: T, schemaPath: string): T {
+  const remove = (current: unknown, keys: string[]): unknown => {
+    if (Array.isArray(current)) {
+      return current.map((item: unknown) => remove(item, keys))
+    }
+    if (!isPlainObject(current) || !keys.length) return current
+    const [head, ...rest] = keys
+    if (!(head in current)) return current
+    const next = { ...current }
+    if (rest.length) next[head] = remove(current[head], rest)
+    else delete next[head]
+    return next
+  }
+  return remove(value, schemaPath.split('.')) as T
+}
+
+/**
  * Splits hidden fields by schema path into those hidden wherever they appear
  * (`everywhere`: outside arrays, or hidden in every row reached) and those
  * hidden in only some rows (`someRows`).
@@ -170,8 +222,10 @@ export function rowIndicesStable(
     if (WRAPPERS_WITH_INNER.has(def.type)) {
       return visit(def.innerType as z.$ZodType, index)
     }
+    // The leaf's own schema can't move rows; stop once the path is consumed
+    if (index >= segments.length) return true
     if (def.type === 'pipe' || def.type === 'transform') return false
-    if (index >= segments.length - 1) return true // the leaf itself
+    // Arrays don't consume a segment (row indices aren't in schema paths)
     if (def.type === 'array') return visit(def.element as z.$ZodType, index)
     if (def.type === 'object') {
       const child = (def.shape as Record<string, z.$ZodType>)[segments[index]]
@@ -262,8 +316,23 @@ function transformAt(
   if (paths.some((p) => p.length === 0)) return leaf(schema)
   const def = schema._zod.def as unknown as Def
   const at = (s: unknown) => transformAt(s as z.$ZodType, paths, leaf)
-  const withDef = (changes: Record<string, unknown>) =>
-    z.clone(schema, { ...def, ...changes } as never)
+  // Copy property descriptors (not values): Zod defines e.g. `defaultValue`
+  // as a getter that re-runs default suppliers on every parse
+  const withDef = (changes: Record<string, unknown>) => {
+    const next = Object.defineProperties(
+      {},
+      Object.getOwnPropertyDescriptors(def),
+    ) as Record<string, unknown>
+    for (const [key, value] of Object.entries(changes)) {
+      Object.defineProperty(next, key, {
+        value,
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      })
+    }
+    return z.clone(schema, next as never)
+  }
 
   if (def.type === 'object') {
     const shape = def.shape as Record<string, z.$ZodType>

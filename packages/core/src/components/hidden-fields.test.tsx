@@ -675,4 +675,97 @@ describe('hidden fields', () => {
       })
     })
   })
+
+  describe('review round 4', () => {
+    it('does not prune the wrong row when a nested array transform reorders rows', async () => {
+      const onSubmit = vi.fn()
+      const row = z.object({
+        kind: z.enum(['a', 'b']),
+        note: z
+          .string()
+          .default('saved')
+          .meta({
+            condition: (r: Record<string, unknown>) => r.kind === 'b',
+          }),
+      })
+      const form = createForm(
+        z.object({
+          grid: z.array(z.array(row).transform((r) => [...r].reverse())),
+        }),
+      )
+      const { user } = setup(
+        <AutoForm
+          form={form}
+          defaultValues={{
+            grid: [
+              [
+                { kind: 'a', note: '' },
+                { kind: 'b', note: 'hi' },
+              ],
+            ],
+          }}
+          onSubmit={onSubmit}
+        />,
+      )
+      await user.click(submit())
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      const grid = (onSubmit.mock.calls[0][0] as { grid: unknown[][] }).grid
+      expect(grid[0][0]).toEqual({ kind: 'b', note: 'hi' })
+    })
+
+    it("does not run hidden fields' schemas while mapping blank values", async () => {
+      const onSubmit = vi.fn()
+      const check = vi.fn(() => true)
+      const form = createForm(
+        z.object({ name: z.string(), n: z.coerce.number().refine(check) }),
+      )
+      const { user } = setup(
+        <AutoForm
+          form={form}
+          fields={{ n: { hidden: true } }}
+          onSubmit={onSubmit}
+        />,
+      )
+      await user.click(submit())
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(check).not.toHaveBeenCalled()
+    })
+
+    it('strips statically hidden row fields from rows supplied by a deferred default', async () => {
+      const onSubmit = vi.fn()
+      const form = createForm(
+        z.object({
+          rows: z
+            .array(
+              z.object({
+                len: z.string().transform((s) => s.length),
+                secret: z.string().meta({ hidden: true }),
+              }),
+            )
+            .default([{ len: 5, secret: 'private' }]),
+        }),
+      )
+      const { user } = setup(<AutoForm form={form} onSubmit={onSubmit} />)
+      await user.click(submit())
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(onSubmit.mock.calls[0][0]).toEqual({ rows: [{ len: 5 }] })
+    })
+
+    it('uses metadata set in the same handler that submits', async () => {
+      const onSubmit = vi.fn()
+      const form = createForm(
+        z.object({
+          kind: z.enum(['person', 'company']),
+          secret: z.string().min(1),
+        }),
+      ).setOnChange('kind', (value, ctx) => {
+        ctx.setFieldMeta('secret', { hidden: value === 'company' })
+        if (value === 'company') ctx.submit()
+      })
+      const { user } = setup(<AutoForm form={form} onSubmit={onSubmit} />)
+      await user.selectOptions(screen.getByRole('combobox'), 'company')
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(onSubmit.mock.calls[0][0]).toEqual({ kind: 'company' })
+    })
+  })
 })
