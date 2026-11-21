@@ -50,6 +50,8 @@ export function useConditionalFields(
   // (which fields are visible) changes. It records the values, so rendering
   // evaluates against the latest values and the current `fields`.
   const latest = useRef<unknown>(undefined)
+  // Set once RHF calls `compute` (always on mount where it's supported)
+  const computeRan = useRef(false)
   const failures = useRef(0)
   // RHF compares each result with the last one it computed. Prefixing the
   // `fields` revision makes the first result after `fields` change differ, so
@@ -59,6 +61,7 @@ export function useConditionalFields(
     revision.current = { fields, count: revision.current.count + 1 }
   }
   const compute = (values: unknown): string => {
+    computeRan.current = true
     latest.current = values
     const prefix = `${revision.current.count}:`
     try {
@@ -69,8 +72,9 @@ export function useConditionalFields(
     }
   }
   const watched = watchComputed({ control, name: scopeName, compute })
-  // RHF versions without `compute` return the watched values instead
-  if (typeof watched !== 'string') latest.current = watched
+  // RHF versions without `compute` ignore it and return the watched values,
+  // which may themselves be strings (a string-valued scope)
+  if (!computeRan.current) latest.current = watched
 
   const key = visibilityKey(fields, latest.current)
 
