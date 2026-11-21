@@ -124,7 +124,7 @@ function createValueOps(
  * }
  */
 export function useArrayField(fieldName: string) {
-  const { control, fieldConfigs, formMethods, reindexRows, arrayRegistry } =
+  const { control, fieldConfigs, formMethods, runRowMutation, arrayRegistry } =
     useAutoFormContext()
 
   const getRegistration = React.useCallback(
@@ -149,9 +149,9 @@ export function useArrayField(fieldName: string) {
       withRowMetaReindex(
         createValueOps(fieldName, formMethods),
         fieldName,
-        reindexRows,
+        runRowMutation,
       ),
-    [fieldName, formMethods, reindexRows],
+    [fieldName, formMethods, runRowMutation],
   )
 
   const config = React.useMemo(

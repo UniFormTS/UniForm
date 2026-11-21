@@ -33,10 +33,15 @@ export type AutoFormContextValue = {
   >
   arrayRegistry: ArrayRegistry
   /**
-   * Call after an array row mutation so per-row state (dynamic meta overrides
-   * and hidden-field tracking) follows its rows.
+   * Runs an array row operation (`run`) as one step, then applies `mutations`
+   * in order, so per-row state (dynamic meta overrides and hidden-field
+   * tracking) follows its rows.
    */
-  reindexRows: (name: string, mutation: MutationType) => void
+  runRowMutation: (
+    name: string,
+    mutations: MutationType | MutationType[],
+    run: () => void,
+  ) => void
 }
 
 const AutoFormContext = React.createContext<AutoFormContextValue | null>(null)

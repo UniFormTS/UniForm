@@ -5,7 +5,8 @@ import userEvent from '@testing-library/user-event'
 import * as z from 'zod/v4'
 import { AutoForm } from './AutoForm'
 import { createForm } from '../UniForm'
-import type { AutoFormHandle } from '../types'
+import type { AutoFormHandle, FormWrapperProps } from '../types'
+import { useArrayField } from '../hooks/useArrayField'
 
 function setup(ui: React.ReactElement) {
   return { user: userEvent.setup(), ...render(ui) }
@@ -800,6 +801,94 @@ describe('hidden fields', () => {
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
     expect(onSubmit.mock.calls[0][0]).toEqual({
       rows: [{ name: 'show', secret: 'abc' }, { name: '' }],
+    })
+  })
+
+  describe('reset timing', () => {
+    const rowSchema = z.object({
+      rows: z.array(z.object({ kind: z.enum(['a', 'b']), note: z.string() })),
+    })
+    const startRows = [
+      { kind: 'b' as const, note: 'first' },
+      { kind: 'a' as const, note: 'second' },
+    ]
+    const notes = (spy: ReturnType<typeof vi.fn>) =>
+      (
+        spy.mock.calls[spy.mock.calls.length - 1]?.[0] as {
+          rows: { note: string }[]
+        }
+      ).rows.map((r) => r.note)
+
+    it('does not reset hidden fields of rows moved through useArrayField', async () => {
+      const onValuesChange = vi.fn()
+      function Toolbar() {
+        const { move } = useArrayField('rows')
+        return (
+          <button type='button' onClick={() => move(1, 0)}>
+            toolbar-move
+          </button>
+        )
+      }
+      const FormWrapper = ({ children }: FormWrapperProps) => (
+        <>
+          <Toolbar />
+          {children}
+        </>
+      )
+      const form = createForm(rowSchema).setCondition(
+        'rows.note',
+        (row) => row.kind === 'b',
+      )
+      const { user } = setup(
+        <AutoForm
+          form={form}
+          fields={{ rows: { render: false } }}
+          layout={{ formWrapper: FormWrapper }}
+          defaultValues={{ rows: startRows }}
+          onValuesChange={onValuesChange}
+          onSubmit={() => {}}
+        />,
+      )
+      await user.click(screen.getByRole('button', { name: 'toolbar-move' }))
+      await waitFor(() =>
+        expect(notes(onValuesChange)).toEqual(['second', 'first']),
+      )
+    })
+
+    it('resets a field hidden by a value change before the next render', async () => {
+      const form = createForm(
+        z.object({ has: z.boolean(), detail: z.string() }),
+      ).setCondition('detail', (v) => v.has)
+      const ref = React.createRef<AutoFormHandle<z.ZodObject>>()
+      const seen: unknown[] = []
+      setup(
+        <>
+          <AutoForm
+            ref={ref}
+            form={form}
+            defaultValues={{ has: true, detail: 'x' }}
+            onSubmit={() => {}}
+          />
+          <button
+            type='button'
+            onClick={() => {
+              ref.current?.setValue('detail' as never, 'typed' as never)
+              ref.current?.setValue('has' as never, false as never)
+              // Synchronously after hiding: the value is already reset
+              seen.push(
+                (ref.current?.getValues() as Record<string, unknown>).detail,
+              )
+            }}
+          >
+            hide
+          </button>
+        </>,
+      )
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: 'hide' }))
+      // Reset to its default ('x' from defaultValues), not left at 'typed'
+      expect(seen).toEqual(['x'])
     })
   })
 })

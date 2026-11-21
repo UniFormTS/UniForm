@@ -183,6 +183,33 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   const [isLoadingDefaults, setIsLoadingDefaults] =
     React.useState(isAsyncDefaults)
 
+  // The field list for the variant that `values` select (for discriminated
+  // unions), or all fields. Shared by validation and hidden-field syncing.
+  const variantFieldsMap = React.useMemo(
+    () =>
+      unionInfo
+        ? new Map(
+            [...unionInfo.variantMap].map(([value, variant]) => [
+              value,
+              introspectObjectSchema(variant).filter(
+                (f) => f.name !== unionInfo.discriminatorKey,
+              ),
+            ]),
+          )
+        : undefined,
+    [unionInfo],
+  )
+  const activeFieldsFor = React.useCallback(
+    (values: Record<string, unknown>): FieldConfig[] => {
+      if (!unionInfo || !variantFieldsMap) return rawFields
+      const variantFields = variantFieldsMap.get(
+        String(values[unionInfo.discriminatorKey]),
+      )
+      return [unionInfo.discriminatorField, ...(variantFields ?? [])]
+    },
+    [unionInfo, variantFieldsMap, rawFields],
+  )
+
   // Applies the current overrides, conditions and dynamic meta to a field list,
   // so the resolver can find hidden fields for whichever variant it validates.
   // Kept current below, once dynamic meta exists.
@@ -223,19 +250,10 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       return result
     }
     const base = validate(schema)
-    const variantFields = unionInfo
-      ? new Map(
-          [...unionInfo.variantMap].map(([value, variant]) => [
-            value,
-            introspectObjectSchema(variant),
-          ]),
-        )
-      : undefined
 
     return async (values, context, options) => {
       let activeValues = values as Record<string, unknown>
-      let fields = rawFields
-      if (unionInfo && variantFields) {
+      if (unionInfo) {
         const active = String(activeValues[unionInfo.discriminatorKey])
         const variant = unionInfo.variantMap.get(active)
         if (!variant) return base(values, context, options)
@@ -243,13 +261,8 @@ export function AutoForm<TSchema extends z.$ZodObject>(
         for (const key of Object.keys(variant._zod.def.shape)) {
           if (key in values) activeValues[key] = values[key]
         }
-        fields = [
-          unionInfo.discriminatorField,
-          ...(variantFields.get(active) ?? []).filter(
-            (f) => f.name !== unionInfo.discriminatorKey,
-          ),
-        ]
       }
+      const fields = activeFieldsFor(values)
 
       // Visibility is derived from the variant being validated (not the last
       // rendered one), with the current overrides, conditions and dynamic meta.
@@ -321,7 +334,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       const relaxed = schemaFor('relax', target, someRows)
       return prune(await validate(relaxed)(payload, context, options))
     }
-  }, [schema, unionInfo, rawFields, isCustomRenderedRef])
+  }, [schema, unionInfo, activeFieldsFor, isCustomRenderedRef])
 
   const rhf = useForm({
     resolver,
@@ -396,26 +409,99 @@ export function AutoForm<TSchema extends z.$ZodObject>(
         typeof action === 'function' ? action(dynamicMetaRef.current) : action
       dynamicMetaRef.current = next
       setDynamicMetaState(next)
+      syncHiddenRef.current()
     },
     [],
   )
   const [arrayRegistry] = React.useState(createArrayRegistry)
 
-  // Paths hidden at the last render. Array row mutations are queued and applied
-  // to it once the moved values have landed (see the reset effect), so a moved
-  // row's hidden field isn't mistaken for a newly hidden one — even when React
-  // renders the dynamic-meta update before RHF's new values.
+  // ---------------------------------------------------------------------------
+  // Reset-on-hide. A field that becomes hidden is reset to its default (and its
+  // errors cleared), so it shows its default when it appears again — alike for
+  // conditions, `hidden` (fields prop or setFieldMeta), objects and arrays.
+  //
+  // `syncHidden` runs synchronously from the events that can hide a field —
+  // value changes (RHF `watch`), dynamic meta changes (`setDynamicMeta`), prop
+  // changes (layout effect below) — and always reads live values, so it never
+  // compares against a stale render.
+  // ---------------------------------------------------------------------------
   const previousHiddenRef = React.useRef<Set<string> | null>(null)
-  const pendingRowMutationsRef = React.useRef<
-    { name: string; mutation: MutationType }[]
-  >([])
-  const reindexRows = React.useCallback(
-    (name: string, mutation: MutationType) => {
-      setDynamicMeta((prev) => reindexDynamicMeta(prev, name, mutation))
-      pendingRowMutationsRef.current.push({ name, mutation })
+  const syncSuspendedRef = React.useRef(0)
+  const syncHidden = () => {
+    if (syncSuspendedRef.current) return
+    const values = getValues() as Record<string, unknown>
+    const hidden = collectHiddenFields(
+      toVisibilityFieldsRef.current(activeFieldsFor(values)),
+      values,
+      isCustomRenderedRef.current,
+    )
+    const previous = previousHiddenRef.current
+    // Updated before any setValue below, so re-entrant calls see no change
+    previousHiddenRef.current = new Set(hidden.map((h) => h.path))
+    if (!previous) return // fields hidden at first sync already hold defaults
+    for (const { path, schemaPath, field } of hidden) {
+      if (previous.has(path)) continue
+      // Array rows move, so their initial defaults can't be looked up by index:
+      // use the field's own default there
+      const stored =
+        path === schemaPath
+          ? getAtPath(control._defaultValues, path)
+          : undefined
+      const fallback = stored === undefined ? getDefaultValue(field) : stored
+      setValue(path, cloneValue(fallback), {
+        shouldDirty: false,
+        shouldValidate: false,
+      })
+      clearErrors(path)
+    }
+  }
+  const syncHiddenRef = React.useRef(syncHidden)
+  syncHiddenRef.current = syncHidden
+
+  // Runs an array row operation as one step: per-row state (dynamic meta and
+  // the hidden-field set) is reindexed alongside the values before syncing,
+  // so a moved row's hidden field isn't mistaken for a newly hidden one.
+  const runRowMutation = React.useCallback(
+    (
+      name: string,
+      mutations: MutationType | MutationType[],
+      run: () => void,
+    ) => {
+      const list = Array.isArray(mutations) ? mutations : [mutations]
+      const reindexAll = <T,>(record: Record<string, T>) =>
+        list.reduce(
+          (acc, mutation) =>
+            reindexDynamicMeta(
+              acc as Record<string, Partial<FieldDependencyResult>>,
+              name,
+              mutation,
+            ) as Record<string, T>,
+          record,
+        )
+      syncSuspendedRef.current++
+      try {
+        run()
+        const previous = previousHiddenRef.current
+        if (previous) {
+          const asRecord = Object.fromEntries([...previous].map((p) => [p, {}]))
+          previousHiddenRef.current = new Set(Object.keys(reindexAll(asRecord)))
+        }
+        setDynamicMeta((prev) => reindexAll(prev))
+      } finally {
+        syncSuspendedRef.current--
+      }
+      syncHiddenRef.current()
     },
     [setDynamicMeta],
   )
+
+  // Value changes, including those not caused by a field (setValue, reset,
+  // array operations), arrive through RHF's subscription
+  React.useEffect(() => {
+    syncHiddenRef.current() // baseline
+    const subscription = watch(() => syncHiddenRef.current())
+    return () => subscription.unsubscribe()
+  }, [watch])
 
   const onSubmitRef = useLatestRef(onSubmit)
   const onValuesChangeRef = useLatestRef(onValuesChange)
@@ -561,53 +647,9 @@ export function AutoForm<TSchema extends z.$ZodObject>(
         >,
         dynamicMetaRef.current,
       )
+    // A `fields`-prop or condition change can hide fields too
+    syncHiddenRef.current()
   }, [fieldOverridesProp, uniForm])
-
-  // A field that becomes hidden is reset to its default (and its errors are
-  // cleared), so it shows its default when it appears again. Applies alike to
-  // conditions, `hidden` (fields prop or setFieldMeta), objects and arrays.
-  const hiddenFields = React.useMemo(
-    () =>
-      collectHiddenFields(
-        fieldsWithDynamic,
-        (allValues ?? {}) as Record<string, unknown>,
-        isCustomRendered,
-      ),
-    [fieldsWithDynamic, allValues, isCustomRendered],
-  )
-  const previousValuesRef = React.useRef<unknown>(undefined)
-  React.useEffect(() => {
-    let previous = previousHiddenRef.current
-    // Row mutations only shift paths once their values are in
-    if (allValues !== previousValuesRef.current) {
-      previousValuesRef.current = allValues
-      for (const { name, mutation } of pendingRowMutationsRef.current) {
-        if (!previous) break
-        const asRecord = Object.fromEntries([...previous].map((p) => [p, {}]))
-        previous = new Set(
-          Object.keys(reindexDynamicMeta(asRecord, name, mutation)),
-        )
-      }
-      pendingRowMutationsRef.current = []
-    }
-    previousHiddenRef.current = new Set(hiddenFields.map((h) => h.path))
-    if (!previous) return // fields hidden on mount already hold their defaults
-    for (const { path, schemaPath, field } of hiddenFields) {
-      if (previous.has(path)) continue
-      // Array rows move, so their initial defaults can't be looked up by index:
-      // use the field's own default there
-      const stored =
-        path === schemaPath
-          ? getAtPath(control._defaultValues, path)
-          : undefined
-      const fallback = stored === undefined ? getDefaultValue(field) : stored
-      setValue(path, cloneValue(fallback), {
-        shouldDirty: false,
-        shouldValidate: false,
-      })
-      clearErrors(path)
-    }
-  }, [hiddenFields, allValues, control, setValue, clearErrors])
 
   React.useEffect(() => {
     onValuesChangeRef.current?.(allValues as z.infer<TSchema>)
@@ -681,7 +723,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       control,
       setDynamicMeta,
       arrayRegistry,
-      reindexRows,
+      runRowMutation,
     }),
     [
       registry,
@@ -698,7 +740,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       control,
       setDynamicMeta,
       arrayRegistry,
-      reindexRows,
+      runRowMutation,
     ],
   )
 

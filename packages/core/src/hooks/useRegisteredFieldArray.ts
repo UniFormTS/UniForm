@@ -16,44 +16,45 @@ const countOf = (value: unknown) => (Array.isArray(value) ? value.length : 1)
 export function withRowMetaReindex(
   ops: ArrayOperations,
   name: string,
-  reindexRows: (name: string, mutation: MutationType) => void,
+  runRowMutation: (
+    name: string,
+    mutations: MutationType | MutationType[],
+    run: () => void,
+  ) => void,
 ): ArrayOperations {
-  const reindex = (mutation: MutationType) => reindexRows(name, mutation)
+  const mutate = (mutation: MutationType, run: () => void) =>
+    runRowMutation(name, mutation, run)
 
   return {
     append: ops.append,
     update: ops.update,
-    prepend: (value, options) => {
-      ops.prepend(value, options)
-      reindex({ type: 'insert', index: 0, count: countOf(value) })
-    },
-    insert: (index, value, options) => {
-      ops.insert(index, value, options)
-      reindex({ type: 'insert', index, count: countOf(value) })
-    },
+    prepend: (value, options) =>
+      mutate({ type: 'insert', index: 0, count: countOf(value) }, () =>
+        ops.prepend(value, options),
+      ),
+    insert: (index, value, options) =>
+      mutate({ type: 'insert', index, count: countOf(value) }, () =>
+        ops.insert(index, value, options),
+      ),
     remove: (index) => {
-      ops.remove(index)
       if (index === undefined) {
-        reindex({ type: 'clear' })
+        mutate({ type: 'clear' }, () => ops.remove(index))
         return
       }
+      // One reindex per removed row, highest index first
       const indices = [...new Set(Array.isArray(index) ? index : [index])]
-      for (const i of indices.sort((a, b) => b - a)) {
-        reindex({ type: 'remove', index: i })
-      }
+      runRowMutation(
+        name,
+        indices
+          .sort((a, b) => b - a)
+          .map((i): MutationType => ({ type: 'remove', index: i })),
+        () => ops.remove(index),
+      )
     },
-    move: (from, to) => {
-      ops.move(from, to)
-      reindex({ type: 'move', from, to })
-    },
-    swap: (a, b) => {
-      ops.swap(a, b)
-      reindex({ type: 'swap', a, b })
-    },
-    replace: (value) => {
-      ops.replace(value)
-      reindex({ type: 'clear' })
-    },
+    move: (from, to) =>
+      mutate({ type: 'move', from, to }, () => ops.move(from, to)),
+    swap: (a, b) => mutate({ type: 'swap', a, b }, () => ops.swap(a, b)),
+    replace: (value) => mutate({ type: 'clear' }, () => ops.replace(value)),
   }
 }
 
@@ -64,7 +65,7 @@ export function withRowMetaReindex(
  * renders an array's rows.
  */
 export function useRegisteredFieldArray(name: string) {
-  const { control, formMethods, reindexRows, arrayRegistry } =
+  const { control, formMethods, runRowMutation, arrayRegistry } =
     useAutoFormContext()
   const fieldArray = useFieldArray({ control, name })
   const latest = useLatestRef(fieldArray)
@@ -84,18 +85,19 @@ export function useRegisteredFieldArray(name: string) {
           replace: (value) => latest.current.replace(value),
         },
         name,
-        reindexRows,
+        runRowMutation,
       ),
-    [latest, name, reindexRows],
+    [latest, name, runRowMutation],
   )
 
   const duplicate = React.useCallback(
     (index: number) => {
       const source = getAtPath(formMethods.getValues(), `${name}.${index}`)
-      latest.current.insert(index + 1, source)
-      reindexRows(name, { type: 'duplicate', index })
+      runRowMutation(name, { type: 'duplicate', index }, () =>
+        latest.current.insert(index + 1, source),
+      )
     },
-    [formMethods, latest, name, reindexRows],
+    [formMethods, latest, name, runRowMutation],
   )
 
   const { fields } = fieldArray
