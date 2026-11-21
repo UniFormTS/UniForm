@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import * as z from 'zod/v4'
 import { AutoForm } from './AutoForm'
 import { createForm } from '../UniForm'
+import type { AutoFormHandle } from '../types'
 
 function setup(ui: React.ReactElement) {
   return { user: userEvent.setup(), ...render(ui) }
@@ -510,6 +511,167 @@ describe('hidden fields', () => {
       await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
       expect(onSubmit.mock.calls[0][0]).toEqual({
         rows: [{ kind: 'a', note: 'keep' }],
+      })
+    })
+  })
+
+  describe('review round 3', () => {
+    it('uses the active variant when reset and submit run in one handler', async () => {
+      const onSubmit = vi.fn()
+      const schema = z.discriminatedUnion('kind', [
+        z.object({ kind: z.literal('a'), a: z.string() }),
+        z.object({ kind: z.literal('b'), secret: z.string().min(1) }),
+      ])
+      const form = createForm(schema)
+      const ref = React.createRef<AutoFormHandle<z.ZodObject>>()
+      const { user } = setup(
+        <>
+          <AutoForm
+            ref={ref}
+            form={form}
+            fields={{ secret: { hidden: true } }}
+            onSubmit={onSubmit}
+          />
+          <button
+            type='button'
+            onClick={() => {
+              ref.current?.reset({ kind: 'b' } as never)
+              ref.current?.submit()
+            }}
+          >
+            switch-and-submit
+          </button>
+        </>,
+      )
+      await user.click(
+        screen.getByRole('button', { name: 'switch-and-submit' }),
+      )
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(onSubmit.mock.calls[0][0]).toEqual({ kind: 'b' })
+    })
+
+    it('applies a deferred object default when only a hidden child is excluded', async () => {
+      const onSubmit = vi.fn()
+      const form = createForm(
+        z.object({
+          o: z
+            .object({
+              len: z.string().transform((s) => s.length),
+              flag: z.boolean(),
+            })
+            .default({ len: 5, flag: true }),
+        }),
+      )
+      const { user } = setup(
+        <AutoForm
+          form={form}
+          fields={{ 'o.flag': { hidden: true } }}
+          onSubmit={onSubmit}
+        />,
+      )
+      await user.click(submit())
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(onSubmit.mock.calls[0][0]).toEqual({ o: { len: 5 } })
+    })
+
+    it('never runs the validators of a field hidden in every row', async () => {
+      const onSubmit = vi.fn()
+      const form = createForm(
+        z.object({
+          rows: z.array(
+            z.object({
+              name: z.string(),
+              secret: z
+                .string()
+                .optional()
+                .refine((v) => {
+                  if (v === undefined) throw new Error('validator ran')
+                  return true
+                }),
+            }),
+          ),
+        }),
+      )
+      const { user } = setup(
+        <AutoForm
+          form={form}
+          fields={{ 'rows.secret': { hidden: true } }}
+          defaultValues={{ rows: [{ name: 'a' }, { name: 'b' }] }}
+          onSubmit={onSubmit}
+        />,
+      )
+      await user.click(submit())
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(onSubmit.mock.calls[0][0]).toEqual({
+        rows: [{ name: 'a' }, { name: 'b' }],
+      })
+    })
+
+    it('does not prune the wrong row when an array transform reorders rows', async () => {
+      const onSubmit = vi.fn()
+      const form = createForm(
+        z.object({
+          rows: z
+            .array(
+              z.object({
+                kind: z.enum(['a', 'b']),
+                note: z.string().default('saved'),
+              }),
+            )
+            .transform((rows) => [...rows].reverse()),
+        }),
+      ).setCondition('rows.note', (row) => row.kind === 'b')
+      const { user } = setup(
+        <AutoForm
+          form={form}
+          defaultValues={{
+            rows: [
+              { kind: 'a', note: '' },
+              { kind: 'b', note: 'hi' },
+            ],
+          }}
+          onSubmit={onSubmit}
+        />,
+      )
+      await user.click(submit())
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      const rows = (onSubmit.mock.calls[0][0] as { rows: { note?: string }[] })
+        .rows
+      // The visible row's note (now first, after the reverse) is kept
+      expect(rows[0]).toEqual({ kind: 'b', note: 'hi' })
+    })
+
+    it('does not reset hidden fields of rows that are only moved', async () => {
+      const onValuesChange = vi.fn()
+      const form = createForm(
+        z.object({
+          rows: z.array(
+            z.object({ kind: z.enum(['a', 'b']), note: z.string() }),
+          ),
+        }),
+      ).setCondition('rows.note', (row) => row.kind === 'b')
+      const { user } = setup(
+        <AutoForm
+          form={form}
+          fields={{ rows: { movable: true } }}
+          defaultValues={{
+            rows: [
+              { kind: 'b', note: 'first' },
+              { kind: 'a', note: 'second' },
+            ],
+          }}
+          onValuesChange={onValuesChange}
+          onSubmit={() => {}}
+        />,
+      )
+      await user.click(screen.getByRole('button', { name: 'Move item 2 up' }))
+      await waitFor(() => {
+        const last = onValuesChange.mock.calls[
+          onValuesChange.mock.calls.length - 1
+        ]?.[0] as {
+          rows: { note: string }[]
+        }
+        expect(last.rows.map((r) => r.note)).toEqual(['second', 'first'])
       })
     })
   })

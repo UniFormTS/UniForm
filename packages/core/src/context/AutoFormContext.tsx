@@ -13,6 +13,7 @@ import type {
   FormMethods,
 } from '../types'
 import type { ArrayRegistry } from './arrayRegistry'
+import type { MutationType } from '../utils/reindexDynamicMeta'
 
 export type AutoFormContextValue = {
   registry: ComponentRegistry
@@ -31,6 +32,11 @@ export type AutoFormContextValue = {
     React.SetStateAction<Record<string, Partial<FieldDependencyResult>>>
   >
   arrayRegistry: ArrayRegistry
+  /**
+   * Call after an array row mutation so per-row state (dynamic meta overrides
+   * and hidden-field tracking) follows its rows.
+   */
+  reindexRows: (name: string, mutation: MutationType) => void
 }
 
 const AutoFormContext = React.createContext<AutoFormContextValue | null>(null)

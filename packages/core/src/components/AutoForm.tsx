@@ -47,7 +47,14 @@ import {
 import { resolveNullableSlot } from '../utils/resolveNullableSlot'
 import { mergeDefaults } from '../utils/mergeDefaults'
 import {
+  reindexDynamicMeta,
+  type MutationType,
+} from '../utils/reindexDynamicMeta'
+import {
+  analyzeVisibility,
   collectHiddenFields,
+  rowIndicesStable,
+  splitHidden,
   cloneValue,
   omitErrorsAt,
   omitPaths,
@@ -175,9 +182,12 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   const [isLoadingDefaults, setIsLoadingDefaults] =
     React.useState(isAsyncDefaults)
 
-  // Latest rendered field configs (with conditions and dynamic meta), read by
-  // the resolver to find hidden fields at validation time.
-  const renderedFieldsRef = React.useRef<FieldConfig[]>([])
+  // Applies the current overrides, conditions and dynamic meta to a field list,
+  // so the resolver can find hidden fields for whichever variant it validates.
+  // Kept current below, once dynamic meta exists.
+  const toVisibilityFieldsRef = React.useRef<
+    (fields: FieldConfig[]) => FieldConfig[]
+  >((fields) => fields)
 
   // Before validation:
   // - for discriminated unions, keep only the active variant's keys, so other
@@ -232,40 +242,43 @@ export function AutoForm<TSchema extends z.$ZodObject>(
         for (const key of Object.keys(variant._zod.def.shape)) {
           if (key in values) activeValues[key] = values[key]
         }
-        fields = variantFields.get(active) ?? []
+        fields = [
+          unionInfo.discriminatorField,
+          ...(variantFields.get(active) ?? []).filter(
+            (f) => f.name !== unionInfo.discriminatorKey,
+          ),
+        ]
       }
 
-      const hidden = collectHiddenFields(
-        renderedFieldsRef.current,
+      // Visibility is derived from the variant being validated (not the last
+      // rendered one), with the current overrides, conditions and dynamic meta.
+      const visibility = analyzeVisibility(
+        toVisibilityFieldsRef.current(fields),
         values,
         isCustomRenderedRef.current,
       )
-      if (!hidden.length) {
-        return base(
-          normalizeEmptyValues(activeValues, fields),
-          context,
-          options,
+      // Map empty inputs first: deferred-default composites compare their raw
+      // (unpruned) value with their seed
+      const normalized = normalizeEmptyValues(activeValues, fields)
+      if (!visibility.hidden.length) return base(normalized, context, options)
+
+      const hiddenPaths = visibility.hidden.map((h) => h.path)
+      const payload = omitPaths(normalized, hiddenPaths)
+      // Hidden wherever it appears: swap the field's schema out entirely, so
+      // its validators, transforms and defaults never run. Hidden in only some
+      // array rows: the element schema is shared with visible rows, so
+      // validate as-is, ignore those rows' errors, and re-parse with the field
+      // optional if nothing else failed.
+      const { everywhere, someRows } = splitHidden(visibility)
+      const target = schemaFor('skip', schema, everywhere)
+      // Zod may recreate hidden keys (e.g. from a default): drop them from the
+      // output — but not by row index when a transform may have moved rows
+      const outputPaths = visibility.hidden
+        .filter(
+          (h) =>
+            h.path === h.schemaPath || rowIndicesStable(schema, h.schemaPath),
         )
-      }
-      const hiddenPaths = hidden.map((h) => h.path)
-      const payload = normalizeEmptyValues(
-        omitPaths(activeValues, hiddenPaths),
-        fields,
-      )
-      // Hidden everywhere: swap the field's schema out entirely, so its
-      // validators, transforms and defaults never run.
-      const unique = (paths: string[]) => [...new Set(paths)]
-      const skipped = unique(
-        hidden.filter((h) => h.path === h.schemaPath).map((h) => h.schemaPath),
-      )
-      // Hidden in some array rows only: the element schema is shared by every
-      // row, so validate as-is, ignore those rows' errors, and re-parse with the
-      // field optional if nothing else failed.
-      const perRow = unique(
-        hidden.filter((h) => h.path !== h.schemaPath).map((h) => h.schemaPath),
-      )
-      const target = schemaFor('skip', schema, skipped)
-      // Zod may recreate hidden keys (e.g. from a parent default): drop them
+        .map((h) => h.path)
       type Result = Awaited<ReturnType<Resolver>>
       const prune = (result: Result): Result =>
         Object.keys(result.errors).length
@@ -274,22 +287,21 @@ export function AutoForm<TSchema extends z.$ZodObject>(
               ...result,
               values: omitPaths(
                 result.values as Record<string, unknown>,
-                hiddenPaths,
+                outputPaths,
               ),
             } as Result)
 
       const result = await validate(target)(payload, context, options)
       if (!Object.keys(result.errors).length) return prune(result)
       const visibleErrors = omitErrorsAt(result.errors, hiddenPaths)
-      if (Object.keys(visibleErrors).length || !perRow.length) {
-        return Object.keys(visibleErrors).length
-          ? ({ values: {}, errors: visibleErrors } as typeof result)
-          : result
+      if (Object.keys(visibleErrors).length) {
+        return { values: {}, errors: visibleErrors } as Result
       }
-      const relaxed = schemaFor('relax', target, perRow)
+      if (!someRows.length) return result
+      const relaxed = schemaFor('relax', target, someRows)
       return prune(await validate(relaxed)(payload, context, options))
     }
-  }, [schema, unionInfo, rawFields, isCustomRenderedRef])
+  }, [schema, unionInfo, rawFields, isCustomRenderedRef, toVisibilityFieldsRef])
 
   const rhf = useForm({
     resolver,
@@ -352,6 +364,22 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     Record<string, Partial<FieldDependencyResult>>
   >({})
   const [arrayRegistry] = React.useState(createArrayRegistry)
+
+  // Paths hidden at the last render; reindexed with array row mutations so a
+  // moved row's hidden field isn't mistaken for a newly hidden one.
+  const previousHiddenRef = React.useRef<Set<string> | null>(null)
+  const reindexRows = React.useCallback(
+    (name: string, mutation: MutationType) => {
+      setDynamicMeta((prev) => reindexDynamicMeta(prev, name, mutation))
+      const previous = previousHiddenRef.current
+      if (!previous) return
+      const asRecord = Object.fromEntries([...previous].map((p) => [p, {}]))
+      previousHiddenRef.current = new Set(
+        Object.keys(reindexDynamicMeta(asRecord, name, mutation)),
+      )
+    },
+    [],
+  )
 
   const onSubmitRef = useLatestRef(onSubmit)
   const onValuesChangeRef = useLatestRef(onValuesChange)
@@ -486,8 +514,21 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   const allValues = useWatch({ control })
 
   React.useLayoutEffect(() => {
-    renderedFieldsRef.current = fieldsWithDynamic
-  }, [fieldsWithDynamic])
+    toVisibilityFieldsRef.current = (fields) =>
+      applyDynamicMeta(
+        injectConditions(
+          applyFieldOverrides(
+            fields,
+            fieldOverridesProp as Record<string, Partial<FieldMeta>>,
+          ),
+          (uniForm as UniForm<TSchema>)._getConditions() as Map<
+            string,
+            FieldCondition
+          >,
+        ),
+        dynamicMeta,
+      )
+  }, [fieldOverridesProp, uniForm, dynamicMeta])
 
   // A field that becomes hidden is reset to its default (and its errors are
   // cleared), so it shows its default when it appears again. Applies alike to
@@ -501,14 +542,18 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       ),
     [fieldsWithDynamic, allValues, isCustomRendered],
   )
-  const previousHiddenRef = React.useRef<Set<string> | null>(null)
   React.useEffect(() => {
     const previous = previousHiddenRef.current
     previousHiddenRef.current = new Set(hiddenFields.map((h) => h.path))
     if (!previous) return // fields hidden on mount already hold their defaults
-    for (const { path, field } of hiddenFields) {
+    for (const { path, schemaPath, field } of hiddenFields) {
       if (previous.has(path)) continue
-      const stored = getAtPath(control._defaultValues, path)
+      // Array rows move, so their initial defaults can't be looked up by index:
+      // use the field's own default there
+      const stored =
+        path === schemaPath
+          ? getAtPath(control._defaultValues, path)
+          : undefined
       const fallback = stored === undefined ? getDefaultValue(field) : stored
       setValue(path, cloneValue(fallback), {
         shouldDirty: false,
@@ -590,6 +635,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       control,
       setDynamicMeta,
       arrayRegistry,
+      reindexRows,
     }),
     [
       registry,
@@ -606,6 +652,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       control,
       setDynamicMeta,
       arrayRegistry,
+      reindexRows,
     ],
   )
 

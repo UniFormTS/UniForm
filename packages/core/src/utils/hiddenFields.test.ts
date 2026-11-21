@@ -4,6 +4,9 @@ import { safeParse } from 'zod/v4/core'
 import { introspectObjectSchema } from '../introspection/introspect'
 import { applyFieldOverrides } from './fieldPipeline'
 import {
+  analyzeVisibility,
+  rowIndicesStable,
+  splitHidden,
   collectHiddenFields,
   collectHiddenPaths,
   omitErrorsAt,
@@ -214,5 +217,46 @@ describe('skipSchemaAt', () => {
     expect(result.success).toBe(true)
     expect(result.data).toEqual({ a: 'x' })
     expect(ran).toBe(false)
+  })
+})
+
+describe('splitHidden', () => {
+  const schema = z.object({
+    top: z.string(),
+    rows: z.array(z.object({ kind: z.string(), a: z.string(), b: z.string() })),
+  })
+  it('treats fields hidden in every row as hidden everywhere', () => {
+    const fields = fieldsOf(schema, {
+      top: { hidden: true },
+      'rows.a': { hidden: true },
+      'rows.b': {
+        condition: (row: Record<string, unknown>) => row.kind === 'x',
+      },
+    })
+    const rows = [
+      { kind: 'x', a: '', b: '' },
+      { kind: 'y', a: '', b: '' },
+    ]
+    expect(splitHidden(analyzeVisibility(fields, { top: '', rows }))).toEqual({
+      everywhere: ['top', 'rows.a'],
+      someRows: ['rows.b'],
+    })
+  })
+})
+
+describe('rowIndicesStable', () => {
+  it('is false when a transform sits above the rows', () => {
+    const schema = z.object({
+      plain: z.array(z.object({ n: z.string() })),
+      reordered: z
+        .array(z.object({ n: z.string() }))
+        .transform((r) => [...r].reverse()),
+      nested: z
+        .object({ rows: z.array(z.object({ n: z.string() })) })
+        .optional(),
+    })
+    expect(rowIndicesStable(schema, 'plain.n')).toBe(true)
+    expect(rowIndicesStable(schema, 'nested.rows.n')).toBe(true)
+    expect(rowIndicesStable(schema, 'reordered.n')).toBe(false)
   })
 })

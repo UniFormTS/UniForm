@@ -60,10 +60,26 @@ const joinPath = (prefix: string, name: string) =>
 export function collectHiddenFields(
   fields: FieldConfig[],
   values: Record<string, unknown>,
+  isCustomRendered?: IsCustomRendered,
+): HiddenField[] {
+  return analyzeVisibility(fields, values, isCustomRendered).hidden
+}
+
+export type Visibility = {
+  hidden: HiddenField[]
+  /** How many times each schema path inside array rows was reached. */
+  rowOccurrences: Map<string, number>
+}
+
+/** {@link collectHiddenFields}, plus per-row occurrence counts. */
+export function analyzeVisibility(
+  fields: FieldConfig[],
+  values: Record<string, unknown>,
   isCustomRendered: IsCustomRendered = (field) =>
     typeof field.meta.component === 'function',
-): HiddenField[] {
+): Visibility {
   const hidden: HiddenField[] = []
+  const rowOccurrences = new Map<string, number>()
 
   const walkArray = (field: FieldConfig, path: string, schemaPath: string) => {
     if (field.type !== 'array') return
@@ -92,6 +108,12 @@ export function collectHiddenFields(
     for (const field of list) {
       const path = joinPath(prefix, field.name)
       const schemaPath = joinPath(schemaPrefix, field.name)
+      if (path !== schemaPath) {
+        rowOccurrences.set(
+          schemaPath,
+          (rowOccurrences.get(schemaPath) ?? 0) + 1,
+        )
+      }
       if (isHidden(field, conditionValues)) {
         hidden.push({ path, schemaPath, field })
         continue
@@ -107,7 +129,60 @@ export function collectHiddenFields(
   }
 
   walkFields(fields, '', '')
-  return hidden
+  return { hidden, rowOccurrences }
+}
+
+/**
+ * Splits hidden fields by schema path into those hidden wherever they appear
+ * (`everywhere`: outside arrays, or hidden in every row reached) and those
+ * hidden in only some rows (`someRows`).
+ */
+export function splitHidden({ hidden, rowOccurrences }: Visibility): {
+  everywhere: string[]
+  someRows: string[]
+} {
+  const hiddenRows = new Map<string, number>()
+  const everywhere = new Set<string>()
+  for (const { path, schemaPath } of hidden) {
+    if (path === schemaPath) everywhere.add(schemaPath)
+    else hiddenRows.set(schemaPath, (hiddenRows.get(schemaPath) ?? 0) + 1)
+  }
+  const someRows: string[] = []
+  for (const [schemaPath, count] of hiddenRows) {
+    if (count === rowOccurrences.get(schemaPath)) everywhere.add(schemaPath)
+    else someRows.push(schemaPath)
+  }
+  return { everywhere: [...everywhere], someRows }
+}
+
+/**
+ * Whether row indices in `schemaPath` still identify the same rows in Zod's
+ * output: false when a pipe/transform sits on the way down (it may reorder or
+ * reshape rows), so output values must not be pruned by input row index.
+ */
+export function rowIndicesStable(
+  schema: z.$ZodType,
+  schemaPath: string,
+): boolean {
+  const segments = schemaPath.split('.')
+  const visit = (node: z.$ZodType, index: number): boolean => {
+    const def = node._zod.def as unknown as Def
+    if (WRAPPERS_WITH_INNER.has(def.type)) {
+      return visit(def.innerType as z.$ZodType, index)
+    }
+    if (def.type === 'pipe' || def.type === 'transform') return false
+    if (index >= segments.length - 1) return true // the leaf itself
+    if (def.type === 'array') return visit(def.element as z.$ZodType, index)
+    if (def.type === 'object') {
+      const child = (def.shape as Record<string, z.$ZodType>)[segments[index]]
+      return child ? visit(child, index + 1) : true
+    }
+    if (def.type === 'union') {
+      return (def.options as z.$ZodType[]).every((o) => visit(o, index))
+    }
+    return true
+  }
+  return visit(schema, 0)
 }
 
 /** Paths of the fields currently hidden; see {@link collectHiddenFields}. */

@@ -1,15 +1,9 @@
 import * as React from 'react'
 import { useFieldArray } from 'react-hook-form'
-import type { FieldDependencyResult } from '../types'
 import { useAutoFormContext } from '../context/AutoFormContext'
 import type { ArrayOperations } from '../context/arrayRegistry'
-import { reindexDynamicMeta } from '../utils/reindexDynamicMeta'
 import type { MutationType } from '../utils/reindexDynamicMeta'
 import { useLatestRef } from './useLatestRef'
-
-type SetDynamicMeta = React.Dispatch<
-  React.SetStateAction<Record<string, Partial<FieldDependencyResult>>>
->
 
 /** Reads a dot-notated path (e.g. `"groups.0.emails"`) from a values object. */
 export function getAtPath(values: unknown, path: string): unknown {
@@ -24,17 +18,16 @@ export function getAtPath(values: unknown, path: string): unknown {
 const countOf = (value: unknown) => (Array.isArray(value) ? value.length : 1)
 
 /**
- * Wraps array row operations so per-row dynamic meta (`"<name>.<i>.<child>"`
- * overrides) follows its row. Shared by the mounted field array and the
- * `setValue` fallback used by `useArrayField`.
+ * Wraps array row operations so per-row state (dynamic meta overrides,
+ * hidden-field tracking) follows its row. Shared by the mounted field array
+ * and the `setValue` fallback used by `useArrayField`.
  */
 export function withRowMetaReindex(
   ops: ArrayOperations,
   name: string,
-  setDynamicMeta: SetDynamicMeta,
+  reindexRows: (name: string, mutation: MutationType) => void,
 ): ArrayOperations {
-  const reindex = (mutation: MutationType) =>
-    setDynamicMeta((prev) => reindexDynamicMeta(prev, name, mutation))
+  const reindex = (mutation: MutationType) => reindexRows(name, mutation)
 
   return {
     append: ops.append,
@@ -80,7 +73,7 @@ export function withRowMetaReindex(
  * renders an array's rows.
  */
 export function useRegisteredFieldArray(name: string) {
-  const { control, formMethods, setDynamicMeta, arrayRegistry } =
+  const { control, formMethods, reindexRows, arrayRegistry } =
     useAutoFormContext()
   const fieldArray = useFieldArray({ control, name })
   const latest = useLatestRef(fieldArray)
@@ -100,20 +93,18 @@ export function useRegisteredFieldArray(name: string) {
           replace: (value) => latest.current.replace(value),
         },
         name,
-        setDynamicMeta,
+        reindexRows,
       ),
-    [latest, name, setDynamicMeta],
+    [latest, name, reindexRows],
   )
 
   const duplicate = React.useCallback(
     (index: number) => {
       const source = getAtPath(formMethods.getValues(), `${name}.${index}`)
       latest.current.insert(index + 1, source)
-      setDynamicMeta((prev) =>
-        reindexDynamicMeta(prev, name, { type: 'duplicate', index }),
-      )
+      reindexRows(name, { type: 'duplicate', index })
     },
-    [formMethods, latest, name, setDynamicMeta],
+    [formMethods, latest, name, reindexRows],
   )
 
   const { fields } = fieldArray
