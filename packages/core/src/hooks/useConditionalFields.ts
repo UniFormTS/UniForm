@@ -51,13 +51,21 @@ export function useConditionalFields(
   // evaluates against the latest values and the current `fields`.
   const latest = useRef<unknown>(undefined)
   const failures = useRef(0)
+  // RHF compares each result with the last one it computed. Prefixing the
+  // `fields` revision makes the first result after `fields` change differ, so
+  // a key computed with the old `fields` can't suppress a needed render.
+  const revision = useRef({ fields, count: 0 })
+  if (revision.current.fields !== fields) {
+    revision.current = { fields, count: revision.current.count + 1 }
+  }
   const compute = (values: unknown): string => {
     latest.current = values
+    const prefix = `${revision.current.count}:`
     try {
-      return visibilityKey(fields, values)
+      return prefix + visibilityKey(fields, values)
     } catch {
       // Re-render, so the condition's error is thrown while rendering
-      return `error:${++failures.current}`
+      return `${prefix}error:${++failures.current}`
     }
   }
   const watched = watchComputed({ control, name: scopeName, compute })

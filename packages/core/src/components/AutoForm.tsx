@@ -650,11 +650,12 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   // changes don't re-render the whole form. Registered after `syncHidden`'s
   // subscription, so a newly hidden field is already reset when reported.
   React.useEffect(() => {
-    // `getValues`, not `watch()`: the latter makes RHF re-render the form root
-    onValuesChangeRef.current?.(getValues() as z.infer<TSchema>)
+    // Subscribed first, so values the initial call writes are reported too
     const subscription = watch((values) =>
       onValuesChangeRef.current?.(values as z.infer<TSchema>),
     )
+    // `getValues`, not `watch()`: the latter makes RHF re-render the form root
+    onValuesChangeRef.current?.(getValues() as z.infer<TSchema>)
     return () => subscription.unsubscribe()
   }, [watch, getValues, onValuesChangeRef])
 

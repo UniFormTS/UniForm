@@ -12,6 +12,7 @@ import { DefaultObjectWrapper } from './defaults/DefaultObjectWrapper'
 import { DefaultArrayRowLayout } from './defaults/DefaultArrayRowLayout'
 import { DefaultFieldWrapper } from './defaults/DefaultFieldWrapper'
 import type {
+  AutoFormHandle,
   ArrayRowLayoutProps,
   FieldProps,
   FieldWrapperProps,
@@ -155,6 +156,24 @@ describe('render counts', () => {
     ).toEqual(['a', 'ab', 'abc'])
     expect(count('root')).toBe(0)
     expect(othersThan('first')).toBe(0)
+  })
+
+  it('onValuesChange reports values its own mount call writes', async () => {
+    const ref = React.createRef<AutoFormHandle>()
+    const onValuesChange = vi.fn<(values: unknown) => void>((values) => {
+      if ((values as { first: string }).first === '') {
+        ref.current?.setValue('first', 'initial')
+      }
+    })
+    renderForm({ onValuesChange, ref } as Partial<
+      React.ComponentProps<typeof AutoForm>
+    >)
+
+    await waitFor(() =>
+      expect(onValuesChange.mock.lastCall?.[0]).toMatchObject({
+        first: 'initial',
+      }),
+    )
   })
 
   it('persistence still saves values without re-rendering the form', async () => {
