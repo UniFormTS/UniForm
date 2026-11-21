@@ -1,5 +1,6 @@
 import * as z from 'zod/v4/core'
 import type { FieldConfig } from '../types'
+import { getAtPath } from './getAtPath'
 import {
   applyRowDynamicMeta,
   type ArrayFieldConfigWithRowMeta,
@@ -19,17 +20,26 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' &&
   Object.getPrototypeOf(value) === Object.prototype
 
-const getAtPath = (values: unknown, path: string): unknown =>
-  path.split('.').reduce<unknown>((current, key) => {
-    if (current == null || typeof current !== 'object') return undefined
-    return (current as Record<string, unknown>)[key]
-  }, values)
-
-function isHidden(field: FieldConfig, conditionValues: unknown): boolean {
+/**
+ * The single rule for whether a field is hidden: `meta.hidden`, or a
+ * `condition` that returns false for `conditionValues` (the full form values,
+ * or the row's values inside an array). Used by the renderer
+ * (`useConditionalFields`) and by validation; errors thrown by a condition
+ * propagate, so each caller decides how to handle them. `render: false` is not
+ * hidden — the value stays part of the form.
+ */
+export function isFieldHidden(
+  field: FieldConfig,
+  conditionValues: unknown,
+): boolean {
   if (field.meta.hidden) return true
   if (typeof field.meta.condition !== 'function') return false
+  return !field.meta.condition(conditionValues as Record<string, unknown>)
+}
+
+function isHidden(field: FieldConfig, conditionValues: unknown): boolean {
   try {
-    return !field.meta.condition(conditionValues as Record<string, unknown>)
+    return isFieldHidden(field, conditionValues)
   } catch {
     return false // the renderer would surface the error; don't hide on it
   }

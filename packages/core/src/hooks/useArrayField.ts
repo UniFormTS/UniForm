@@ -6,7 +6,8 @@ import type {
   ArrayOperations,
   ArrayRegistration,
 } from '../context/arrayRegistry'
-import { getAtPath, withRowMetaReindex } from './useRegisteredFieldArray'
+import { withRowMetaReindex } from './useRegisteredFieldArray'
+import { getAtPath } from '../utils/getAtPath'
 
 function findField(
   fields: FieldConfig[],

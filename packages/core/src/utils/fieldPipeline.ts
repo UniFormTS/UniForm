@@ -370,6 +370,25 @@ export function applyDynamicMeta(
 }
 
 /**
+ * Applies everything that decides a field's visibility to a field list:
+ * `fields`-prop overrides, then conditions (UniForm conditions win over
+ * `fields`-prop ones), then dynamic meta from `setFieldMeta` (including
+ * per-row overrides). The renderer and validation both build on this, so they
+ * always agree on which fields are hidden.
+ */
+export function buildVisibilityFields(
+  fields: FieldConfig[],
+  overrides: Record<string, Partial<FieldMeta>>,
+  conditions: Map<string, FieldCondition>,
+  dynamicMeta: Record<string, Partial<FieldDependencyResult>>,
+): FieldConfig[] {
+  return applyDynamicMeta(
+    injectConditions(applyFieldOverrides(fields, overrides), conditions),
+    dynamicMeta,
+  )
+}
+
+/**
  * Builds the initial form values for a list of top-level fields, recursing into
  * nested objects. Fields whose default is `undefined` are omitted.
  */

@@ -39,9 +39,8 @@ import { useFormPersistence } from '../hooks/useFormPersistence'
 import { useLatestRef } from '../hooks/useLatestRef'
 import {
   applyFieldOverrides,
+  buildVisibilityFields,
   injectOnChangeHandlers,
-  injectConditions,
-  applyDynamicMeta,
   buildDefaults,
 } from '../utils/fieldPipeline'
 import { resolveNullableSlot } from '../utils/resolveNullableSlot'
@@ -63,7 +62,7 @@ import {
   relaxSchemaAt,
   skipSchemaAt,
 } from '../utils/hiddenFields'
-import { getAtPath } from '../hooks/useRegisteredFieldArray'
+import { getAtPath } from '../utils/getAtPath'
 import { getDefaultValue } from './fields/getDefaultValue'
 import { normalizeEmptyValues } from '../utils/normalizeEmptyValues'
 
@@ -322,7 +321,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       const relaxed = schemaFor('relax', target, someRows)
       return prune(await validate(relaxed)(payload, context, options))
     }
-  }, [schema, unionInfo, rawFields, isCustomRenderedRef, toVisibilityFieldsRef])
+  }, [schema, unionInfo, rawFields, isCustomRenderedRef])
 
   const rhf = useForm({
     resolver,
@@ -402,18 +401,18 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   )
   const [arrayRegistry] = React.useState(createArrayRegistry)
 
-  // Paths hidden at the last render; reindexed with array row mutations so a
-  // moved row's hidden field isn't mistaken for a newly hidden one.
+  // Paths hidden at the last render. Array row mutations are queued and applied
+  // to it once the moved values have landed (see the reset effect), so a moved
+  // row's hidden field isn't mistaken for a newly hidden one — even when React
+  // renders the dynamic-meta update before RHF's new values.
   const previousHiddenRef = React.useRef<Set<string> | null>(null)
+  const pendingRowMutationsRef = React.useRef<
+    { name: string; mutation: MutationType }[]
+  >([])
   const reindexRows = React.useCallback(
     (name: string, mutation: MutationType) => {
       setDynamicMeta((prev) => reindexDynamicMeta(prev, name, mutation))
-      const previous = previousHiddenRef.current
-      if (!previous) return
-      const asRecord = Object.fromEntries([...previous].map((p) => [p, {}]))
-      previousHiddenRef.current = new Set(
-        Object.keys(reindexDynamicMeta(asRecord, name, mutation)),
-      )
+      pendingRowMutationsRef.current.push({ name, mutation })
     },
     [setDynamicMeta],
   )
@@ -519,51 +518,47 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     [formMethods, setFieldMeta],
   )
 
-  // Inject UniForm handlers into field.meta.onChange so they fire as real event handlers
-  const fieldsWithHandlers = React.useMemo(
+  // Everything that decides visibility (overrides, conditions, dynamic meta).
+  // Validation builds on the same function (see `toVisibilityFieldsRef`).
+  const visibilityFields = React.useMemo(
     () =>
-      injectOnChangeHandlers(
-        mergedFields,
-        uniForm as UniForm<TSchema>,
-        uniFormCtx,
-      ),
-    [mergedFields, uniForm, uniFormCtx],
-  )
-
-  // Inject UniForm conditions into field.meta.condition
-  const fieldsWithConditions = React.useMemo(
-    () =>
-      injectConditions(
-        fieldsWithHandlers,
+      buildVisibilityFields(
+        activeFields,
+        fieldOverridesProp as Record<string, Partial<FieldMeta>>,
         (uniForm as UniForm<TSchema>)._getConditions() as Map<
           string,
           FieldCondition
         >,
+        dynamicMeta,
       ),
-    [fieldsWithHandlers, uniForm],
+    [activeFields, fieldOverridesProp, uniForm, dynamicMeta],
   )
 
-  // Apply event-driven dynamic meta overrides (from setFieldMeta calls)
+  // Inject UniForm handlers into field.meta.onChange so they fire as real
+  // event handlers (doesn't affect visibility)
   const fieldsWithDynamic = React.useMemo(
-    () => applyDynamicMeta(fieldsWithConditions, dynamicMeta),
-    [fieldsWithConditions, dynamicMeta],
+    () =>
+      injectOnChangeHandlers(
+        visibilityFields,
+        uniForm as UniForm<TSchema>,
+        uniFormCtx,
+      ),
+    [visibilityFields, uniForm, uniFormCtx],
   )
 
   const allValues = useWatch({ control })
 
   React.useLayoutEffect(() => {
+    // Same pipeline as `visibilityFields`, but for any variant's fields and
+    // with the synchronous dynamic-meta snapshot
     toVisibilityFieldsRef.current = (fields) =>
-      applyDynamicMeta(
-        injectConditions(
-          applyFieldOverrides(
-            fields,
-            fieldOverridesProp as Record<string, Partial<FieldMeta>>,
-          ),
-          (uniForm as UniForm<TSchema>)._getConditions() as Map<
-            string,
-            FieldCondition
-          >,
-        ),
+      buildVisibilityFields(
+        fields,
+        fieldOverridesProp as Record<string, Partial<FieldMeta>>,
+        (uniForm as UniForm<TSchema>)._getConditions() as Map<
+          string,
+          FieldCondition
+        >,
         dynamicMetaRef.current,
       )
   }, [fieldOverridesProp, uniForm])
@@ -580,8 +575,21 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       ),
     [fieldsWithDynamic, allValues, isCustomRendered],
   )
+  const previousValuesRef = React.useRef<unknown>(undefined)
   React.useEffect(() => {
-    const previous = previousHiddenRef.current
+    let previous = previousHiddenRef.current
+    // Row mutations only shift paths once their values are in
+    if (allValues !== previousValuesRef.current) {
+      previousValuesRef.current = allValues
+      for (const { name, mutation } of pendingRowMutationsRef.current) {
+        if (!previous) break
+        const asRecord = Object.fromEntries([...previous].map((p) => [p, {}]))
+        previous = new Set(
+          Object.keys(reindexDynamicMeta(asRecord, name, mutation)),
+        )
+      }
+      pendingRowMutationsRef.current = []
+    }
     previousHiddenRef.current = new Set(hiddenFields.map((h) => h.path))
     if (!previous) return // fields hidden on mount already hold their defaults
     for (const { path, schemaPath, field } of hiddenFields) {
@@ -599,7 +607,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       })
       clearErrors(path)
     }
-  }, [hiddenFields, control, setValue, clearErrors])
+  }, [hiddenFields, allValues, control, setValue, clearErrors])
 
   React.useEffect(() => {
     onValuesChangeRef.current?.(allValues as z.infer<TSchema>)
