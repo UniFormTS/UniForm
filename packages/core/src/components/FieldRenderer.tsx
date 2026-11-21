@@ -1,3 +1,4 @@
+import * as React from 'react'
 import type { Control } from 'react-hook-form'
 import { useFormState } from 'react-hook-form'
 import type { FieldConfig } from '../types'
@@ -59,7 +60,7 @@ function getFieldError(
  * skip the field wrapper; all other fields are wrapped in the configured
  * `FieldWrapper` with their resolved error message.
  */
-export function FieldRenderer({
+export const FieldRenderer = React.memo(function FieldRenderer({
   field,
   control,
   namePrefix,
@@ -75,13 +76,23 @@ export function FieldRenderer({
     messages,
     registry,
   } = useAutoFormContext()
-  const { errors } = useFormState({ control })
   const effectiveName = getEffectiveName(field, namePrefix)
 
   const hasComponentOverride =
     typeof field.meta.component === 'function' ||
     (typeof field.meta.component === 'string' &&
       Object.prototype.hasOwnProperty.call(registry, field.meta.component))
+  const isContainer =
+    (field.type === 'object' || field.type === 'array') && !hasComponentOverride
+
+  // Re-render only when this field's error changes. Objects and arrays render
+  // no error of their own (their children subscribe to theirs).
+  const { errors } = useFormState({
+    control,
+    name: effectiveName,
+    exact: true,
+    disabled: isContainer,
+  })
 
   if (field.type === 'object' && !hasComponentOverride) {
     const objectField =
@@ -175,4 +186,4 @@ export function FieldRenderer({
       {rendered}
     </FieldWrapper>
   )
-}
+})

@@ -35,7 +35,10 @@ import { createArrayRegistry } from '../context/arrayRegistry'
 import { FieldRenderer } from './FieldRenderer'
 import { useConditionalFields } from '../hooks/useConditionalFields'
 import { useSectionGrouping } from '../hooks/useSectionGrouping'
-import { useFormPersistence } from '../hooks/useFormPersistence'
+import {
+  useFormPersistence,
+  type PersistenceMethods,
+} from '../hooks/useFormPersistence'
 import { useLatestRef } from '../hooks/useLatestRef'
 import {
   applyFieldOverrides,
@@ -383,6 +386,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     storage: persistStorage,
     reset: rhf.reset as (values: Record<string, unknown>) => void,
     defaultValues: computedDefaults,
+    methods: rhf as unknown as PersistenceMethods,
   })
 
   // Dynamic field meta — updated by setFieldMeta inside UniForm onChange handlers
@@ -625,8 +629,6 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     [visibilityFields, uniForm, uniFormCtx],
   )
 
-  const allValues = useWatch({ control })
-
   React.useLayoutEffect(() => {
     // Same pipeline as `visibilityFields`, but for any variant's fields and
     // with the synchronous dynamic-meta snapshot
@@ -644,9 +646,17 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     syncHiddenRef.current()
   }, [fieldOverridesProp, uniForm])
 
+  // Reported through RHF's subscription rather than `useWatch`, so value
+  // changes don't re-render the whole form. Registered after `syncHidden`'s
+  // subscription, so a newly hidden field is already reset when reported.
   React.useEffect(() => {
-    onValuesChangeRef.current?.(allValues as z.infer<TSchema>)
-  }, [onValuesChangeRef, allValues])
+    // `getValues`, not `watch()`: the latter makes RHF re-render the form root
+    onValuesChangeRef.current?.(getValues() as z.infer<TSchema>)
+    const subscription = watch((values) =>
+      onValuesChangeRef.current?.(values as z.infer<TSchema>),
+    )
+    return () => subscription.unsubscribe()
+  }, [watch, getValues, onValuesChangeRef])
 
   const visibleFields = useConditionalFields(fieldsWithDynamic, control)
   const sections = useSectionGrouping(visibleFields)

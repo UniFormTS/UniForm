@@ -24,7 +24,7 @@ myForm.setCondition(
 - When a field becomes hidden, it is **reset to its default** (the `defaultValues` entry, the schema `.default(…)`, or the type's empty value) and its errors are cleared. Showing it again starts from that default; earlier input is not restored.
 - Fields hidden with `hidden: true` (in `fields` or via `setFieldMeta`) follow the same rules.
 - A hidden field's own schema — refinements, transforms, `.default()` — does not run. One exception: inside an array, a field hidden in only _some_ rows shares its schema with the visible rows, so its checks still run for the hidden rows (with `undefined`); their errors are ignored, but a check that throws will still stop the submit. (A field hidden in _every_ row is skipped entirely.) If such an array also has a `.transform()` that can reorder rows, a hidden row field's `.default()` value may appear in the submitted output. Likewise, rows that come only from an array's schema `.default([...])` (when the form submits no rows of its own) are never shown, so row conditions aren't evaluated for them; only fields hidden with `hidden: true` are stripped from such rows.
-- Conditions are evaluated reactively on every form value change.
+- Conditions are evaluated reactively on every form value change. The form (or the object or array row holding the field) re-renders only when a field's visibility actually changes, not on every keystroke, so keep predicates cheap and free of side effects.
 
 :::tip Hide the UI but keep the value
 To skip a field's built-in UI while keeping its value validated and submitted — for example an array you drive from your own toolbar with `useArrayField` — use `render: false` instead of `hidden`.

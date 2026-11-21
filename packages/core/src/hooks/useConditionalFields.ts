@@ -1,8 +1,25 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { useWatch } from 'react-hook-form'
 import type { Control } from 'react-hook-form'
 import type { FieldConfig } from '../types'
 import { isFieldHidden } from '../utils/hiddenFields'
+
+// `useWatch` with `compute`, over all values or those at `name`
+const watchComputed = useWatch as unknown as (props: {
+  control: Control
+  name?: string
+  compute: (values: unknown) => string
+}) => unknown
+
+/** Which of `fields` are shown, as a string (`'1'` shown, `'0'` hidden). */
+function visibilityKey(fields: FieldConfig[], values: unknown): string {
+  let key = ''
+  for (const field of fields) {
+    key +=
+      field.meta.render === false || isFieldHidden(field, values) ? '0' : '1'
+  }
+  return key
+}
 
 /**
  * Filters and sorts a list of field configs based on the current form values.
@@ -14,7 +31,8 @@ import { isFieldHidden } from '../utils/hiddenFields'
  * - Remaining fields are sorted ascending by `meta.order` (fields without an
  *   order appear last).
  *
- * Re-evaluates reactively whenever the watched form values change.
+ * Conditions re-evaluate on every value change, but the calling component
+ * re-renders only when the set of visible fields changes.
  *
  * @param fields - The full list of field configs to filter and sort.
  * @param control - The RHF `control` object from the parent form.
@@ -28,25 +46,37 @@ export function useConditionalFields(
   control: Control,
   scopeName?: string,
 ): FieldConfig[] {
-  const allValues = useWatch({ control }) as Record<string, unknown>
-  const scopedValues = useWatch({
-    control,
-    name: scopeName as string,
-  }) as Record<string, unknown>
-  const values = scopeName ? scopedValues : allValues
+  // `compute` runs on every value change; RHF re-renders only when its result
+  // (which fields are visible) changes. It records the values, so rendering
+  // evaluates against the latest values and the current `fields`.
+  const latest = useRef<unknown>(undefined)
+  const failures = useRef(0)
+  const compute = (values: unknown): string => {
+    latest.current = values
+    try {
+      return visibilityKey(fields, values)
+    } catch {
+      // Re-render, so the condition's error is thrown while rendering
+      return `error:${++failures.current}`
+    }
+  }
+  const watched = watchComputed({ control, name: scopeName, compute })
+  // RHF versions without `compute` return the watched values instead
+  if (typeof watched !== 'string') latest.current = watched
 
-  return useMemo(() => {
-    return fields
-      .filter((field) => {
-        if (field.meta.render === false) return false
-        return !isFieldHidden(field, values)
-      })
-      .sort((a, b) => {
-        const orderA =
-          typeof a.meta.order === 'number' ? a.meta.order : Infinity
-        const orderB =
-          typeof b.meta.order === 'number' ? b.meta.order : Infinity
-        return orderA - orderB
-      })
-  }, [fields, values])
+  const key = visibilityKey(fields, latest.current)
+
+  return useMemo(
+    () =>
+      fields
+        .filter((_, i) => key[i] === '1')
+        .sort((a, b) => {
+          const orderA =
+            typeof a.meta.order === 'number' ? a.meta.order : Infinity
+          const orderB =
+            typeof b.meta.order === 'number' ? b.meta.order : Infinity
+          return orderA - orderB
+        }),
+    [fields, key],
+  )
 }
