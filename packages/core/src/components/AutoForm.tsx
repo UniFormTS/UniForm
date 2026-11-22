@@ -647,16 +647,29 @@ export function AutoForm<TSchema extends z.$ZodObject>(
   }, [fieldOverridesProp, uniForm])
 
   // Reported through RHF's subscription rather than `useWatch`, so value
-  // changes don't re-render the whole form. Registered after `syncHidden`'s
-  // subscription, so a newly hidden field is already reset when reported.
+  // changes don't re-render the whole form. Changes within one tick are
+  // reported once, on a microtask, with the final values: a multi-key update
+  // is one change, and a handler that writes values never re-enters itself.
+  // Registered after `syncHidden`'s subscription, so a newly hidden field is
+  // already reset when reported.
   React.useEffect(() => {
-    // Subscribed first, so values the initial call writes are reported too
-    const subscription = watch((values) =>
-      onValuesChangeRef.current?.(values as z.infer<TSchema>),
-    )
+    let active = true
+    let pending = false
     // `getValues`, not `watch()`: the latter makes RHF re-render the form root
-    onValuesChangeRef.current?.(getValues() as z.infer<TSchema>)
-    return () => subscription.unsubscribe()
+    const report = () => {
+      pending = false
+      if (active) onValuesChangeRef.current?.(getValues() as z.infer<TSchema>)
+    }
+    const subscription = watch(() => {
+      if (pending) return
+      pending = true
+      queueMicrotask(report)
+    })
+    report() // initial values; writes made by the handler are reported next
+    return () => {
+      active = false
+      subscription.unsubscribe()
+    }
   }, [watch, getValues, onValuesChangeRef])
 
   const visibleFields = useConditionalFields(fieldsWithDynamic, control)

@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as z from 'zod/v4'
 import { AutoForm } from './AutoForm'
@@ -174,6 +174,49 @@ describe('render counts', () => {
         first: 'initial',
       }),
     )
+  })
+
+  it('onValuesChange handlers can write several values without re-entering', async () => {
+    const ref = React.createRef<AutoFormHandle>()
+    const onValuesChange = vi.fn<(values: unknown) => void>((values) => {
+      const { first, last } = values as { first: string; last: string }
+      if (first !== 'A' || last !== 'B') {
+        ref.current?.setValues({ first: 'A', last: 'B' } as never)
+      }
+    })
+    renderForm({ onValuesChange, ref } as Partial<
+      React.ComponentProps<typeof AutoForm>
+    >)
+
+    await waitFor(() =>
+      expect(onValuesChange.mock.lastCall?.[0]).toMatchObject({
+        first: 'A',
+        last: 'B',
+      }),
+    )
+    // The initial call, then one report of the handler's writes
+    expect(onValuesChange).toHaveBeenCalledTimes(2)
+  })
+
+  it('onValuesChange reports a multi-key update once', async () => {
+    const ref = React.createRef<AutoFormHandle>()
+    const onValuesChange = vi.fn<(values: unknown) => void>()
+    renderForm({ onValuesChange, ref } as Partial<
+      React.ComponentProps<typeof AutoForm>
+    >)
+    await waitFor(() => expect(onValuesChange).toHaveBeenCalled())
+    onValuesChange.mockClear()
+
+    act(() => {
+      ref.current?.setValues({ first: 'x', last: 'y', email: 'z' } as never)
+    })
+
+    await waitFor(() => expect(onValuesChange).toHaveBeenCalledTimes(1))
+    expect(onValuesChange.mock.calls[0][0]).toMatchObject({
+      first: 'x',
+      last: 'y',
+      email: 'z',
+    })
   })
 
   it('persistence still saves values without re-rendering the form', async () => {
