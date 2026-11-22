@@ -392,3 +392,121 @@ describe('render-time watch reads', () => {
     expect(screen.getByTestId('all')).toHaveTextContent('xy')
   })
 })
+
+describe('subscription-based saving and row scopes', () => {
+  const memStorage = (init: Record<string, string> = {}) => {
+    const store = new Map(Object.entries(init))
+    const storage: PersistStorage = {
+      getItem: (key) => store.get(key) ?? null,
+      setItem: (key, value) => void store.set(key, value),
+      removeItem: (key) => void store.delete(key),
+    }
+    return { store, storage }
+  }
+  const flat = z.object({ first: z.string(), last: z.string() })
+  const stored = (store: Map<string, string>) =>
+    JSON.parse(store.get('draft') ?? '{}') as Record<string, unknown>
+
+  it('keeps a restored draft in storage', async () => {
+    const { store, storage } = memStorage({
+      draft: JSON.stringify({ first: 'saved', last: 'x' }),
+    })
+    render(
+      <AutoForm
+        form={createForm(flat)}
+        persistKey='draft'
+        persistDebounce={0}
+        persistStorage={storage}
+        onSubmit={() => {}}
+      />,
+    )
+    expect(screen.getByRole('textbox', { name: /first/i })).toHaveValue('saved')
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(stored(store)).toMatchObject({ first: 'saved', last: 'x' })
+  })
+
+  it('saves values written by reset', async () => {
+    const { store, storage } = memStorage()
+    const ref = React.createRef<AutoFormHandle<typeof flat>>()
+    const user = userEvent.setup()
+    render(
+      <AutoForm
+        ref={ref}
+        form={createForm(flat)}
+        persistKey='draft'
+        persistDebounce={0}
+        persistStorage={storage}
+        onSubmit={() => {}}
+      />,
+    )
+    await user.type(screen.getByRole('textbox', { name: /first/i }), 'ab')
+    await waitFor(() => expect(stored(store)).toMatchObject({ first: 'ab' }))
+
+    act(() => ref.current?.reset())
+    await waitFor(() => expect(stored(store)).toMatchObject({ first: '' }))
+  })
+
+  const rowSchema = z.object({
+    rows: z.array(z.object({ kind: z.enum(['a', 'b']), note: z.string() })),
+  })
+  const notes = () => screen.queryAllByRole('textbox', { name: /note/i })
+  const kinds = () => screen.getAllByRole('combobox')
+
+  it('row conditions follow a row that moved', async () => {
+    const form = createForm(rowSchema).setCondition(
+      'rows.note',
+      (row) => row.kind === 'b',
+    )
+    const user = userEvent.setup()
+    render(
+      <AutoForm
+        form={form}
+        fields={{ rows: { movable: true } }}
+        defaultValues={{
+          rows: [
+            { kind: 'b', note: 'kept' },
+            { kind: 'a', note: '' },
+          ],
+        }}
+        onSubmit={() => {}}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Move item 2 up' }))
+    expect(notes()).toHaveLength(1)
+    expect(notes()[0]).toHaveValue('kept')
+
+    // The moved row (now first) still re-evaluates its own condition
+    await user.selectOptions(kinds()[0], 'b')
+    expect(notes()).toHaveLength(2)
+    await user.selectOptions(kinds()[0], 'a')
+    expect(notes()).toHaveLength(1)
+  })
+
+  it('row conditions follow rows after an earlier row is removed', async () => {
+    const form = createForm(rowSchema).setCondition(
+      'rows.note',
+      (row) => row.kind === 'b',
+    )
+    const user = userEvent.setup()
+    render(
+      <AutoForm
+        form={form}
+        defaultValues={{
+          rows: [
+            { kind: 'b', note: '' },
+            { kind: 'a', note: '' },
+            { kind: 'b', note: '' },
+          ],
+        }}
+        onSubmit={() => {}}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Remove item 1' }))
+    expect(notes()).toHaveLength(1)
+
+    await user.selectOptions(kinds()[0], 'b')
+    expect(notes()).toHaveLength(2)
+    await user.selectOptions(kinds()[1], 'a')
+    expect(notes()).toHaveLength(1)
+  })
+})
