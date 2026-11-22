@@ -42,6 +42,12 @@ export type AutoFormContextValue = {
     mutations: MutationType | MutationType[],
     run: () => void,
   ) => void
+  /**
+   * Changes on each form render once `formMethods.watch(...)` has been read,
+   * so components reading values that way re-render with the form.
+   * @internal
+   */
+  watchVersion: number
 }
 
 const AutoFormContext = React.createContext<AutoFormContextValue | null>(null)

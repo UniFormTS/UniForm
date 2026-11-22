@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import * as z from 'zod/v4'
 import { AutoForm } from './AutoForm'
 import { createForm } from '../UniForm'
+import { useAutoFormContext } from '../context/AutoFormContext'
 import { DefaultInput } from './defaults/DefaultInput'
 import { DefaultCheckbox } from './defaults/DefaultCheckbox'
 import { DefaultSelect } from './defaults/DefaultSelect'
@@ -336,5 +337,58 @@ describe('render counts', () => {
       ['z', 'z'],
       ['y', 'y'],
     ])
+  })
+})
+
+// Components may read values with `formMethods.watch(...)` while rendering
+// (see the useAutoFormContext docs). RHF re-renders the form root for those
+// reads; the memoized field tree must still pass that update down to them.
+describe('render-time watch reads', () => {
+  const flat = z.object({ first: z.string(), last: z.string() })
+
+  function EchoFirst() {
+    const { formMethods } = useAutoFormContext()
+    return (
+      <output data-testid='echo'>{String(formMethods.watch('first'))}</output>
+    )
+  }
+
+  it('updates a custom field component that calls watch(name) while rendering', async () => {
+    const form = createForm(flat)
+    const user = userEvent.setup()
+    render(
+      <AutoForm
+        form={form}
+        fields={{ last: { component: EchoFirst } }}
+        onSubmit={() => {}}
+      />,
+    )
+    await user.type(screen.getByRole('textbox', { name: /first/i }), 'ab')
+    expect(screen.getByTestId('echo')).toHaveTextContent('ab')
+  })
+
+  it('updates a field wrapper that calls watch() while rendering', async () => {
+    function Wrapper(props: FieldWrapperProps) {
+      const { formMethods } = useAutoFormContext()
+      const values = formMethods.watch() as { first: string }
+      return (
+        <div>
+          <DefaultFieldWrapper {...props} />
+          {props.field.name === 'last' && (
+            <output data-testid='all'>{values.first}</output>
+          )}
+        </div>
+      )
+    }
+    const user = userEvent.setup()
+    render(
+      <AutoForm
+        form={createForm(flat)}
+        fieldWrapper={Wrapper}
+        onSubmit={() => {}}
+      />,
+    )
+    await user.type(screen.getByRole('textbox', { name: /first/i }), 'xy')
+    expect(screen.getByTestId('all')).toHaveTextContent('xy')
   })
 })
