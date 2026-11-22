@@ -510,3 +510,19 @@ describe('subscription-based saving and row scopes', () => {
     expect(notes()).toHaveLength(1)
   })
 })
+
+describe('field errors', () => {
+  it('clears a nested field error when its ancestor path is cleared', async () => {
+    const nested = z.object({
+      address: z.object({ city: z.string().min(1, 'City required') }),
+    })
+    const ref = React.createRef<AutoFormHandle<typeof nested>>()
+    const user = userEvent.setup()
+    render(<AutoForm ref={ref} form={createForm(nested)} onSubmit={() => {}} />)
+    await user.click(screen.getByRole('button', { name: /submit/i }))
+    expect(await screen.findByText('City required')).toBeInTheDocument()
+
+    act(() => ref.current?.clearErrors('address'))
+    expect(screen.queryByText('City required')).toBeNull()
+  })
+})

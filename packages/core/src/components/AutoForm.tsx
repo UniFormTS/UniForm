@@ -35,10 +35,7 @@ import { createArrayRegistry } from '../context/arrayRegistry'
 import { FieldRenderer } from './FieldRenderer'
 import { useConditionalFields } from '../hooks/useConditionalFields'
 import { useSectionGrouping } from '../hooks/useSectionGrouping'
-import {
-  useFormPersistence,
-  type PersistenceMethods,
-} from '../hooks/useFormPersistence'
+import { useFormPersistence } from '../hooks/useFormPersistence'
 import { useLatestRef } from '../hooks/useLatestRef'
 import {
   applyFieldOverrides,
@@ -386,7 +383,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     storage: persistStorage,
     reset: rhf.reset as (values: Record<string, unknown>) => void,
     defaultValues: computedDefaults,
-    methods: rhf as unknown as PersistenceMethods,
+    methods: { watch, getValues },
   })
 
   // Dynamic field meta — updated by setFieldMeta inside UniForm onChange handlers

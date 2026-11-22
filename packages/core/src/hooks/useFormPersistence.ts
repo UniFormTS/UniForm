@@ -1,14 +1,17 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { useWatch } from 'react-hook-form'
-import type { Control, UseFormReturn } from 'react-hook-form'
+import type { Control } from 'react-hook-form'
 import type { PersistStorage } from '../types'
 import { mergeDefaults } from '../utils/mergeDefaults'
 
-/** The form methods `useFormPersistence` can save through. */
-export type PersistenceMethods = Pick<
-  UseFormReturn<Record<string, unknown>>,
-  'watch' | 'getValues'
->
+/**
+ * The form methods `useFormPersistence` can save through: `watch` and
+ * `getValues` from any `useForm<T>()` call.
+ */
+export type PersistenceMethods = {
+  watch: (callback: (values: unknown) => void) => { unsubscribe: () => void }
+  getValues: () => unknown
+}
 
 const defaultStorage: PersistStorage | undefined =
   typeof window !== 'undefined'

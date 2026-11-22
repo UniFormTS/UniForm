@@ -71,11 +71,7 @@ export const FieldRenderer = React.memo(function FieldRenderer({
   // Hidden fields are reset and excluded from validation by AutoForm; only an
   // explicit `shouldUnregister` unregisters a field's value on unmount.
   const effectiveShouldUnregister = shouldUnregister
-  const {
-    fieldWrapper: FieldWrapper,
-    messages,
-    registry,
-  } = useAutoFormContext()
+  const { messages, registry } = useAutoFormContext()
   const effectiveName = getEffectiveName(field, namePrefix)
 
   const hasComponentOverride =
@@ -85,12 +81,12 @@ export const FieldRenderer = React.memo(function FieldRenderer({
   const isContainer =
     (field.type === 'object' || field.type === 'array') && !hasComponentOverride
 
-  // Re-render only when this field's error changes. Objects and arrays render
-  // no error of their own (their children subscribe to theirs).
+  // Re-render only when errors at this field's path change, including changes
+  // made through an ancestor path (e.g. `clearErrors('address')`). Objects and
+  // arrays render no error of their own (their children subscribe to theirs).
   const { errors } = useFormState({
     control,
     name: effectiveName,
-    exact: true,
     disabled: isContainer,
   })
 
@@ -120,14 +116,55 @@ export const FieldRenderer = React.memo(function FieldRenderer({
     )
   }
 
-  const effectiveField =
-    effectiveName !== field.name ? { ...field, name: effectiveName } : field
-
   const rawError = getFieldError(
     errors as Record<string, unknown>,
     effectiveName,
   )
   const error = resolveErrorMessage(effectiveName, rawError, messages)
+
+  return (
+    <LeafField
+      field={field}
+      control={control}
+      effectiveName={effectiveName}
+      hasComponentOverride={hasComponentOverride}
+      shouldUnregister={effectiveShouldUnregister}
+      error={error}
+      index={index}
+      depth={depth}
+    />
+  )
+})
+
+type LeafFieldProps = {
+  field: FieldConfig
+  control: Control
+  effectiveName: string
+  hasComponentOverride: boolean
+  shouldUnregister?: boolean
+  error: string | undefined
+  index: number
+  depth: number
+}
+
+/**
+ * A non-container field in its wrapper. Memoized on the resolved error
+ * message, so updates to an ancestor path's errors that leave this field's
+ * message unchanged (e.g. appending an array row) don't re-render it.
+ */
+const LeafField = React.memo(function LeafField({
+  field,
+  control,
+  effectiveName,
+  hasComponentOverride,
+  shouldUnregister,
+  error,
+  index,
+  depth,
+}: LeafFieldProps) {
+  const { fieldWrapper: FieldWrapper } = useAutoFormContext()
+  const effectiveField =
+    effectiveName !== field.name ? { ...field, name: effectiveName } : field
 
   const renderField = () => {
     if (field.type === 'boolean') {
@@ -136,7 +173,7 @@ export const FieldRenderer = React.memo(function FieldRenderer({
           field={effectiveField}
           control={control}
           effectiveName={effectiveName}
-          shouldUnregister={effectiveShouldUnregister}
+          shouldUnregister={shouldUnregister}
         />
       )
     }
@@ -146,7 +183,7 @@ export const FieldRenderer = React.memo(function FieldRenderer({
           field={effectiveField as Extract<FieldConfig, { type: 'select' }>}
           control={control}
           effectiveName={effectiveName}
-          shouldUnregister={effectiveShouldUnregister}
+          shouldUnregister={shouldUnregister}
         />
       )
     }
@@ -161,7 +198,7 @@ export const FieldRenderer = React.memo(function FieldRenderer({
           field={effectiveField}
           control={control}
           effectiveName={effectiveName}
-          shouldUnregister={effectiveShouldUnregister}
+          shouldUnregister={shouldUnregister}
         />
       )
     }
