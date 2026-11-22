@@ -23,6 +23,18 @@ function StatusBar() {
 }
 ```
 
+:::tip Reading values without re-rendering the form
+`formMethods.watch()` called while rendering stays up to date, but it makes the whole form re-render on those changes. To re-render only your component, subscribe with `useWatch` from `react-hook-form`:
+
+```tsx
+import { useWatch } from 'react-hook-form'
+
+const { control } = useAutoFormContext()
+const values = useWatch({ control })
+```
+
+:::
+
 ## Signature
 
 ```ts

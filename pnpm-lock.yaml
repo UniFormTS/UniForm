@@ -107,7 +107,7 @@ importers:
         specifier: ^19
         version: 19.2.4
       react-hook-form:
-        specifier: ^7
+        specifier: ^7.66.0
         version: 7.71.2(react@19.2.4)
     devDependencies:
       '@testing-library/jest-dom':

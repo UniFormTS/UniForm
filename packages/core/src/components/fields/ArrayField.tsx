@@ -53,6 +53,14 @@ function getRowSummary(
   return itemSummary?.(index) ?? `Item ${index + 1}`
 }
 
+type RowConfigInputs = [
+  itemConfig: FieldConfig,
+  itemLabel: string | undefined,
+  arrayLabel: string,
+  rowMeta: unknown,
+]
+type CachedRowConfig = { inputs: RowConfigInputs; config: FieldConfig }
+
 /**
  * Creates a copy of the item config with each child's `meta.onChange` wrapped
  * to inject the `rowIndex` as the third argument. This bridges the gap between
@@ -119,13 +127,14 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
 
   // When the array belongs to a section, propagate section to the item config
   // so nested ObjectField also skips its own <fieldset>.
-  const effectiveItemConfig =
-    field.meta.section && !itemConfig.meta.section
-      ? {
-          ...itemConfig,
-          meta: { ...itemConfig.meta, section: field.meta.section },
-        }
-      : itemConfig
+  const section = field.meta.section
+  const effectiveItemConfig = useMemo(
+    () =>
+      section && !itemConfig.meta.section
+        ? { ...itemConfig, meta: { ...itemConfig.meta, section } }
+        : itemConfig,
+    [itemConfig, section],
+  )
 
   const primitiveItemLabel = field.meta.itemLabel ?? itemConfig.label
   const getRowConfig = (index: number): FieldConfig => {
@@ -143,6 +152,33 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
     }
   }
 
+  // Read per-row dynamic meta from the field config (set by applyDynamicMeta)
+  const rowDynamicMeta = (field as ArrayFieldConfigWithRowMeta)._rowDynamicMeta
+
+  // Each row's config is rebuilt only when its inputs change, so the memoized
+  // FieldRenderer skips rows that didn't change (e.g. when a row is added).
+  const rowConfigCache = React.useRef(new Map<number, CachedRowConfig>())
+  const rowConfig = (index: number): FieldConfig => {
+    const inputs: RowConfigInputs = [
+      effectiveItemConfig,
+      primitiveItemLabel,
+      field.label,
+      rowDynamicMeta?.[index],
+    ]
+    const cached = rowConfigCache.current.get(index)
+    if (cached && cached.inputs.every((input, i) => input === inputs[i])) {
+      return cached.config
+    }
+    const base = getRowConfig(index)
+    const meta = rowDynamicMeta?.[index]
+    const config = bindRowIndexToItemConfig(
+      meta ? applyRowDynamicMeta(base, meta) : base,
+      index,
+    )
+    rowConfigCache.current.set(index, { inputs, config })
+    return config
+  }
+
   const {
     add: AddBtn,
     remove: RemoveBtn,
@@ -153,9 +189,6 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
   } = layout.arrayButtons
   const ArrayFieldLayout = layout.arrayFieldLayout
   const RowLayout = layout.arrayRowLayout
-
-  // Read per-row dynamic meta from the field config (set by applyDynamicMeta)
-  const rowDynamicMeta = (field as ArrayFieldConfigWithRowMeta)._rowDynamicMeta
 
   const renderedRows = rows.map((row, index) => {
     const isCollapsed = showCollapse && collapsed.has(index)
@@ -247,12 +280,7 @@ export function ArrayField({ field, control, effectiveName }: ArrayFieldProps) {
 
     const fieldContent = !isCollapsed ? (
       <FieldRenderer
-        field={bindRowIndexToItemConfig(
-          rowDynamicMeta?.[index]
-            ? applyRowDynamicMeta(getRowConfig(index), rowDynamicMeta[index])
-            : getRowConfig(index),
-          index,
-        )}
+        field={rowConfig(index)}
         control={control}
         namePrefix={`${effectiveName}.${index}`}
       />

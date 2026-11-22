@@ -1,3 +1,4 @@
+import * as React from 'react'
 import type { Control } from 'react-hook-form'
 import { useFormState } from 'react-hook-form'
 import type { FieldConfig } from '../types'
@@ -59,7 +60,7 @@ function getFieldError(
  * skip the field wrapper; all other fields are wrapped in the configured
  * `FieldWrapper` with their resolved error message.
  */
-export function FieldRenderer({
+export const FieldRenderer = React.memo(function FieldRenderer({
   field,
   control,
   namePrefix,
@@ -70,18 +71,24 @@ export function FieldRenderer({
   // Hidden fields are reset and excluded from validation by AutoForm; only an
   // explicit `shouldUnregister` unregisters a field's value on unmount.
   const effectiveShouldUnregister = shouldUnregister
-  const {
-    fieldWrapper: FieldWrapper,
-    messages,
-    registry,
-  } = useAutoFormContext()
-  const { errors } = useFormState({ control })
+  const { messages, registry } = useAutoFormContext()
   const effectiveName = getEffectiveName(field, namePrefix)
 
   const hasComponentOverride =
     typeof field.meta.component === 'function' ||
     (typeof field.meta.component === 'string' &&
       Object.prototype.hasOwnProperty.call(registry, field.meta.component))
+  const isContainer =
+    (field.type === 'object' || field.type === 'array') && !hasComponentOverride
+
+  // Re-render only when errors at this field's path change, including changes
+  // made through an ancestor path (e.g. `clearErrors('address')`). Objects and
+  // arrays render no error of their own (their children subscribe to theirs).
+  const { errors } = useFormState({
+    control,
+    name: effectiveName,
+    disabled: isContainer,
+  })
 
   if (field.type === 'object' && !hasComponentOverride) {
     const objectField =
@@ -109,14 +116,55 @@ export function FieldRenderer({
     )
   }
 
-  const effectiveField =
-    effectiveName !== field.name ? { ...field, name: effectiveName } : field
-
   const rawError = getFieldError(
     errors as Record<string, unknown>,
     effectiveName,
   )
   const error = resolveErrorMessage(effectiveName, rawError, messages)
+
+  return (
+    <LeafField
+      field={field}
+      control={control}
+      effectiveName={effectiveName}
+      hasComponentOverride={hasComponentOverride}
+      shouldUnregister={effectiveShouldUnregister}
+      error={error}
+      index={index}
+      depth={depth}
+    />
+  )
+})
+
+type LeafFieldProps = {
+  field: FieldConfig
+  control: Control
+  effectiveName: string
+  hasComponentOverride: boolean
+  shouldUnregister?: boolean
+  error: string | undefined
+  index: number
+  depth: number
+}
+
+/**
+ * A non-container field in its wrapper. Memoized on the resolved error
+ * message, so updates to an ancestor path's errors that leave this field's
+ * message unchanged (e.g. appending an array row) don't re-render it.
+ */
+const LeafField = React.memo(function LeafField({
+  field,
+  control,
+  effectiveName,
+  hasComponentOverride,
+  shouldUnregister,
+  error,
+  index,
+  depth,
+}: LeafFieldProps) {
+  const { fieldWrapper: FieldWrapper } = useAutoFormContext()
+  const effectiveField =
+    effectiveName !== field.name ? { ...field, name: effectiveName } : field
 
   const renderField = () => {
     if (field.type === 'boolean') {
@@ -125,7 +173,7 @@ export function FieldRenderer({
           field={effectiveField}
           control={control}
           effectiveName={effectiveName}
-          shouldUnregister={effectiveShouldUnregister}
+          shouldUnregister={shouldUnregister}
         />
       )
     }
@@ -135,7 +183,7 @@ export function FieldRenderer({
           field={effectiveField as Extract<FieldConfig, { type: 'select' }>}
           control={control}
           effectiveName={effectiveName}
-          shouldUnregister={effectiveShouldUnregister}
+          shouldUnregister={shouldUnregister}
         />
       )
     }
@@ -150,7 +198,7 @@ export function FieldRenderer({
           field={effectiveField}
           control={control}
           effectiveName={effectiveName}
-          shouldUnregister={effectiveShouldUnregister}
+          shouldUnregister={shouldUnregister}
         />
       )
     }
@@ -175,4 +223,4 @@ export function FieldRenderer({
       {rendered}
     </FieldWrapper>
   )
-}
+})

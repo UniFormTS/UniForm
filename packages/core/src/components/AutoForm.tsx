@@ -383,6 +383,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     storage: persistStorage,
     reset: rhf.reset as (values: Record<string, unknown>) => void,
     defaultValues: computedDefaults,
+    methods: { watch, getValues },
   })
 
   // Dynamic field meta — updated by setFieldMeta inside UniForm onChange handlers
@@ -522,6 +523,15 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Reading values with `formMethods.watch(...)` makes RHF re-render the form
+  // root on those changes. Field renderers are memoized, so once such a read
+  // has happened, each root render gets a new context version: every context
+  // consumer re-renders, as before memoization, so those reads stay current.
+  const renderWatchRef = React.useRef(false)
+  const watchVersionRef = React.useRef(0)
+  if (renderWatchRef.current) watchVersionRef.current++
+  const watchVersion = watchVersionRef.current
+
   const formMethods = React.useMemo<FormMethods<z.infer<TSchema>>>(
     () => ({
       setValue: (name, value) =>
@@ -558,7 +568,11 @@ export function AutoForm<TSchema extends z.$ZodObject>(
         )()
       },
       focus: (fieldName) => setFocus(fieldName),
-      watch: watch as FormMethods<z.infer<TSchema>>['watch'],
+      watch: ((...args: unknown[]) => {
+        // A read (no callback) may come from a component's render
+        if (typeof args[0] !== 'function') renderWatchRef.current = true
+        return (watch as (...a: unknown[]) => unknown)(...args)
+      }) as FormMethods<z.infer<TSchema>>['watch'],
     }),
     [
       setDynamicMeta,
@@ -625,8 +639,6 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     [visibilityFields, uniForm, uniFormCtx],
   )
 
-  const allValues = useWatch({ control })
-
   React.useLayoutEffect(() => {
     // Same pipeline as `visibilityFields`, but for any variant's fields and
     // with the synchronous dynamic-meta snapshot
@@ -644,9 +656,31 @@ export function AutoForm<TSchema extends z.$ZodObject>(
     syncHiddenRef.current()
   }, [fieldOverridesProp, uniForm])
 
+  // Reported through RHF's subscription rather than `useWatch`, so value
+  // changes don't re-render the whole form. Changes within one tick are
+  // reported once, on a microtask, with the final values: a multi-key update
+  // is one change, and a handler that writes values never re-enters itself.
+  // Registered after `syncHidden`'s subscription, so a newly hidden field is
+  // already reset when reported.
   React.useEffect(() => {
-    onValuesChangeRef.current?.(allValues as z.infer<TSchema>)
-  }, [onValuesChangeRef, allValues])
+    let active = true
+    let pending = false
+    // `getValues`, not `watch()`: the latter makes RHF re-render the form root
+    const report = () => {
+      pending = false
+      if (active) onValuesChangeRef.current?.(getValues() as z.infer<TSchema>)
+    }
+    const subscription = watch(() => {
+      if (pending) return
+      pending = true
+      queueMicrotask(report)
+    })
+    report() // initial values; writes made by the handler are reported next
+    return () => {
+      active = false
+      subscription.unsubscribe()
+    }
+  }, [watch, getValues, onValuesChangeRef])
 
   const visibleFields = useConditionalFields(fieldsWithDynamic, control)
   const sections = useSectionGrouping(visibleFields)
@@ -717,6 +751,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       setDynamicMeta,
       arrayRegistry,
       runRowMutation,
+      watchVersion,
     }),
     [
       registry,
@@ -734,6 +769,7 @@ export function AutoForm<TSchema extends z.$ZodObject>(
       setDynamicMeta,
       arrayRegistry,
       runRowMutation,
+      watchVersion,
     ],
   )
 
