@@ -57,7 +57,7 @@
   },
   "peerDependencies": {
     "react": "^19",
-    "react-hook-form": "^7",
+    "react-hook-form": "^7.66.0",
     "zod": ">=3.25"
   },
   "dependencies": {

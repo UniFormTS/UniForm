@@ -54,7 +54,7 @@ UniForm requires TypeScript with `strict` mode and `moduleResolution: bundler` (
 | Package           | Version            |
 | ----------------- | ------------------ |
 | `react`           | `^19.0.0`          |
-| `react-hook-form` | `^7.0.0`           |
+| `react-hook-form` | `^7.66.0`          |
 | `zod`             | `^3.25.0` (Zod V4) |
 
 ## AI Agent Skill
